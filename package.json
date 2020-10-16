@@ -1,10 +1,11 @@
 {
-    "name": "homebridge-blink",
-    "version": "2.0.0",
-    "description": "Blink Camera for homebridge",
+    "name": "homebridge-blink-for-home",
+    "version": "3.5.1",
+    "description": "Blink for Home Cameras for homebridge",
     "license": "MIT",
     "keywords": [
         "homebridge-plugin",
+        "homekit",
         "blink for home",
         "blink camera"
     ],
@@ -15,7 +16,7 @@
     ],
     "repository": {
         "type": "git",
-        "url": "git@github.com:colinbendell/homebridge-blink2.git"
+        "url": "git@github.com:colinbendell/homebridge-blink-for-home.git"
     },
     "engines": {
         "node": ">=0.12.0",

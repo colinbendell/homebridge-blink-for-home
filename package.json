@@ -1,0 +1,29 @@
+{
+    "name": "homebridge-blink",
+    "version": "2.0.0",
+    "description": "Blink Camera for homebridge",
+    "license": "MIT",
+    "keywords": [
+        "homebridge-plugin",
+        "blink for home",
+        "blink camera"
+    ],
+    "main": "src/index.js",
+    "files": [
+        "src",
+        "config.schema.json"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:colinbendell/homebridge-blink2.git"
+    },
+    "engines": {
+        "node": ">=0.12.0",
+        "homebridge": ">=0.2.0"
+    },
+    "dependencies": {
+        "node-fetch": "^2.6.1"
+    },
+    "devDependencies": {},
+    "scripts": {}
+}

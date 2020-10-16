@@ -1,0 +1,34 @@
+{
+    "pluginAlias": "BlinkCameras",
+    "pluginType": "platform",
+    "singular": true,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "title": "Name",
+                "description": "The Name of your System",
+                "type": "string",
+                "required": true
+            },
+            "username": {
+                "title": "username",
+                "type": "string",
+                "required": true
+            },
+            "password": {
+                "title": "password",
+                "type": "string",
+                "required": true
+            },
+            "pin": {
+                "title": "PIN",
+                "description": "The PIN sent during 2FA (leave blank on first use; enter after first auth attempt)",
+                "type": "number",
+                "required": false
+            }
+        }
+    },
+    "form": null,
+    "display": null
+}

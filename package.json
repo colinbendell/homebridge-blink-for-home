@@ -38,6 +38,6 @@
         "lint": "eslint src/**.js --max-warnings=0",
         "watch": "npm run build && npm link && nodemon",
         "build": "",
-        "prepublishOnly": "npm run lint && npm run build"
+        "prepublishOnly": "npm run build"
     }
 }

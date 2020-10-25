@@ -25,11 +25,11 @@
         "homebridge": ">=1.2.0"
     },
     "dependencies": {
+        "@homebridge/camera-utils": "^1.3.0",
         "node-fetch": "^2.6.1"
     },
     "devDependencies": {
         "eslint": "^7.11.0",
-        "@homebridge/camera-utils": "^1.3.0",
         "homebridge": "^1.2.2",
         "homebridge-config-ui-x": "^4.30.0",
         "nodemon": "^2.0.5"

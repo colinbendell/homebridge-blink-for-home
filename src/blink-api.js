@@ -74,6 +74,7 @@ class BlinkAPI {
         this.log.debug(options);
         let res = await fetch(`https://rest-${this.region || "prod"}.${BLINK_API_HOST}${targetPath}`, options)
             .catch(e => {
+                //TODO: handle network errors more gracefully
                 this.log.debug(JSON.stringify(e, null, 2));
                 return Promise.reject(e)
             });
@@ -86,6 +87,9 @@ class BlinkAPI {
                 await this.login(true);
                 return await this._request(method, path, body, maxTTL, false);
             }
+            // fallback
+            // TODO: handle error states more gracefully
+            throw new Error(res.headers.get("status"));
         }
         else if (this.status >= 400) {
             return Promise.reject(`${method} ${targetPath} -- ${res.headers.get('status')}`)
@@ -188,7 +192,7 @@ class BlinkAPI {
      **/
     async login(force = false, email = null, password = null, clientUUID = null, client = {}) {
         if (!force && this.token) return;
-        if (!this.email || !this.password) return Promise.reject('Eamil or Password is blank');
+        if (!this.email || !this.password) throw new Error('Email or Password is blank');
 
         client = client || {};
         const data = {
@@ -207,16 +211,16 @@ class BlinkAPI {
         const res = await this.post("/api/v4/account/login", data, false);
 
         // convenience function to avoid the business logic layer from having to handle this check constantly
-        if (res && res.message !== "Unauthorized Access") {
+        if (!res || /unauthorized|invalid/i.test(res.message)) {
+            throw new Error(res.message)
+        }
+        else {
             this.accountID = (res.account || {}).id || this.accountID;
             this.clientID = (res.client || {}).id || this.clientID;
             this.token = (res.authtoken || {}).authtoken || this.token;
             this.region = (res.region || {}).tier || this.region;
 
             if ((res.client || {}).verification_required && this.pin) await this.verify();
-        }
-        else {
-            return Promise.reject(res);
         }
 
         return res;

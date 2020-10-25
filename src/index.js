@@ -51,7 +51,7 @@ class HomebridgeBlink {
             // await this.conn.observe(handleUpdates);
 
             const data = await this.blink.initData();
-            this.accessoryLookup = data.map(entry => entry.createAccessory());
+            this.accessoryLookup = data.map(entry => entry.createAccessory(this.cachedAccessories));
 
             //TODO: clean up cached accessory registration (merge instead of remove + add)
             this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.cachedAccessories);

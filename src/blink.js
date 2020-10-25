@@ -3,7 +3,7 @@ const BlinkAPI = require('./blink-api');
 const BlinkCameraDelegate = require('./blink-camera-deligate')
 let Accessory, Categories, Characteristic, Service, UUIDGen, hap;
 
-const THUMBNAIL_TTL_DEFAULT = 1*60; //1min
+const THUMBNAIL_TTL_MIN = 1*60; //1min
 const THUMBNAIL_TTL_MAX = 10*60; //10min
 const BATTERY_TTL = 60*60; //60min
 
@@ -43,7 +43,7 @@ class BlinkDevice {
     get model() {return this.info.type; }
 
     set data(newInfo) {
-        this.info = newInfo instanceof BlinkNetwork ? newInfo.info : newInfo
+        this.info = newInfo instanceof BlinkDevice ? newInfo.info : newInfo
         for (const c of this.boundCharacteristics || []) {
             c[0].getCharacteristic(c[1]).getValue();
         }
@@ -60,7 +60,7 @@ class BlinkDevice {
                 if (format && disp !== null) {
                     disp = format.call(this, disp);
                 }
-                this.log.info(desc + ' for ' + this.name + ' is: ' + disp);
+                this.log.info(`${desc} for ${this.name} is: ${disp}`);
             }.bind(this));
 
         if (setFunc) {
@@ -71,7 +71,7 @@ class BlinkDevice {
         }
         this.boundCharacteristics.push([service, characteristic]);
     };
-    createAccessory(category = null) {
+    createAccessory(cachedAccessories = [], category = null) {
         if (this.accessory) return this.accessory;
 
         this.log.info('initing ' + this.canonicalID);
@@ -94,6 +94,11 @@ class BlinkDevice {
 
         //TODO: add online state
         this.boundCharacteristics = [];
+        this.accessory.context.canonicalID = this.canonicalID;
+        const context = (cachedAccessories || []).map(a => a.context).filter(a => a.canonicalID === this.canonicalID)[0];
+        if (context) {
+            this.accessory.context = Object.assign(this.accessory.context, context);
+        }
     }
 }
 class BlinkNetwork extends BlinkDevice{
@@ -126,7 +131,7 @@ class BlinkNetwork extends BlinkDevice{
         this.accessory.context.forceOff = (val === Characteristic.SecuritySystemTargetState.DISARM);
     }
 
-    getOccupiedSwitch() { return !!this.accessory.context.occupied ? this.accessory.context.ocupied : 1; }
+    getOccupiedSwitch() { return this.accessory.context.occupied !== undefined ? this.accessory.context.occupied : false; }
     async setOccupiedSwitch(val) {
         this.accessory.context.occupied = val;
         if (!this.accessory.context.forceOff) {
@@ -136,10 +141,10 @@ class BlinkNetwork extends BlinkDevice{
         return this.accessory.context.occupied;
     }
 
-    createAccessory() {
+    createAccessory(cachedAccessories = []) {
         if (this.accessory) return this.accessory;
 
-        super.createAccessory(Categories.SECURITY_SYSTEM)
+        super.createAccessory(cachedAccessories, Categories.SECURITY_SYSTEM)
 
         const validValues = [
             Characteristic.SecuritySystemTargetState.STAY_ARM,
@@ -202,7 +207,7 @@ class BlinkCamera extends BlinkDevice {
     async setEnabled(target = true) {
         if (this.info.enabled !== Boolean(target)) await this.blink.setCameraMotionSensorState(this.networkID, this.cameraID, target)
     }
-    getPrivacyMode() { return !!this.accessory.context.privacyMode ? this.accessory.context.privacyMode : 1; }
+    getPrivacyMode() { return this.accessory.context.privacyMode !== undefined ? this.accessory.context.privacyMode : true; }
     setPrivacyMode(val) { return this.accessory.context.privacyMode = val; }
 
     async refreshThumbnail() { await this.blink.refreshCameraThumbnail(this.networkID, this.cameraID); }
@@ -227,8 +232,11 @@ class BlinkCamera extends BlinkDevice {
         let thumbnail = entry.thumbnail;
 
         //TODO: check that it is on battery?
-        const ttl = this.blink.config[avoid-thumbnail-battery-drain] ? THUMBNAIL_TTL_MAX : THUMBNAIL_TTL_DEFAULT;
-        if (entry.created_at < Date.now() - ttl * 1000) {
+        const ttl = this.blink.config["avoid-thumbnail-battery-drain"] === false ? THUMBNAIL_TTL_MIN : THUMBNAIL_TTL_MAX;
+        console.log(Date.parse(entry.created_at));
+        console.log(Date.now() - ttl * 1000);
+        console.log(Date.parse(entry.created_at) < Date.now() - ttl * 1000);
+        if (Date.parse(entry.created_at) < Date.now() - ttl * 1000) {
             await this.refreshThumbnail();
             thumbnail = this.info.thumbnail;
         }
@@ -241,9 +249,9 @@ class BlinkCamera extends BlinkDevice {
         return data;
     }
 
-    createAccessory() {
+    createAccessory(cachedAccessories = []) {
         if (this.accessory) return this.accessory;
-        super.createAccessory(Categories.CAMERA)
+        super.createAccessory(cachedAccessories, Categories.CAMERA)
 
         const cameraDelegate = new BlinkCameraDelegate(hap, this, this.log);
 
@@ -251,10 +259,10 @@ class BlinkCamera extends BlinkDevice {
 
 //        this.bindCharacteristic(this.getService(Service.AccessoryInformation), Characteristic.ReceivedSignalStrengthIndication, 'Wifi Strength', this.getWifi);
 
-        const cameraMode = this.addService(Service.CameraOperatingMode, 'Camera Operating Mode', 'activated mode.' + this.serial);
-        this.bindCharacteristic(cameraMode, Characteristic.HomeKitCameraActive, 'Camera Active', this.getEnabled, this.setEnabled);
-        this.bindCharacteristic(cameraMode, Characteristic.EventSnapshotsActive, 'Privacy Mode', this.getEnabled, this.setEnabled);
-        this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive, 'Privacy Mode', this.getPrivacyMode, this.setPrivacyMode);
+        // const cameraMode = this.addService(Service.CameraOperatingMode, 'Camera Operating Mode', 'activated mode.' + this.serial);
+        // this.bindCharacteristic(cameraMode, Characteristic.HomeKitCameraActive, 'Camera Active', this.getEnabled, this.setEnabled);
+        // this.bindCharacteristic(cameraMode, Characteristic.EventSnapshotsActive, 'Privacy Mode', this.getEnabled, this.setEnabled);
+        // this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive, 'Privacy Mode', this.getPrivacyMode, this.setPrivacyMode);
 
         const microphone = this.addService(Service.Microphone);
         this.bindCharacteristic(microphone, Characteristic.Mute, 'Microphone', () => false);
@@ -264,7 +272,7 @@ class BlinkCamera extends BlinkDevice {
         this.bindCharacteristic(batteryService, Characteristic.ChargingState, 'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
         this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery, 'Battery LowBattery', this.getLowBattery);
 
-        const enabledSwitch = this.addService(Service.Switch, 'Motion Activated', 'enabled.' + this.serial);
+        const enabledSwitch = this.addService(Service.Switch, `${this.name} Motion Activated`, 'enabled.' + this.serial);
         this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
 
         const tempService = this.addService(Service.TemperatureSensor, `${this.name} Temperature`, 'temp-sensor.' + this.serial);
@@ -276,7 +284,7 @@ class BlinkCamera extends BlinkDevice {
         this.bindCharacteristic(motionService, Characteristic.StatusActive, 'Motion Sensor Active', this.getMotionDetectActive);
 
         if (!this.blink.config["hide-privacy-switch"]) {
-            const privacyModeService = this.addService(Service.Switch, 'Privacy Mode', 'privacy.' + this.serial);
+            const privacyModeService = this.addService(Service.Switch, `${this.name} Privacy Mode`, 'privacy.' + this.serial);
             this.bindCharacteristic(privacyModeService, Characteristic.On, 'Privacy Mode', this.getPrivacyMode, this.setPrivacyMode);
         }
 
@@ -358,13 +366,13 @@ class Blink {
     async setArmedState(networkID, arm = true) {
         if (arm) {
             const cmd = await this.blinkAPI.armNetwork(networkID);
-            await this.blink._commandWaitAll(cmd);
+            await this._commandWaitAll(cmd);
         }
         else {
             const cmd = await this.blinkAPI.disarmNetwork(networkID);
-            await this.blink._commandWaitAll(cmd);
+            await this._commandWaitAll(cmd);
         }
-        await this.blink.forceRefreshData();
+        await this.forceRefreshData();
     }
 
     async setCameraMotionSensorState(networkID, cameraID, enabled = true) {
@@ -380,9 +388,10 @@ class Blink {
     }
     async refreshCameraThumbnail(networkID, cameraID) {
         if (!networkID || !cameraID) return;
+
         const cmd = await this.blinkAPI.updateCameraThumbnail(networkID, cameraID);
-        await this.blink._commandWaitAll(cmd);
-        await this.blink.forceRefreshData();
+        await this._commandWaitAll(cmd);
+        await this.forceRefreshData();
     }
     async getCameraStatus(networkID, cameraID, maxTTL = BATTERY_TTL) {
         return await this.blinkAPI.getCameraStatus(networkID, cameraID, maxTTL);
@@ -390,7 +399,7 @@ class Blink {
     async getSavedMedia() {
         const res = await this.blinkAPI.getMediaChange();
         const media = res.media || [];
-        for (const camera of this.cameras) {
+        for (const camera of this.cameras.values()) {
             const [,year,month,day,hour,minute] = /(\d{4})_(\d\d)_(\d\d)__(\d\d)_(\d\d)(am|pm)?$/i.exec(camera.info.thumbnail) || [];
             const thumbnailCreatedAt = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || 0;
             if (thumbnailCreatedAt > 0) {

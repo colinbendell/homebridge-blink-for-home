@@ -23,7 +23,7 @@ To configure this set it up as a platform in your homebridge config.json file.
     "username" : "<your blink email address>",
     "password" : "<your blink password>",
     "pin"      : "<pin>",
-    "platform" : "BlinkForHome"
+    "platform" : "Blink"
   }
 ]
 ```

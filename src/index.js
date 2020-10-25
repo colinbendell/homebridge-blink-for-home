@@ -14,7 +14,7 @@ const Blink = require("./blink");
 // ]
 
 const PLUGIN_NAME = "homebridge-blink-for-home";
-const PLATFORM_NAME = "BlinkForHome";
+const PLATFORM_NAME = "Blink";
 
 const BLINK_STATUS_POLL_DEFAULT = 45;
 

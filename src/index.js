@@ -16,7 +16,7 @@ const Blink = require("./blink");
 const PLUGIN_NAME = "homebridge-blink-for-home";
 const PLATFORM_NAME = "Blink";
 
-const BLINK_STATUS_POLL_DEFAULT = 45;
+const BLINK_STATUS_EVENT_LOOP = 10; //internal poll interval
 
 class HomebridgeBlink {
     constructor(log, config, api) {
@@ -25,7 +25,6 @@ class HomebridgeBlink {
         this.api = api;
         this.accessoryLookup = new Map();
         this.cachedAccessories = [];
-        this.pollInterval = config["camera-status-polling-seconds"] || BLINK_STATUS_POLL_DEFAULT;
 
         this.accessories = {};
         if (!this.config.username && !this.config.password) {
@@ -84,7 +83,7 @@ class HomebridgeBlink {
         }
 
         await this.blink.refreshData();
-        this.timerID = setInterval(intervalPoll, this.pollInterval * 1000);
+        this.timerID = setInterval(intervalPoll, BLINK_STATUS_EVENT_LOOP * 1000);
     }
 
     async setupBlink() {

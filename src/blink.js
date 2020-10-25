@@ -6,6 +6,9 @@ let Accessory, Categories, Characteristic, Service, UUIDGen, hap;
 const THUMBNAIL_TTL_MIN = 1*60; //1min
 const THUMBNAIL_TTL_MAX = 10*60; //10min
 const BATTERY_TTL = 60*60; //60min
+const ARMED_DELAY = 60; //60s
+const MOTION_POLL = 20;
+const MOTION_TRIGGER_DECAY = 90; //90s
 
 Promise.delay = function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -112,11 +115,14 @@ class BlinkNetwork extends BlinkDevice{
     get firmware() { return this.info.syncModule.fw_version; }
     get model() {return this.info.syncModule.type; }
 
-    getArmed() {
+    async getArmed() {
         if (this.info.armed) {
-            const triggerThreshold = Date.now() - 90*1000;
-            if (Date.parse(this.info.updated_at) || 0 > triggerThreshold) {
-                if (this.info.cameras.reduce((acc, cur) => acc || (Date.parse(cur.updated_at) || 0) > triggerThreshold)) {
+            //const triggerStart = (Date.parse(this.info.network.updated_at) || 0) - ARMED_DELAY*1000;
+            const triggerStart = (this.accessory.context.armedAt || Date.parse(this.info.network.updated_at) || 0 ) - ARMED_DELAY*1000;
+
+            if (Date.now() >= triggerStart) {
+                const lastMotion = await this.blink.getCameraLastMotion(this.networkID);
+                if (lastMotion && Date.now() <= (Date.parse(lastMotion.updated_at) || 0) + MOTION_TRIGGER_DECAY*1000) {
                     return Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
                 }
             }
@@ -126,8 +132,20 @@ class BlinkNetwork extends BlinkDevice{
         return Characteristic.SecuritySystemCurrentState.STAY_ARM;
     }
     async setTargetArmed(val) {
-        const target = (val === Characteristic.SecuritySystemTargetState.AWA_ARM)
-        if (this.info.armed !== target) await this.blink.setArmedState(this.networkID, target);
+        const target = (val === Characteristic.SecuritySystemTargetState.AWAY_ARM);
+
+        // flip the occupied flag if we are manually arming
+        if (target === this.getOccupiedSwitch() && !this.accessory.context.forceOff) {
+            this.accessory.context.occupied = !target;
+        }
+
+        if (Boolean(this.info.armed) !== target) {
+            if (!Boolean(this.info.armed)) {
+                // only if we are going from disarmed to armed
+                this.accessory.context.armedAt = Date.now();
+            }
+            await this.blink.setArmedState(this.networkID, target);
+        }
         this.accessory.context.forceOff = (val === Characteristic.SecuritySystemTargetState.DISARM);
     }
 
@@ -191,14 +209,15 @@ class BlinkCamera extends BlinkDevice {
         return this.info.fullStatus.camera_status.wifi_strength;
     }
 
-    getMotionDetected() {
-        if (!this.info.network.armed) return false;
+    async getMotionDetected() {
+        if (!Boolean(this.info.network.armed)) return false;
 
-        const MOTION_TRIGGER_DELAY_START = 60*1000; //90s
-        const MOTION_TRIGGER_DECAY_END = 90*1000; //90s
+        //TODO: make it easier to access the network accessory - this is painful
 
-        const triggerStart = (Date.parse(this.info.network.updated_at) || 0) - MOTION_TRIGGER_DELAY_START;
-        const triggerEnd = (Date.parse(this.info.updated_at) || 0) - MOTION_TRIGGER_DECAY_END;
+        // use the last time we armed or the current updated_at field to determine if the motion was recent
+        const triggerStart = (this.blink.networks.get(this.networkID).accessory.context.armedAt || Date.parse(this.info.network.updated_at) || 0) - ARMED_DELAY*1000;
+        const lastMotion = await this.blink.getCameraLastMotion(this.networkID, this.cameraID);
+        const triggerEnd = (Date.parse(lastMotion.updated_at) || 0) + MOTION_TRIGGER_DECAY*1000;
         return Date.now() >= triggerStart && Date.now() <= triggerEnd;
     }
     getMotionDetectActive() { return this.info.enabled && this.info.network.armed; }
@@ -224,24 +243,12 @@ class BlinkCamera extends BlinkDevice {
             }
         }
 
-        if (!this.info.media) {
-            this.info.media = (await this.blink.getSavedMedia()).filter(m => m.device_id === this.cameraID);
-        }
-
-        const entry = this.info.media.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
-        let thumbnail = entry.thumbnail;
-
-        //TODO: check that it is on battery?
-        const ttl = this.blink.config["avoid-thumbnail-battery-drain"] === false ? THUMBNAIL_TTL_MIN : THUMBNAIL_TTL_MAX;
-        if (Date.parse(entry.created_at) < Date.now() - ttl * 1000) {
-            await this.refreshThumbnail();
-            thumbnail = this.info.thumbnail;
-        }
+        const thumbnail = await this.blink.getCameraLastThumbnail(this.networkID, this.cameraID);
 
         if (this.cacheThumbnail.has(thumbnail)) return this.cacheThumbnail.get(thumbnail);
 
         const data = await this.blink.getUrl(thumbnail + ".jpg");
-        this.cacheThumbnail.clear();
+        this.cacheThumbnail.clear(); // avoid memory from getting large
         this.cacheThumbnail.set(thumbnail, data);
         return data;
     }
@@ -390,8 +397,40 @@ class Blink {
         await this._commandWaitAll(cmd);
         await this.forceRefreshData();
     }
+    async getCameraLastThumbnail(networkID, cameraID) {
+        const res = await this.blinkAPI.getMediaChange();
+        const media = (res.media || [])
+            .filter(m => m.network_id === networkID)
+            .filter(m => !cameraID || m.device_id === cameraID)
+            .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+        const latestMedia = media[0] || {};
+
+        let camera = this.cameras.get(cameraID);
+        const [,year,month,day,hour,minute] = /(\d{4})_(\d\d)_(\d\d)__(\d\d)_(\d\d)(am|pm)?$/i.exec(camera.info.thumbnail) || [];
+        const thumbnailCreatedAt = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || 0;
+
+        //TODO: check that it is on battery?
+        const ttl = this.config["avoid-thumbnail-battery-drain"] === false ? THUMBNAIL_TTL_MIN : THUMBNAIL_TTL_MAX;
+
+        if (Date.now() >= Math.max(Date.parse(latestMedia.created_at) || 0, thumbnailCreatedAt) + ttl * 1000) {
+            await this.refreshCameraThumbnail(networkID, cameraID);
+        }
+        else if (Date.parse(latestMedia.created_at) || 0 > thumbnailCreatedAt) {
+            return latestMedia.thumbnail;
+        }
+
+        return this.cameras.get(cameraID).info.thumbnail;
+    }
     async getCameraStatus(networkID, cameraID, maxTTL = BATTERY_TTL) {
         return await this.blinkAPI.getCameraStatus(networkID, cameraID, maxTTL);
+    }
+    async getCameraLastMotion(networkID, cameraID = null) {
+        const res = await this.blinkAPI.getMediaChange(MOTION_POLL);
+        const media = (res.media || [])
+            .filter(m => m.network_id === networkID)
+            .filter(m => !cameraID || m.device_id === cameraID)
+            .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+        return media[0];
     }
     async getSavedMedia() {
         const res = await this.blinkAPI.getMediaChange();
@@ -401,8 +440,8 @@ class Blink {
             const thumbnailCreatedAt = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || 0;
             if (thumbnailCreatedAt > 0) {
                 media.push({
-                    created_at: new Date(thumbnailCreatedAt),
-                    updated_at: new Date(thumbnailCreatedAt),
+                    created_at: new Date(thumbnailCreatedAt).toISOString(),
+                    updated_at: new Date(thumbnailCreatedAt).toISOString(),
                     thumbnail: camera.info.thumbnail,
                     device_id: camera.cameraID
                 });

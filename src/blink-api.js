@@ -49,9 +49,14 @@ class BlinkAPI {
 
         if (CACHE.has(method + targetPath) && maxTTL > 0) {
             let cache = CACHE.get(method + targetPath);
-            let lastModified = new Date(cache.headers.get('last-modified') || cache.headers.get('date') || new Date());
-            if (lastModified.getTime() + (maxTTL * 1000) > Date.now()) {
+            let lastModified = Date.parse(cache.headers.get('last-modified') || cache.headers.get('date') || 0);
+            if (lastModified + (maxTTL * 1000) > Date.now()) {
                 return cache._body;
+            }
+            else {
+                // to avoid pile-ons, let's use stale cache for 10s
+                // TODO: make this work for cache misses too?
+                cache.headers.set('last-modified', (new Date(Date.now() + 3*1000)).toISOString());
             }
         }
 
@@ -529,7 +534,7 @@ class BlinkAPI {
      *   ]
      * }
      **/
-    async getMediaChange(after = "1970-01-01T00:00:01+0000", page = 1, maxTTL = 60) {
+    async getMediaChange(maxTTL = 60, after = "1970-01-01T00:00:01+0000", page = 1) {
         return await this.get(`/api/v1/accounts/{accountID}/media/changed?since=1970-01-01T00:00:01+0000&page=1`, maxTTL);
     }
 

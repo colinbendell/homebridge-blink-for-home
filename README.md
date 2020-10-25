@@ -38,7 +38,7 @@ To configure this set it up as a platform in your homebridge config.json file.
 ### 2FA support
 If you have 2FA enabled, you will need to first set the username / password to force the system to attempt to login. On first attempt it will trigger the email validation. With the PIN provided from the 2FA email, update the pin field to proceed. The pin is only needed once per account.
 
-NB: The Device in the email 2FA will appear to be an iPad Mini. This is intentional to increase masquerading.
+_NB: The Device in the email 2FA will appear to be an iPad Mini. This is intentional to increase masquerading._
 
 ## Accessories
 Two main accessory types will be present: `Security System` and `Camera` accessories. 
@@ -48,7 +48,7 @@ Two main accessory types will be present: `Security System` and `Camera` accesso
 
 * one `Security System` accessory per location (aka Network)
 * includes a `Occupied` switch to indicate if the home occupied which is used to distinguish between `Home`, `Away` and `Off`
-* Blink will be disarmed when the system is set to `home` (when occupied = on) or `disabled`
+* Blink will be disarmed when the system is set to `Home` (when occupied = on) or `Off`
 
 ![](img/securitysystem_state.png)
 
@@ -60,7 +60,10 @@ Two main accessory types will be present: `Security System` and `Camera` accesso
 
 ### Camera Accessories
 ![](img/camera.png)
+
 * each `Camera` supports a number of sub accessories including temperature, motion sensor, motion tracking (when armed), and a privacy switch
+
 ![](img/camera_accessories.png)
+
 * `privacy mode` prevents the perception that when the system is disarmed that people can be snooping. This is particularly important since even a stale thumbnail can give household members that feeling that the camera is active when its not.
 * cameras can be disabled individually when the system is armed with the `Motion Activated` switch 

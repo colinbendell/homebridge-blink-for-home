@@ -3,6 +3,14 @@ const BlinkAPI = require('./blink-api');
 const BlinkCameraDelegate = require('./blink-camera-deligate')
 let Accessory, Categories, Characteristic, Service, UUIDGen, hap;
 
+const THUMBNAIL_TTL_DEFAULT = 1*60; //1min
+const THUMBNAIL_TTL_MAX = 10*60; //10min
+const BATTERY_TTL = 60*60; //60min
+
+Promise.delay = function (ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+};
+
 function setupHAP(homebridgeAPI) {
     if (!Accessory) {
         hap = homebridgeAPI.hap;
@@ -83,6 +91,8 @@ class BlinkDevice {
             .setCharacteristic(Characteristic.Model, this.model || 'Unknown')
             .setCharacteristic(Characteristic.Name, this.name)
             .setCharacteristic(Characteristic.SerialNumber, this.serial || 'None');
+
+        //TODO: add online state
         this.boundCharacteristics = [];
     }
 }
@@ -141,10 +151,11 @@ class BlinkNetwork extends BlinkDevice{
         this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState, 'Armed (Target)', this.getArmed, this.setTargetArmed);
         securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
 
-        const occupiedService = this.addService(Service.Switch, `${this.name} Occupied`, 'occupied.' + this.serial);
-        this.bindCharacteristic(occupiedService, Characteristic.On, 'Occupied Mode', this.getOccupiedSwitch, this.setOccupiedSwitch);
-        this.bindCharacteristic(occupiedService, Characteristic.Name, `${this.name} Occupied`, () => `Occupied`);
-
+        if (!this.blink.config["hide-away-mode-switch"]) {
+            const occupiedService = this.addService(Service.Switch, `${this.name} Occupied`, 'occupied.' + this.serial);
+            this.bindCharacteristic(occupiedService, Characteristic.On, 'Occupied Mode', this.getOccupiedSwitch, this.setOccupiedSwitch);
+            this.bindCharacteristic(occupiedService, Characteristic.Name, `${this.name} Occupied`, () => `Occupied`);
+        }
         return this;
     }
 }
@@ -162,20 +173,28 @@ class BlinkCamera extends BlinkDevice {
     getTemperature() { return fahrenheitToCelsius(this.info.signals.temp) || null; }
     async getBattery() {
         if (!this.info.fullStatus) {
-            this.info.fullStatus = await this.blink.getCameraStatus(this.networkID, this.cameraID);
+            this.info.fullStatus = await this.blink.getCameraStatus(this.networkID, this.cameraID, BATTERY_TTL);
         }
         return Math.round(this.info.fullStatus.camera_status.battery_voltage / 180 * 100) || null;
     }
     getLowBattery() { return this.info.signals.battery < 2 ? Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW : Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL; }
+
     async getWifiSSR() {
-        const cameraStatus = this.info.status || await this.blink.getCameraStatus(this.networkID, this.cameraID);
-        this.info.status = cameraStatus.camera_status || cameraStatus || {};
-        return this.info.status.wifi_strength;
+        if (!this.info.fullStatus) {
+            this.info.fullStatus = await this.blink.getCameraStatus(this.networkID, this.cameraID, BATTERY_TTL);
+        }
+        return this.info.fullStatus.camera_status.wifi_strength;
     }
 
     getMotionDetected() {
-        const triggerThreshold = Date.now() - 90*1000;
-        return this.info.network.armed && (Date.parse(this.info.parent.updated_at) || 0) > triggerThreshold && (Date.parse(this.info.updated_at) || 0) > triggerThreshold;
+        if (!this.info.network.armed) return false;
+
+        const MOTION_TRIGGER_DELAY_START = 60*1000; //90s
+        const MOTION_TRIGGER_DECAY_END = 90*1000; //90s
+
+        const triggerStart = (Date.parse(this.info.network.updated_at) || 0) - MOTION_TRIGGER_DELAY_START;
+        const triggerEnd = (Date.parse(this.info.updated_at) || 0) - MOTION_TRIGGER_DECAY_END;
+        return Date.now() >= triggerStart && Date.now() <= triggerEnd;
     }
     getMotionDetectActive() { return this.info.enabled && this.info.network.armed; }
 
@@ -200,16 +219,25 @@ class BlinkCamera extends BlinkDevice {
             }
         }
 
-        let [,year,month,day,hour,minute,ampm] = /(\d{4})_(\d\d)_(\d\d)__(\d\d)_(\d\d)(am|pm)?$/i.exec(this.info.thumbnail) ||[];
-        if ((Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || 0) < Date.now() - 60*1000) {
-            await this.refreshThumbnail();
+        if (!this.info.media) {
+            this.info.media = (await this.blink.getSavedMedia()).filter(m => m.device_id === this.cameraID);
         }
 
-        if (this.cacheThumbnail.has(this.info.thumbnail)) return this.cacheThumbnail.get(this.info.thumbnail);
+        const entry = this.info.media.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+        let thumbnail = entry.thumbnail;
 
-        let data = await this.blink.getUrl(this.info.thumbnail + ".jpg");
+        //TODO: check that it is on battery?
+        const ttl = this.blink.config[avoid-thumbnail-battery-drain] ? THUMBNAIL_TTL_MAX : THUMBNAIL_TTL_DEFAULT;
+        if (entry.created_at < Date.now() - ttl * 1000) {
+            await this.refreshThumbnail();
+            thumbnail = this.info.thumbnail;
+        }
+
+        if (this.cacheThumbnail.has(thumbnail)) return this.cacheThumbnail.get(thumbnail);
+
+        const data = await this.blink.getUrl(thumbnail + ".jpg");
         this.cacheThumbnail.clear();
-        this.cacheThumbnail.set(this.info.thumbnail, data);
+        this.cacheThumbnail.set(thumbnail, data);
         return data;
     }
 
@@ -238,8 +266,6 @@ class BlinkCamera extends BlinkDevice {
 
         const enabledSwitch = this.addService(Service.Switch, 'Motion Activated', 'enabled.' + this.serial);
         this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
-        const privacyModeService = this.addService(Service.Switch, 'Privacy Mode', 'privacy.' + this.serial);
-        this.bindCharacteristic(privacyModeService, Characteristic.On, 'Privacy Mode', this.getPrivacyMode, this.setPrivacyMode);
 
         const tempService = this.addService(Service.TemperatureSensor, `${this.name} Temperature`, 'temp-sensor.' + this.serial);
         this.bindCharacteristic(tempService, Characteristic.CurrentTemperature, 'Temperature', this.getTemperature);
@@ -249,15 +275,28 @@ class BlinkCamera extends BlinkDevice {
         this.bindCharacteristic(motionService, Characteristic.MotionDetected, 'Motion', this.getMotionDetected);
         this.bindCharacteristic(motionService, Characteristic.StatusActive, 'Motion Sensor Active', this.getMotionDetectActive);
 
+        if (!this.blink.config["hide-privacy-switch"]) {
+            const privacyModeService = this.addService(Service.Switch, 'Privacy Mode', 'privacy.' + this.serial);
+            this.bindCharacteristic(privacyModeService, Characteristic.On, 'Privacy Mode', this.getPrivacyMode, this.setPrivacyMode);
+        }
+
+        //TODO: use snapshot_period_minutes for poll
+        //TODO: add current MAC & IP
+        //TODO: add ac-power
+        //TODO: add light sensor
+        //TODO: add illuminator control
+        //TODO: add Wifi SSR
+
         return this;
     }
 }
 
 class Blink {
-    constructor(email, password, clientUUID, pin = null, homebridgeAPI, logger) {
+    constructor(email, password, clientUUID, pin = null, homebridgeAPI, logger, config = {}) {
         this.blinkAPI = new BlinkAPI(email, password, clientUUID, pin);
         this.blinkAPI.log = logger;
         this.log = logger || console.log;
+        this.config = config;
         setupHAP(homebridgeAPI); // this is not really that ideal and should be refactored
     }
 
@@ -283,7 +322,7 @@ class Blink {
 
 
     async refreshData() {
-        const homescreen = await this.blinkAPI.getAccountHomescreen();
+        const homescreen = await this.blinkAPI.getAccountHomescreen(this.config["camera-status-polling-seconds"]);
         for (const network of homescreen.networks) {
             network.syncModule = homescreen.sync_modules.filter(sm => sm.network_id = network.id)[0];
             network.cameras = homescreen.cameras.filter(c => c.network_id = network.id);
@@ -327,6 +366,7 @@ class Blink {
         }
         await this.blink.forceRefreshData();
     }
+
     async setCameraMotionSensorState(networkID, cameraID, enabled = true) {
         if (enabled) {
             const cmd = await this.blinkAPI.enableCameraMotion(networkID, cameraID);
@@ -344,8 +384,25 @@ class Blink {
         await this.blink._commandWaitAll(cmd);
         await this.blink.forceRefreshData();
     }
-    async getCameraStatus(networkID, cameraID) {
-        return await this.blinkAPI.getCameraStatus(networkID, cameraID);
+    async getCameraStatus(networkID, cameraID, maxTTL = BATTERY_TTL) {
+        return await this.blinkAPI.getCameraStatus(networkID, cameraID, maxTTL);
+    }
+    async getSavedMedia() {
+        const res = await this.blinkAPI.getMediaChange();
+        const media = res.media || [];
+        for (const camera of this.cameras) {
+            const [,year,month,day,hour,minute] = /(\d{4})_(\d\d)_(\d\d)__(\d\d)_(\d\d)(am|pm)?$/i.exec(camera.info.thumbnail) || [];
+            const thumbnailCreatedAt = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || 0;
+            if (thumbnailCreatedAt > 0) {
+                media.push({
+                    created_at: new Date(thumbnailCreatedAt),
+                    updated_at: new Date(thumbnailCreatedAt),
+                    thumbnail: camera.info.thumbnail,
+                    device_id: camera.cameraID
+                });
+            }
+        }
+        return media;
     }
 
     async getUrl(url) {

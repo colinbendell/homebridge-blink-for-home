@@ -1,37 +1,22 @@
 const Blink = require("./blink");
 
-Promise.delay = function (ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-};
-
-Promise.prototype.asCallback = function (callback) {
-    this.then(res => callback(null, res)).catch(err => callback(err));
-};
-
-
-// Blink Security Platform Plugin for HomeBridge (https://github.com/nfarina/homebridge)
+// Blink Security Platform Plugin for HomeBridge (https://github.com/colinbendell/homebridge-blink-for-home)
 //
 // Remember to add platform to config.json. Example:
 // "platforms": [
 //     {
-//         "platform": "BlinkCameras",
-//         "name": "Blink System",
+//         "platform": "BlinkForHome",
+//         "name": "Blink",
 //         "username": "me@example.com",
 //         "password": "PASSWORD",
-//         "deviceId": "A made up device Id",
-//         "deviceName": "A made up device Name",
-//         "discovery": false,
-//         "discoveryInterval": 3600
+//         "pin": "01234"
 //     }
 // ]
 
-const PLUGIN_NAME = "homebridge-blinkcameras";
-const PLATFORM_NAME = "BlinkCameras";
+const PLUGIN_NAME = "homebridge-blink-for-home";
+const PLATFORM_NAME = "BlinkForHome";
 
-module.exports = function (homebridge) {
-    homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, HomebridgeBlink, true);
-    return homebridge;
-};
+const BLINK_STATUS_POLL_DEFAULT = 45;
 
 class HomebridgeBlink {
     constructor(log, config, api) {
@@ -40,6 +25,7 @@ class HomebridgeBlink {
         this.api = api;
         this.accessoryLookup = new Map();
         this.cachedAccessories = [];
+        this.pollInterval = config["camera-status-polling-seconds"] || BLINK_STATUS_POLL_DEFAULT;
 
         this.accessories = {};
         if (!this.config.username && !this.config.password) {
@@ -48,6 +34,7 @@ class HomebridgeBlink {
 
         api.on('didFinishLaunching', () => this.init());
     }
+
     async init() {
         this.log.info('Init Blink');
         const updateAccessories = function (data = [], accessories = new Map()) {
@@ -65,11 +52,16 @@ class HomebridgeBlink {
 
             const data = await this.blink.initData();
             this.accessoryLookup = data.map(entry => entry.createAccessory());
+
+            //TODO: clean up cached accessory registration (merge instead of remove + add)
             this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.cachedAccessories);
             this.cachedAccessories = [];
             this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.accessoryLookup.map(blinkDevice => blinkDevice.accessory || blinkDevice));
+
+            //TODO: add new device discovery & removal
             await this.poll();
-        } catch (err) {
+        }
+        catch (err) {
             this.log.error(err);
             this.log.error('NOTE: Blink devices in HomeKit will not be responsive.');
             for (const accessory of this.cachedAccessories) {
@@ -86,19 +78,29 @@ class HomebridgeBlink {
     }
 
     async poll() {
-        await this.blink.refreshData();
-        this.timerID = setInterval(() => {
+        const intervalPoll = () => {
             if (this.timerID) clearInterval(this.timerID);
             this.poll()
-        }, 59*1000);
+        }
+
+        await this.blink.refreshData();
+        this.timerID = setInterval(intervalPoll, this.pollInterval * 1000);
     }
+
     async setupBlink() {
         if (!this.config.username && !this.config.password) {
             throw('Missing Blink {\'email\',\'password\'} in config.json');
         }
 
-        const blink = new Blink(this.config.username, this.config.password, this.api.hap.uuid.generate(this.config.username), this.config.pin, this.api, this.log);
-        await blink.authenticate().catch(e => Promise.reject('Unable to authenticate with Blink. Missing 2FA PIN?'));
+        const clientID = this.api.hap.uuid.generate(`${this.config.name}${this.config.username}`);
+        const blink = new Blink(this.config.username, this.config.password, clientID, this.config.pin, this.api, this.log, this.config);
+        try {
+            await blink.authenticate();
+        }
+        catch (e) {
+            this.log.error(e);
+            throw new Error('Unable to authenticate with Blink. Missing 2FA PIN?');
+        }
 
         return blink;
     }
@@ -107,3 +109,8 @@ class HomebridgeBlink {
         this.cachedAccessories.push(accessory);
     }
 }
+
+module.exports = function (homebridge) {
+    homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, HomebridgeBlink, true);
+    return homebridge;
+};

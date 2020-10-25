@@ -1,5 +1,5 @@
 {
-    "pluginAlias": "BlinkCameras",
+    "pluginAlias": "BlinkForHome",
     "pluginType": "platform",
     "singular": true,
     "schema": {
@@ -7,28 +7,68 @@
         "properties": {
             "name": {
                 "title": "Name",
-                "description": "The Name of your System",
-                "type": "string",
-                "required": true
+                "default": "Blink",
+                "type": "string"
             },
             "username": {
                 "title": "username",
-                "type": "string",
-                "required": true
+                "type": "string"
             },
             "password": {
                 "title": "password",
-                "type": "string",
-                "required": true
+                "type": "string"
             },
             "pin": {
                 "title": "PIN",
                 "description": "The PIN sent during 2FA (leave blank on first use; enter after first auth attempt)",
-                "type": "number",
-                "required": false
+                "type": "number"
+            },
+            "hide-privacy-switch": {
+                "title": "Hide Privacy-Mode Switch (Global)",
+                "placeholder": false,
+                "description": "Privacy-Mode prevents thumbnails from refreshing when the Security-System is not armed. Disabling this switch will globally disable privacy-mode on all cameras.",
+                "type": "boolean"
+            },
+            "hide-away-mode-switch": {
+                "title": "Hide Away-Mode Switch",
+                "placeholder": false,
+                "description": "Away-Mode allows the Security System to differenciate between disarmed all the time and conditionally disabled (Home but armed). With this switch you can add automation to trigger Home and Away mode and thereby arming and disarming Blink Cameras automatically",
+                "type": "boolean"
+            },
+            "enable-liveview": {
+                "title": "Enable LiveView when clicking on a camera feed (experimental)",
+                "placeholder": false,
+                "description": "By default, the camera view will expose the last recorded motion. Enabling live view will enable the experimental liveview relay",
+                "type": "boolean"
+            },
+            "avoid-thumbnail-battery-drain": {
+                "title": "Avoid thumbnail battery drain",
+                "default": true,
+                "description": "Causes thumbnails for cameras using battery to be fetched at a minimum 10 minute interval to avoid draining the battery. This is useful if have the Home app open constantly, causing frequent snapshot requests.",
+                "type": "boolean"
+            },
+            "camera-status-polling-seconds": {
+                "title": "Camera Status Polling (seconds)",
+                "type": "integer",
+                "minimum": 1,
+                "placeholder": "45",
+                "description": "Camera status does not update live and must be fetched periodically. By default this is done every 45 seconds"
             }
-        }
+        },
+        "required": [
+            "name",
+            "username",
+            "password"
+        ]
     },
-    "form": null,
-    "display": null
+    "layout": [
+        { "key": "name", "title": "Name"},
+        { "key": "username", "title": "Credentials", "placeholder": "user@example.com" },
+        { "key": "password", "placeholder": "password", "notitle": true },
+        { "key": "pin", "placeholder": "2FA pin", "notitle": true },
+        { "type": "section", "title": "Advanced Settings", "expandable": true, "expanded": false,
+            "items": ["hide-privacy-switch", "hide-away-mode-switch", "enable-liveview", "avoid-thumbnail-battery-drain",
+                      "camera-status-polling-seconds"]
+        }
+    ]
 }

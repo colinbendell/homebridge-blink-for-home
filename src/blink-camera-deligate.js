@@ -1,5 +1,13 @@
 // import ip from "ip";
 const {spawn} = require("child_process");
+const {
+    doesFfmpegSupportCodec,
+    encodeSrtpOptions,
+    getDefaultIpAddress,
+    ReturnAudioTranscoder,
+    RtpSplitter,
+} = require('@homebridge/camera-utils');
+
 // class SessionInfo {
 //     address: string, // address of the HAP controller
 //
@@ -35,9 +43,9 @@ class BlinkCameraDelegate {
         this.blinkCamera = blinkCamera;
         this.log = logger || console.log;
 
-        StreamRequestTypes = hap.StreamRequestTypes;
+        StreamRequestTypes = this.hap.StreamRequestTypes;
         this.ffmpegDebugOutput = false;
-        this.controller = hap.CameraController
+        this.controller = this.hap.CameraController
         // keep track of sessions
         this.pendingSessions = new Map();
         this.ongoingSessions = new Map();
@@ -48,7 +56,7 @@ class BlinkCameraDelegate {
 
             streamingOptions: {
                 // srtp: true, // legacy option which will just enable AES_CM_128_HMAC_SHA1_80 (can still be used though)
-                supportedCryptoSuites: [hap.SRTPCryptoSuites.NONE, hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80], // NONE is not supported by iOS just there for testing with Wireshark for example
+                supportedCryptoSuites: [this.hap.SRTPCryptoSuites.NONE, this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80], // NONE is not supported by iOS just there for testing with Wireshark for example
                 video: {
                     codec: {
                         profiles: [hap.H264Profile.BASELINE, hap.H264Profile.MAIN, hap.H264Profile.HIGH],
@@ -96,7 +104,7 @@ class BlinkCameraDelegate {
     }
 
     // called when iOS request rtp setup
-    prepareStream(request, callback) {
+    async prepareStream(request, callback) {
         this.log.info('prepareStream');
         this.log.info(request);
 
@@ -124,7 +132,8 @@ class BlinkCameraDelegate {
         // const currentAddress = ip.address("public", request.addressVersion); // ipAddress version must match
         const currentAddress = "127.0.0.1";
         const response = {
-            address: currentAddress,
+            // SOMEDAY: remove address as it is not needed after homebridge 1.1.3
+            address: await getDefaultIpAddress(request.addressVersion === 'ipv6'),
             video: {
                 port: videoPort,
                 ssrc: videoSSRC,
@@ -250,6 +259,221 @@ class BlinkCameraDelegate {
         }
     }
 
+    async _prepareStream(request, callback) {
+        const start = Date.now()
+        this.log.info(`Preparing Live Stream for ${this.ringCamera.name}`)
+
+        try {
+            const {
+                sessionID,
+                targetAddress,
+                audio: {
+                    port: audioPort,
+                    srtp_key: audioSrtpKey,
+                    srtp_salt: audioSrtpSalt,
+                },
+                video: {
+                    port: videoPort,
+                    srtp_key: videoSrtpKey,
+                    srtp_salt: videoSrtpSalt,
+                },
+            } = request;
+            const ringSipSessionConfig = {
+                audio: {
+                    srtpKey: audioSrtpKey,
+                    srtpSalt: audioSrtpSalt,
+                },
+                video: {
+                    srtpKey: videoSrtpKey,
+                    srtpSalt: videoSrtpSalt,
+                },
+                skipFfmpegCheck: true
+            }
+            const [sipSession, libfdkAacInstalled] = await Promise.all([
+                this.ringCamera.createSipSession(ringSipSessionConfig),
+                doesFfmpegSupportCodec('libfdk_aac')
+                    .then((supported) => {
+                        if (!supported) {
+                            this.log.error('Streaming video only - found ffmpeg, but libfdk_aac is not installed. See https://github.com/dgreif/ring/wiki/FFmpeg for details.')
+                        }
+                        return supported
+                    })
+                    .catch(() => {
+                        this.log.error('Streaming video only - ffmpeg was not found. See https://github.com/dgreif/ring/wiki/FFmpeg for details.')
+                        return false
+                    }),
+            ]);
+            const onReturnPacketReceived = new Subject();
+
+            sipSession.addSubscriptions(
+                merge(of(true).pipe(delay(15000)), onReturnPacketReceived)
+                    .pipe(debounceTime(5000))
+                    .subscribe(() => {
+                        this.logger.info(
+                            `Live stream for ${
+                                this.ringCamera.name
+                            } appears to be inactive. (${getDurationSeconds(start)}s)`
+                        )
+                        sipSession.stop()
+                    })
+            )
+
+            this.sessions[this.hap.uuid.unparse(request.sessionID)] = sipSession
+
+            const audioSsrc = hap.CameraController.generateSynchronisationSource();
+            const incomingAudioRtcpPort = await sipSession.reservePort();
+            const ffmpegOptions = {
+                input: ['-vn'],
+                audio: ['-map', '0:a',
+                    // OPUS specific - it works, but audio is very choppy
+                    // '-acodec','libopus', '-vbr', 'on', '-frame_duration', 20, '-application', 'lowdelay',
+
+                    // AAC-eld specific
+                    '-acodec', 'libfdk_aac', '-profile:a', 'aac_eld',
+
+                    // Shared options
+                    '-flags', '+global_header', '-ac', 1, '-ar', '16k', '-b:a', '24k', '-bufsize', '24k', '-payload_type', 110,
+                    '-ssrc', audioSsrc, '-f', 'rtp', '-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80', '-srtp_out_params',
+                    encodeSrtpOptions(sipSession.rtpOptions.audio),
+                    `srtp://${video.targetAddress}:${audioPort}?localrtcpport=${incomingAudioRtcpPort}&pkt_size=188`,
+                ],
+                video: false,
+                output: [],
+            };
+            const ringRtpDescription = await sipSession.start(libfdkAacInstalled ? ffmpegOptions : undefined);
+
+            let videoPacketReceived = false
+            sipSession.videoSplitter.addMessageHandler(({info, payloadType}) => {
+                if (info.address === targetAddress) {
+                    onReturnPacketReceived.next()
+                    return {
+                        port: ringRtpDescription.video.port,
+                        address: ringRtpDescription.address,
+                    }
+                }
+
+                if (isStunMessage(payloadType)) {
+                    // we don't need to forward stun messages to HomeKit since they are for connection establishment purposes only
+                    return null
+                }
+
+                if (!videoPacketReceived) {
+                    videoPacketReceived = true
+                    this.logger.info(
+                        `Received stream data from ${
+                            this.ringCamera.name
+                        } (${getDurationSeconds(start)}s)`
+                    )
+                }
+
+                return {
+                    port: videoPort,
+                    address: targetAddress,
+                }
+            })
+
+            let returnAudioPort = null
+            if (libfdkAacInstalled) {
+                let cameraSpeakerActived = false
+                const ringAudioLocation = {
+                    address: ringRtpDescription.address,
+                    port: ringRtpDescription.audio.port,
+                };
+                const returnAudioTranscodedSplitter = new RtpSplitter((description) => {
+                    if (!cameraSpeakerActived) {
+                        cameraSpeakerActived = true
+                        sipSession.activateCameraSpeaker();
+                    }
+
+                    sipSession.audioSplitter.send(
+                        description.message,
+                        ringAudioLocation
+                    )
+
+                    return null
+                });
+                const returnAudioTranscoder = new ReturnAudioTranscoder({
+                    prepareStreamRequest: request,
+                    incomingAudioOptions: {
+                        ssrc: audioSsrc,
+                        rtcpPort: incomingAudioRtcpPort,
+                    },
+                    outputArgs: [ '-acodec', 'pcm_mulaw','-flags', '+global_header','-ac', 1, '-ar', '8k',
+                        '-f', 'rtp', '-srtp_out_suite', 'AES_CM_128_HMAC_SHA1_80', '-srtp_out_params',
+                        encodeSrtpOptions(sipSession.rtpOptions.audio),
+                        `srtp://127.0.0.1:${await returnAudioTranscodedSplitter.portPromise}?pkt_size=188`,
+                    ],
+                    ffmpegPath: getFfmpegPath(),
+                    logger: {
+                        info: logDebug,
+                        error: logError,
+                    },
+                    logLabel: `Return Audio (${this.ringCamera.name})`,
+                })
+
+                sipSession.onCallEnded.pipe(take(1)).subscribe(() => {
+                    returnAudioTranscoder.stop()
+                    returnAudioTranscodedSplitter.close()
+                })
+
+                returnAudioPort = await returnAudioTranscoder.start()
+            }
+
+            this.log.info(`Stream Prepared for ${this.ringCamera.name} (${getDurationSeconds(start)}s)`)
+
+            callback(undefined, {
+                // SOMEDAY: remove address as it is not needed after homebridge 1.1.3
+                address: await getDefaultIpAddress(request.addressVersion === 'ipv6'),
+                audio: returnAudioPort
+                    ? {
+                        port: returnAudioPort,
+                        ssrc: audioSsrc,
+                        srtp_key: audioSrtpKey,
+                        srtp_salt: audioSrtpSalt,
+                    }
+                    : undefined,
+                video: {
+                    port: await sipSession.videoSplitter.portPromise,
+                    ssrc: ringRtpDescription.video.ssrc,
+                    srtp_key: ringRtpDescription.video.srtpKey,
+                    srtp_salt: ringRtpDescription.video.srtpSalt,
+                },
+            })
+        } catch (e) {
+            this.logger.error(
+                `Failed to prepare stream for ${
+                    this.ringCamera.name
+                } (${getDurationSeconds(start)}s)`
+            )
+            this.logger.error(e)
+            callback(e)
+        }
+    }
+
+    _handleStreamRequest(request, callback) {
+        const sessionID = request.sessionID;
+        const sessionKey = hap.uuid.unparse(sessionID);
+        const session = this.sessions[sessionKey];
+        const requestType = request.type;
+
+        if (!session) {
+            callback(new Error('Cannot find session for stream ' + sessionID))
+            return
+        }
+
+        if (requestType === 'start') {
+            this.log.info(`Streaming active for ${this.ringCamera.name}`)
+            // sip/rtp already started at this point, but request a key frame so that HomeKit for sure has one
+            void session.requestKeyFrame()
+        }
+        else if (requestType === 'stop') {
+            this.log.info(`Stopped Live Stream for ${this.ringCamera.name}`)
+            try { session.stop()} catch {}
+            delete this.sessions[sessionKey]
+        }
+
+        callback()
+    }
 }
 
 module.exports = BlinkCameraDelegate;

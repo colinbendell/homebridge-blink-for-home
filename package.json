@@ -1,7 +1,7 @@
 {
     "name": "homebridge-blink-for-home",
     "displayName": "Blink for Home",
-    "private": true,
+    "private": false,
     "version": "3.5.1",
     "description": "Blink for Home Cameras for homebridge",
     "license": "MIT",

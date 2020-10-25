@@ -233,9 +233,6 @@ class BlinkCamera extends BlinkDevice {
 
         //TODO: check that it is on battery?
         const ttl = this.blink.config["avoid-thumbnail-battery-drain"] === false ? THUMBNAIL_TTL_MIN : THUMBNAIL_TTL_MAX;
-        console.log(Date.parse(entry.created_at));
-        console.log(Date.now() - ttl * 1000);
-        console.log(Date.parse(entry.created_at) < Date.now() - ttl * 1000);
         if (Date.parse(entry.created_at) < Date.now() - ttl * 1000) {
             await this.refreshThumbnail();
             thumbnail = this.info.thumbnail;

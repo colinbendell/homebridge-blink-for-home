@@ -29,12 +29,6 @@
                 "description": "Privacy-Mode prevents thumbnails from refreshing when the Security-System is not armed. Disabling this switch will globally disable privacy-mode on all cameras.",
                 "type": "boolean"
             },
-            "hide-away-mode-switch": {
-                "title": "Hide Away-Mode Switch",
-                "placeholder": false,
-                "description": "Away-Mode allows the Security System to differenciate between disarmed all the time and conditionally disabled (Home but armed). With this switch you can add automation to trigger Home and Away mode and thereby arming and disarming Blink Cameras automatically",
-                "type": "boolean"
-            },
             "enable-liveview": {
                 "title": "Enable LiveView when clicking on a camera feed (experimental)",
                 "placeholder": false,
@@ -67,7 +61,7 @@
         { "key": "password", "placeholder": "password", "notitle": true },
         { "key": "pin", "placeholder": "2FA pin", "notitle": true },
         { "type": "section", "title": "Advanced Settings", "expandable": true, "expanded": false,
-            "items": ["hide-privacy-switch", "hide-away-mode-switch", "enable-liveview", "avoid-thumbnail-battery-drain",
+            "items": ["hide-privacy-switch", "enable-liveview", "avoid-thumbnail-battery-drain",
                       "camera-status-polling-seconds"]
         }
     ]

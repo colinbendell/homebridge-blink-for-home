@@ -125,37 +125,29 @@ class BlinkNetwork extends BlinkDevice{
                     return Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
                 }
             }
+
+            if (this.accessory.context.armed !== undefined && this.accessory.context.armed < Characteristic.SecuritySystemCurrentState.DISARMED) {
+                return this.accessory.context.armed;
+            }
+            // else if (this.accessory.context.armed < Characteristic.SecuritySystemCurrentState.DISARMED) {
+            //     return this.accessory.context.armed;
+            // }
             return Characteristic.SecuritySystemCurrentState.AWAY_ARM;
         }
-        if (this.accessory.context.forceOff) return Characteristic.SecuritySystemCurrentState.DISARMED;
-        return Characteristic.SecuritySystemCurrentState.STAY_ARM;
+        return Characteristic.SecuritySystemCurrentState.DISARMED;
     }
+
     async setTargetArmed(val) {
-        const target = (val === Characteristic.SecuritySystemTargetState.AWAY_ARM);
+        this.accessory.context.armed = val;
+        const targetArmed = !(val === Characteristic.SecuritySystemTargetState.DISARM);
 
-        // flip the occupied flag if we are manually arming
-        if (target === this.getOccupiedSwitch() && !this.accessory.context.forceOff) {
-            this.accessory.context.occupied = !target;
-        }
-
-        if (Boolean(this.info.armed) !== target) {
+        if (Boolean(this.info.armed) !== targetArmed) {
             if (!Boolean(this.info.armed)) {
                 // only if we are going from disarmed to armed
                 this.accessory.context.armedAt = Date.now();
             }
-            await this.blink.setArmedState(this.networkID, target);
+            await this.blink.setArmedState(this.networkID, targetArmed);
         }
-        this.accessory.context.forceOff = (val === Characteristic.SecuritySystemTargetState.DISARM);
-    }
-
-    getOccupiedSwitch() { return this.accessory.context.occupied !== undefined ? this.accessory.context.occupied : false; }
-    async setOccupiedSwitch(val) {
-        this.accessory.context.occupied = val;
-        if (!this.accessory.context.forceOff) {
-            // so long as the sensor isn't forced to off, we will arm / disarm
-            await this.setTargetArmed(Boolean(val) ? Characteristic.SecuritySystemTargetState.STAY_ARM : Characteristic.SecuritySystemTargetState.AWAY_ARM);
-        }
-        return this.accessory.context.occupied;
     }
 
     createAccessory(cachedAccessories = []) {
@@ -171,13 +163,8 @@ class BlinkNetwork extends BlinkDevice{
         const securitySystem = this.addService(Service.SecuritySystem);
         this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState, 'Armed (Current)', this.getArmed);
         this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState, 'Armed (Target)', this.getArmed, this.setTargetArmed);
-        securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
+        // securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
 
-        if (!this.blink.config["hide-away-mode-switch"]) {
-            const occupiedService = this.addService(Service.Switch, `${this.name} Occupied`, 'occupied.' + this.canonicalID);
-            this.bindCharacteristic(occupiedService, Characteristic.On, 'Occupied Mode', this.getOccupiedSwitch, this.setOccupiedSwitch);
-            this.bindCharacteristic(occupiedService, Characteristic.Name, `${this.name} Occupied`, () => `Occupied`);
-        }
         return this;
     }
 }
@@ -273,7 +260,7 @@ class BlinkCamera extends BlinkDevice {
         const motionService = this.addService(Service.MotionSensor, `${this.name} Motion Detected`, 'motion-sensor.' + this.serial);
         this.bindCharacteristic(motionService, Characteristic.MotionDetected, 'Motion', this.getMotionDetected);
         this.bindCharacteristic(motionService, Characteristic.StatusActive, 'Motion Sensor Active', this.getMotionDetectActive);
-        
+
         if (this.model !== "owl") {
             // Battery Levels are only available in non Minis
             const batteryService = this.addService(Service.BatteryService, `${this.name} Battery`, 'battery-sensor.' + this.serial);
@@ -431,7 +418,7 @@ class Blink {
         if (Date.now() >= Math.max(Date.parse(latestMedia.created_at) || 0, thumbnailCreatedAt) + ttl * 1000) {
             await this.refreshCameraThumbnail(networkID, cameraID);
         }
-        else if (Date.parse(latestMedia.created_at) || 0 > thumbnailCreatedAt) {
+        else if ((Date.parse(latestMedia.created_at) || 0) > thumbnailCreatedAt) {
             return latestMedia.thumbnail;
         }
 

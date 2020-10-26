@@ -86,7 +86,6 @@ class BlinkDevice {
 
         this.addService = this.accessory._associatedHAPAccessory.addService.bind(this.accessory);
         this.getService = this.accessory._associatedHAPAccessory.getService.bind(this.accessory);
-        this.setPrimaryService = this.accessory._associatedHAPAccessory.setPrimaryService.bind(this.accessory);
 
         this.getService(Service.AccessoryInformation)
             .setCharacteristic(Characteristic.FirmwareRevision, this.firmware || 'Unknown')
@@ -111,9 +110,9 @@ class BlinkNetwork extends BlinkDevice{
     }
 
     get canonicalID() {return `Blink:Network:${this.networkID}`;}
-    get serial() {return this.info.syncModule.serial; }
-    get firmware() { return this.info.syncModule.fw_version; }
-    get model() {return this.info.syncModule.type; }
+    get serial() {return (this.info.syncModule || {}).serial; }
+    get firmware() { return (this.info.syncModule || {}).fw_version; }
+    get model() {return (this.info.syncModule || {}).type; }
 
     async getArmed() {
         if (this.info.armed) {
@@ -175,7 +174,7 @@ class BlinkNetwork extends BlinkDevice{
         securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
 
         if (!this.blink.config["hide-away-mode-switch"]) {
-            const occupiedService = this.addService(Service.Switch, `${this.name} Occupied`, 'occupied.' + this.serial);
+            const occupiedService = this.addService(Service.Switch, `${this.name} Occupied`, 'occupied.' + this.canonicalID);
             this.bindCharacteristic(occupiedService, Characteristic.On, 'Occupied Mode', this.getOccupiedSwitch, this.setOccupiedSwitch);
             this.bindCharacteristic(occupiedService, Characteristic.Name, `${this.name} Occupied`, () => `Occupied`);
         }
@@ -276,16 +275,18 @@ class BlinkCamera extends BlinkDevice {
         this.bindCharacteristic(batteryService, Characteristic.ChargingState, 'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
         this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery, 'Battery LowBattery', this.getLowBattery);
 
-        const enabledSwitch = this.addService(Service.Switch, `${this.name} Motion Activated`, 'enabled.' + this.serial);
-        this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
-
-        const tempService = this.addService(Service.TemperatureSensor, `${this.name} Temperature`, 'temp-sensor.' + this.serial);
-        this.bindCharacteristic(tempService, Characteristic.CurrentTemperature, 'Temperature', this.getTemperature);
-        this.bindCharacteristic(tempService, Characteristic.StatusActive, 'Temperature Sensor Active', () => true);
-
         const motionService = this.addService(Service.MotionSensor, `${this.name} Motion Detected`, 'motion-sensor.' + this.serial);
         this.bindCharacteristic(motionService, Characteristic.MotionDetected, 'Motion', this.getMotionDetected);
         this.bindCharacteristic(motionService, Characteristic.StatusActive, 'Motion Sensor Active', this.getMotionDetectActive);
+
+        if (this.model !== "owl") {
+            const enabledSwitch = this.addService(Service.Switch, `${this.name} Motion Activated`, 'enabled.' + this.serial);
+            this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
+
+            const tempService = this.addService(Service.TemperatureSensor, `${this.name} Temperature`, 'temp-sensor.' + this.serial);
+            this.bindCharacteristic(tempService, Characteristic.CurrentTemperature, 'Temperature', this.getTemperature);
+            this.bindCharacteristic(tempService, Characteristic.StatusActive, 'Temperature Sensor Active', () => true);
+        }
 
         if (!this.blink.config["hide-privacy-switch"]) {
             const privacyModeService = this.addService(Service.Switch, `${this.name} Privacy Mode`, 'privacy.' + this.serial);
@@ -335,6 +336,7 @@ class Blink {
 
     async refreshData() {
         const homescreen = await this.blinkAPI.getAccountHomescreen(this.config["camera-status-polling-seconds"]);
+        homescreen.cameras.push(...homescreen.owls);
         for (const network of homescreen.networks) {
             network.syncModule = homescreen.sync_modules.filter(sm => sm.network_id = network.id)[0];
             network.cameras = homescreen.cameras.filter(c => c.network_id = network.id);
@@ -380,6 +382,9 @@ class Blink {
     }
 
     async setCameraMotionSensorState(networkID, cameraID, enabled = true) {
+        const camera = this.cameras.get(cameraID);
+        if (camera.model === "owl") return;
+
         if (enabled) {
             const cmd = await this.blinkAPI.enableCameraMotion(networkID, cameraID);
             await this._commandWaitAll(cmd);
@@ -393,8 +398,16 @@ class Blink {
     async refreshCameraThumbnail(networkID, cameraID) {
         if (!networkID || !cameraID) return;
 
-        const cmd = await this.blinkAPI.updateCameraThumbnail(networkID, cameraID);
-        await this._commandWaitAll(cmd);
+        const camera = this.cameras.get(cameraID);
+        if (camera.model === "owl") {
+            const cmd = await this.blinkAPI.updateOwlThumbnail(networkID, cameraID);
+            await this._commandWaitAll(cmd);
+        }
+        else {
+            const cmd = await this.blinkAPI.updateCameraThumbnail(networkID, cameraID);
+            await this._commandWaitAll(cmd);
+        }
+
         await this.forceRefreshData();
     }
     async getCameraLastThumbnail(networkID, cameraID) {
@@ -422,6 +435,10 @@ class Blink {
         return this.cameras.get(cameraID).info.thumbnail;
     }
     async getCameraStatus(networkID, cameraID, maxTTL = BATTERY_TTL) {
+        const camera = this.cameras.get(cameraID);
+        if (camera.model === "owl") {
+            return await this.blinkAPI.getOwlStatus(networkID, cameraID, maxTTL);
+        }
         return await this.blinkAPI.getCameraStatus(networkID, cameraID, maxTTL);
     }
     async getCameraLastMotion(networkID, cameraID = null) {

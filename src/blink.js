@@ -117,16 +117,16 @@ class BlinkNetwork extends BlinkDevice{
     async getArmed() {
         if (this.info.armed) {
             //const triggerStart = (Date.parse(this.info.network.updated_at) || 0) - ARMED_DELAY*1000;
-            const triggerStart = (this.accessory.context.armedAt || Date.parse(this.info.network.updated_at) || 0 ) - ARMED_DELAY*1000;
+            const triggerStart = (this.accessory.context.armedAt || Date.parse(this.info.updated_at) || 0 ) - ARMED_DELAY*1000;
 
-            if (Date.now() >= triggerStart) {
+            if (triggerStart && Date.now() >= triggerStart) {
                 const lastMotion = await this.blink.getCameraLastMotion(this.networkID);
                 if (lastMotion && Date.now() <= (Date.parse(lastMotion.updated_at) || 0) + MOTION_TRIGGER_DECAY*1000) {
                     return Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
                 }
             }
 
-            if (this.accessory.context.armed !== undefined && this.accessory.context.armed < Characteristic.SecuritySystemCurrentState.DISARMED) {
+            if (this.accessory.context.armed >= 0 && this.accessory.context.armed < Characteristic.SecuritySystemCurrentState.DISARMED) {
                 return this.accessory.context.armed;
             }
             // else if (this.accessory.context.armed < Characteristic.SecuritySystemCurrentState.DISARMED) {
@@ -161,9 +161,9 @@ class BlinkNetwork extends BlinkDevice{
             Characteristic.SecuritySystemTargetState.DISARM,
         ]
         const securitySystem = this.addService(Service.SecuritySystem);
-        this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState, 'Armed (Current)', this.getArmed);
-        this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState, 'Armed (Target)', this.getArmed, this.setTargetArmed);
-        // securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
+        this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState, `${this.name} Armed (Current)`, this.getArmed);
+        this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState, `${this.name} Armed (Target)`, this.getArmed, this.setTargetArmed);
+        securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
 
         return this;
     }
@@ -203,7 +203,7 @@ class BlinkCamera extends BlinkDevice {
         // use the last time we armed or the current updated_at field to determine if the motion was recent
         const triggerStart = (this.blink.networks.get(this.networkID).accessory.context.armedAt || Date.parse(this.info.network.updated_at) || 0) - ARMED_DELAY*1000;
         const lastMotion = await this.blink.getCameraLastMotion(this.networkID, this.cameraID);
-        const triggerEnd = (Date.parse(lastMotion.updated_at) || 0) + MOTION_TRIGGER_DECAY*1000;
+        const triggerEnd = (Date.parse((lastMotion || {}).updated_at) || 0) + MOTION_TRIGGER_DECAY*1000;
         return Date.now() >= triggerStart && Date.now() <= triggerEnd;
     }
     getMotionDetectActive() { return this.info.enabled && this.info.network.armed; }

@@ -270,19 +270,22 @@ class BlinkCamera extends BlinkDevice {
         const microphone = this.addService(Service.Microphone);
         this.bindCharacteristic(microphone, Characteristic.Mute, 'Microphone', () => false);
 
-        const batteryService = this.addService(Service.BatteryService, `${this.name} Battery`, 'battery-sensor.' + this.serial);
-        this.bindCharacteristic(batteryService, Characteristic.BatteryLevel, 'Battery Level', this.getBattery);
-        this.bindCharacteristic(batteryService, Characteristic.ChargingState, 'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
-        this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery, 'Battery LowBattery', this.getLowBattery);
-
         const motionService = this.addService(Service.MotionSensor, `${this.name} Motion Detected`, 'motion-sensor.' + this.serial);
         this.bindCharacteristic(motionService, Characteristic.MotionDetected, 'Motion', this.getMotionDetected);
         this.bindCharacteristic(motionService, Characteristic.StatusActive, 'Motion Sensor Active', this.getMotionDetectActive);
-
+        
         if (this.model !== "owl") {
+            // Battery Levels are only available in non Minis
+            const batteryService = this.addService(Service.BatteryService, `${this.name} Battery`, 'battery-sensor.' + this.serial);
+            this.bindCharacteristic(batteryService, Characteristic.BatteryLevel, 'Battery Level', this.getBattery);
+            this.bindCharacteristic(batteryService, Characteristic.ChargingState, 'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
+            this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery, 'Battery LowBattery', this.getLowBattery);
+
+            // No idea how to set the motion enabled/disabled on minis
             const enabledSwitch = this.addService(Service.Switch, `${this.name} Motion Activated`, 'enabled.' + this.serial);
             this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
 
+            // no temperaure sensor on the minis
             const tempService = this.addService(Service.TemperatureSensor, `${this.name} Temperature`, 'temp-sensor.' + this.serial);
             this.bindCharacteristic(tempService, Characteristic.CurrentTemperature, 'Temperature', this.getTemperature);
             this.bindCharacteristic(tempService, Characteristic.StatusActive, 'Temperature Sensor Active', () => true);
@@ -437,7 +440,7 @@ class Blink {
     async getCameraStatus(networkID, cameraID, maxTTL = BATTERY_TTL) {
         const camera = this.cameras.get(cameraID);
         if (camera.model === "owl") {
-            return await this.blinkAPI.getOwlStatus(networkID, cameraID, maxTTL);
+            return await this.blinkAPI.getOwlConfig(networkID, cameraID, maxTTL);
         }
         return await this.blinkAPI.getCameraStatus(networkID, cameraID, maxTTL);
     }

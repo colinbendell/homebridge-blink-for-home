@@ -1020,16 +1020,51 @@ class BlinkAPI {
     /**
      * OWL
      */
+
+    /**
+     *
+     * {
+     *     "name": "G8T1-8888-0000-CCCC",
+     *     "updated_at": "2020-10-25T18:42:55+00:00",
+     *     "fw_version": "9.63",
+     *     "enabled": false,
+     *     "led_enabled": true,
+     *     "led_state": "off",
+     *     "status": "online",
+     *     "video_quality": "best",
+     *     "clip_length_max": 30,
+     *     "clip_length": 30,
+     *     "retrigger_time": 10,
+     *     "motion_sensitivity": 5,
+     *     "motion_regions": 33554431,
+     *     "advanced_motion_regions": [4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095],
+     *     "early_termination": false,
+     *     "night_vision_control": "normal",
+     *     "early_notification": false,
+     *     "early_notification_compatible": true,
+     *     "early_termination_supported": true,
+     *     "illuminator_enable": "auto",
+     *     "illuminator_enable_v2": "auto",
+     *     "illuminator_duration": 1,
+     *     "illuminator_intensity": 4,
+     *     "record_audio_enable": false,
+     *     "volume_control": 7,
+     *     "wifi": 5,
+     *     "video_recording_enable": false,
+     *     "video_recording_optional": true,
+     *     "flip_video": false,
+     *     "flip_video_compatible": true,
+     *     "local_storage_enabled": false,
+     *     "local_storage_compatible": false
+     * }
+     */
+
     async getOwlConfig(networkID, owlID) {
-        return await this.get(`/api/v1/accounts/{accountID}/networks/${networkId}/owls/${owlID}/config`);
+        return await this.get(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/config`);
     }
 
     async getOwlLiveView(networkID, owlID, liveViewBody) {
         return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/liveview`, liveViewBody);
-    }
-
-    async getOwlStatus(networkID, owlID, maxTTL = 60 * 60) {
-        return await this.get(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/status`, maxTTL);
     }
 
     async updateOwlStatus(networkID, owlID) {

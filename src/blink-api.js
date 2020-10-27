@@ -1,5 +1,23 @@
 const crypto = require("crypto");
 const fetch = require('node-fetch');
+const http = require('http');
+const https = require('https');
+
+const httpAgent = new http.Agent({
+    keepAlive: true,
+    maxSockets: 1
+});
+const httpsAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: 1
+});
+const agent = function(_parsedURL) {
+    if (_parsedURL.protocol === 'http:') {
+        return httpAgent;
+    } else {
+        return httpsAgent;
+    }
+}
 
 const BLINK_API_HOST = "immedia-semi.com";
 
@@ -69,7 +87,7 @@ class BlinkAPI {
         };
         if (this.token) headers["TOKEN_AUTH"] = this.token;
 
-        const options = {method, headers};
+        const options = {method, headers, agent};
         if (body) {
             options.body = JSON.stringify(body);
             options.headers['Content-Type'] = 'application/json';
@@ -79,10 +97,11 @@ class BlinkAPI {
         this.log.debug(options);
         let res = await fetch(`https://rest-${this.region || "prod"}.${BLINK_API_HOST}${targetPath}`, options)
             .catch(e => {
+                this.log.error(e);
                 //TODO: handle network errors more gracefully
-                this.log.debug(JSON.stringify(e, null, 2));
                 return Promise.reject(e)
             });
+        this.log.debug(res.status + " " + res.statusText);
         this.log.debug(Object.fromEntries(res.headers.entries()));
         // TODO: deal with network failures
 
@@ -94,12 +113,23 @@ class BlinkAPI {
             }
             // fallback
             // TODO: handle error states more gracefully
+            this.log.error(`${method} ${targetPath} -- ${res.headers.get('status')}`);
+            this.log.error(Object.fromEntries(res.headers));
             throw new Error(res.headers.get("status"));
         }
-        else if (this.status >= 400) {
-            return Promise.reject(`${method} ${targetPath} -- ${res.headers.get('status')}`)
+        else if (this.status >= 500) {
+            //TODO: retry?
+            this.log.error(`${method} ${targetPath} -- ${res.headers.get('status') || res.statusCode}`);
+            this.log.error(Object.fromEntries(res.headers));
+            throw new Error(`${method} ${targetPath} -- ${res.headers.get('status') || res.statusCode}`)
         }
-        else if (res.status <= 300) {
+        else if (this.status >= 400) {
+            this.log.error(`${method} ${targetPath} -- ${res.headers.get('status') || res.statusCode}`);
+            this.log.error(Object.fromEntries(res.headers));
+            throw new Error(`${method} ${targetPath} -- ${res.headers.get('status') || res.statusCode}`)
+        }
+        //TODO: what about 3xx?
+        else if (res.status < 300) {
             if (method === "GET") {
                 CACHE.set(method + targetPath, res);
             }

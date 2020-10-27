@@ -338,8 +338,8 @@ class Blink {
         const homescreen = await this.blinkAPI.getAccountHomescreen(this.config["camera-status-polling-seconds"]);
         homescreen.cameras.push(...homescreen.owls);
         for (const network of homescreen.networks) {
-            network.syncModule = homescreen.sync_modules.filter(sm => sm.network_id = network.id)[0];
-            network.cameras = homescreen.cameras.filter(c => c.network_id = network.id);
+            network.syncModule = homescreen.sync_modules.filter(sm => sm.network_id === network.id)[0];
+            network.cameras = homescreen.cameras.filter(c => c.network_id === network.id);
         }
         for (const camera of homescreen.cameras) {
             camera.network = homescreen.networks.filter(n => n.id === camera.network_id)[0];

@@ -47,16 +47,10 @@ Two main accessory types will be present: `Security System` and `Camera` accesso
 ![](img/securitysystem.jpg)
 
 * one `Security System` accessory per location (aka Network)
-* includes a `Occupied` switch to indicate if the home occupied which is used to distinguish between `Home`, `Away` and `Off`
-* Blink will be disarmed when the system is set to `Home` (when occupied = on) or `Off`
+* Blink will be armed when the system is set to any of `Home`, `Away` or `Night` and disarmed when set to `Off`
+* The specific state of Home/Away/Night is preserved but is only useful for automation scripts (eg: turn off all cameras but entrance camera when set to `Night`)
 
 ![](img/securitysystem_state.jpg)
-
-![](img/securitysystem_accessories.jpg)
-
-* Use an automation to automatically arm the system and set to `Away`. This is a useful way to avoid the alerts sent from HomeKit when the Security System is set to `Off`. (All members will get an alert each time Homekit is restarted)
-
-![](img/automation.jpg)
 
 ### Camera Accessories
 ![](img/camera.jpg)
@@ -67,3 +61,9 @@ Two main accessory types will be present: `Security System` and `Camera` accesso
 
 * `privacy mode` prevents the perception that when the system is disarmed that people can be snooping. This is particularly important since even a stale thumbnail can give household members that feeling that the camera is active when its not.
 * cameras can be disabled individually when the system is armed with the `Motion Activated` switch 
+
+## Useful Resources:
+* https://github.com/MattTW/BlinkMonitorProtocol
+* https://github.com/fronzbot/blinkpy
+* https://developers.homebridge.io/
+* https://developer.apple.com/documentation/homekit/

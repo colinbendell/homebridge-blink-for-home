@@ -3,6 +3,10 @@ const fetch = require('node-fetch');
 const http = require('http');
 const https = require('https');
 
+Promise.delay = function (ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+};
+
 const httpAgent = new http.Agent({
     keepAlive: true,
     maxSockets: 1
@@ -113,23 +117,29 @@ class BlinkAPI {
             }
             // fallback
             // TODO: handle error states more gracefully
-            this.log.error(`${method} ${targetPath} -- ${res.headers.get('status')}`);
+            this.log.error(`${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`);
             this.log.error(Object.fromEntries(res.headers));
             throw new Error(res.headers.get("status"));
         }
         else if (this.status >= 500) {
-            //TODO: retry?
-            this.log.error(`${method} ${targetPath} -- ${res.headers.get('status') || res.statusCode}`);
-            this.log.error(Object.fromEntries(res.headers));
-            throw new Error(`${method} ${targetPath} -- ${res.headers.get('status') || res.statusCode}`)
+            //TODO: how do we get out of infinite retry?
+            this.log.error(`RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`);
+            await Promise.delay(500);
+            return await this._request(method,path,body,maxTTL,false);
+        }
+        else if (this.status === 429) {
+            //TODO: how do we get out of infinite retry?
+            this.log.error(`RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`);
+            await Promise.delay(500);
+            return await this._request(method,path,body,maxTTL,false);
         }
         else if (this.status >= 400) {
-            this.log.error(`${method} ${targetPath} -- ${res.headers.get('status') || res.statusCode}`);
+            this.log.error(`${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`);
             this.log.error(Object.fromEntries(res.headers));
-            throw new Error(`${method} ${targetPath} -- ${res.headers.get('status') || res.statusCode}`)
+            throw new Error(`${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`)
         }
         //TODO: what about 3xx?
-        else if (res.status < 300) {
+        else if (res.status === 200) {
             if (method === "GET") {
                 CACHE.set(method + targetPath, res);
             }

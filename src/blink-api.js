@@ -1017,19 +1017,19 @@ class BlinkAPI {
     }
 
     async getNetworkSirens(networkID) {
-        return await this.get(`/api/v1/networks/${networkID}/sirens/`);
+        return await this.get(`/api/v1/networks/${networkID}/sirens`);
     }
 
-    async activateSiren(networkID, sirenID, duration = 0) {
+    async activateSiren(networkID, sirenID, duration = 30) {
         return await this.post(`/api/v1/networks/${networkID}/sirens/${sirenID}/activate/`, {duration});
     }
 
-    async activateSirens(networkID) {
+    async activateSirens(networkID, duration=30) {
         return await this.post(`/api/v1/networks/${networkID}/sirens/activate/`, {duration});
     }
 
     async createSiren(networkID, addSirenNetworkBody) {
-        this.post(`/api/v1/networks/${networkID}/sirens/add/`, addSirenNetworkBody);
+        return await this.post(`/api/v1/networks/${networkID}/sirens/add/`, addSirenNetworkBody);
     }
 
     async deactivateSirens(networkID) {
@@ -1110,7 +1110,7 @@ class BlinkAPI {
         return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/status`);
     }
 
-    async updateOwlSettings(owlID, updateOwlBody) {
+    async updateOwlSettings(networkID, owlID, updateOwlBody) {
         return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/config`, updateOwlBody);
     }
 
@@ -1173,7 +1173,7 @@ class BlinkAPI {
      * POST {"dst":true,"lv_mode":"relay","time_zone":"America\/Toronto"} * {"dst":true,"lv_mode":"relay","time_zone":"America\/Toronto"}
      * {"network":{"id":22022,"created_at":"2016-02-13T19:15:54+00:00","updated_at":"2020-10-02T00:29:30+00:00","deleted_at":null,"name":"82 Downing","network_key":"hifSnlicp+k4bLA=","description":"","network_origin":"normal","locale":"","time_zone":"America/Toronto","dst":true,"ping_interval":60,"encryption_key":null,"armed":false,"autoarm_geo_enable":false,"autoarm_time_enable":false,"lv_mode":"relay","lfr_channel":0,"video_destination":"server","storage_used":0,"storage_total":0,"video_count":0,"video_history_count":4000,"sm_backup_enabled":false,"arm_string":"Disarmed","busy":false,"camera_error":false,"sync_module_error":false,"feature_plan_id":null,"account_id":22156,"lv_save":false}}
      **/
-    async updateNetwork(updateNetworkSaveAllLiveViews) {
+    async updateNetwork(networkID, updateNetworkSaveAllLiveViews) {
         return await this.post(`/network/${networkID}/update`, updateNetworkSaveAllLiveViews);
     }
 

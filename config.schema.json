@@ -47,6 +47,21 @@
                 "minimum": 1,
                 "placeholder": "45",
                 "description": "Camera status does not update live and must be fetched periodically. By default this is done every 45 seconds"
+            },
+            "enable-verbose-logging": {
+                "title": "Enable Verbose Logging",
+                "default": false,
+                "type": "boolean"
+            },
+            "enable-debug-logging": {
+                "title": "Enable Debug Logging",
+                "default": false,
+                "type": "boolean"
+            },
+            "enable-startup-diagnostic": {
+                "title": "Enable Diagnostic Logging on startup",
+                "default": false,
+                "type": "boolean"
             }
         },
         "required": [
@@ -62,7 +77,7 @@
         { "key": "pin", "placeholder": "2FA pin", "notitle": true },
         { "type": "section", "title": "Advanced Settings", "expandable": true, "expanded": false,
             "items": ["hide-privacy-switch", "enable-liveview", "avoid-thumbnail-battery-drain",
-                      "camera-status-polling-seconds"]
+                      "camera-status-polling-seconds", "enable-verbose-logging", "enable-debug-logging", "enable-startup-diagnostic"]
         }
     ]
 }

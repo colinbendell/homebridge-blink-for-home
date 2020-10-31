@@ -240,7 +240,7 @@ class BlinkCameraDelegate {
                 callback();
                 break;
             case StreamRequestTypes.STOP:
-                const ffmpegProcess = this.ongoingSessions[sessionId];
+                const ffmpegProcess = this.ongoingSessions[sessionId] || this.pendingSessions[sessionId];
 
                 try {
                     if (ffmpegProcess) {

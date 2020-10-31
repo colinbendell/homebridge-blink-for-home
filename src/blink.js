@@ -120,22 +120,17 @@ class BlinkNetwork extends BlinkDevice{
     set armedAt(val) { this.accessory.context.armedAt = val; }
     get armedState() { return this.accessory.context.armed; }
     set armedState(val) { this.accessory.context.armed = val; }
-    get cameras() { return [...this.blink.cameras.values()].map(c => c.network_id === this.networkID); }
+    get cameras() { return [...this.blink.cameras.values()].filter(c => c.network_id === this.networkID); }
 
     async getArmed() {
         if (this.armed) {
             //const triggerStart = this.network.updatedAt - ARMED_DELAY*1000;
-            const triggerStart = (this.armedAt || this.updatedAt) - ARMED_DELAY*1000;
+            const triggerStart = Math.max(this.armedAt, this.updatedAt) - ARMED_DELAY*1000;
 
             if (triggerStart && Date.now() >= triggerStart) {
-                // use the last updated_at as
-                const lastDeviceUpdate = Math.max(...this.cameras.map(c => c.updatedAt), this.updatedAt) + MOTION_TRIGGER_DECAY*1000;
-                if (Date.now() <= lastDeviceUpdate) {
-
-                    const lastMotion = await this.blink.getCameraLastMotion(this.networkID);
-                    if (lastMotion && Date.now() <= (Date.parse(lastMotion.updated_at) || 0) + MOTION_TRIGGER_DECAY*1000) {
-                        return Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
-                    }
+                const cameraMotionDetected = await Promise.all(this.cameras.map(c => c.getMotionDetected()));
+                if (cameraMotionDetected.includes(true)) {
+                    return Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
                 }
             }
 
@@ -226,7 +221,7 @@ class BlinkCamera extends BlinkDevice {
         const lastMotion = await this.blink.getCameraLastMotion(this.networkID, this.cameraID);
         if (!lastMotion) return false;
 
-        const triggerEnd = (Date.parse((lastMotion || {}).updated_at) || 0) + MOTION_TRIGGER_DECAY*1000;
+        const triggerEnd = (Date.parse((lastMotion || {}).created_at) || 0) + MOTION_TRIGGER_DECAY*1000;
         return Date.now() >= triggerStart && Date.now() <= triggerEnd;
     }
     getMotionDetectActive() { return this.enabled && this.armed; }

@@ -171,7 +171,7 @@ class BlinkNetwork extends BlinkDevice{
         const securitySystem = this.addService(Service.SecuritySystem);
         this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState, `${this.name} Armed (Current)`, this.getArmed);
         this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState, `${this.name} Armed (Target)`, this.getArmed, this.setTargetArmed);
-        securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
+        // securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
 
         return this;
     }
@@ -232,8 +232,6 @@ class BlinkCamera extends BlinkDevice {
     }
     getPrivacyMode() { return this.accessory.context.privacyMode !== undefined ? this.accessory.context.privacyMode : true; }
     setPrivacyMode(val) { return this.accessory.context.privacyMode = val; }
-
-    async refreshThumbnail() { await this.blink.refreshCameraThumbnail(this.networkID, this.cameraID); }
 
     async getThumbnail() {
         // if we are in privacy mode, use a placeholder image

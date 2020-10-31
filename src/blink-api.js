@@ -2,10 +2,7 @@ const crypto = require("crypto");
 const fetch = require('node-fetch');
 const http = require('http');
 const https = require('https');
-
-Promise.delay = function (ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-};
+const {sleep} = require('./utils');
 
 const httpAgent = new http.Agent({
     keepAlive: true,
@@ -18,7 +15,8 @@ const httpsAgent = new https.Agent({
 const agent = function(_parsedURL) {
     if (_parsedURL.protocol === 'http:') {
         return httpAgent;
-    } else {
+    }
+    else {
         return httpsAgent;
     }
 }
@@ -28,7 +26,7 @@ const BLINK_API_HOST = "immedia-semi.com";
 const CACHE = new Map();
 
 /**
- * https://github.com/MattTW/BlinkMonitorProtocol 
+ * https://github.com/MattTW/BlinkMonitorProtocol
  */
 class BlinkAPI {
     constructor(email, password, clientUUID, pin = null, notificationKey) {
@@ -99,7 +97,8 @@ class BlinkAPI {
 
         this.log.info(`${method} ${targetPath}`);
         this.log.debug(options);
-        let res = await fetch(`https://rest-${this.region || "prod"}.${BLINK_API_HOST}${targetPath}`, options)
+        const urlPrefix = targetPath.startsWith("http") ? '' : `https://rest-${this.region || "prod"}.${BLINK_API_HOST}`;
+        let res = await fetch(`${urlPrefix}${targetPath}`, options)
             .catch(e => {
                 this.log.error(e);
                 //TODO: handle network errors more gracefully
@@ -124,14 +123,14 @@ class BlinkAPI {
         else if (this.status >= 500) {
             //TODO: how do we get out of infinite retry?
             this.log.error(`RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`);
-            await Promise.delay(500);
-            return await this._request(method,path,body,maxTTL,false);
+            await sleep(500);
+            return await this._request(method, path, body, maxTTL, false);
         }
         else if (this.status === 429) {
             //TODO: how do we get out of infinite retry?
             this.log.error(`RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`);
-            await Promise.delay(500);
-            return await this._request(method,path,body,maxTTL,false);
+            await sleep(500);
+            return await this._request(method, path, body, maxTTL, false);
         }
         else if (this.status >= 400) {
             this.log.error(`${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`);
@@ -233,7 +232,7 @@ class BlinkAPI {
      *         "tier": "prod"
      *     }
      * }
-     * 
+     *
      **/
     async login(force = false, email = null, password = null, clientUUID = null, client = {}) {
         if (!force && this.token) return;

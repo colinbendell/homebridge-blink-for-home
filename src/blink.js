@@ -1,18 +1,16 @@
 const fs = require('fs');
 const BlinkAPI = require('./blink-api');
 const BlinkCameraDelegate = require('./blink-camera-deligate')
+const {sleep, fahrenheitToCelsius} = require('./utils');
 let Accessory, Categories, Characteristic, Service, UUIDGen, hap;
 
-const THUMBNAIL_TTL_MIN = 1*60; //1min
-const THUMBNAIL_TTL_MAX = 10*60; //10min
-const BATTERY_TTL = 60*60; //60min
+const THUMBNAIL_TTL_MIN = 1 * 60; //1min
+const THUMBNAIL_TTL_MAX = 10 * 60; //10min
+const BATTERY_TTL = 60 * 60; //60min
 const ARMED_DELAY = 60; //60s
 const MOTION_POLL = 20;
 const MOTION_TRIGGER_DECAY = 90; //90s
-
-Promise.delay = function (ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-};
+const STATUS_POLL = 45;
 
 function setupHAP(homebridgeAPI) {
     if (!Accessory) {
@@ -23,13 +21,6 @@ function setupHAP(homebridgeAPI) {
         Service = homebridgeAPI.hap.Service;
         UUIDGen = homebridgeAPI.hap.uuid;
     }
-}
-
-function fahrenheitToCelsius(temperature) {
-    return Math.round((temperature - 32) / 1.8*10)/10;
-}
-function celsiusToFahrenheit(temperature) {
-    return Math.round((temperature * 1.8) + 32);
 }
 
 class BlinkDevice {
@@ -317,7 +308,7 @@ class Blink {
         if (!networkID || !commandID) return;
         let cmd = await this.blinkAPI.getCommand(networkID || this.networkID, commandID);
         while (cmd.complete === false) {
-            await Promise.delay(250);
+            await sleep(400);
             cmd = await this.blinkAPI.getCommand(networkID || this.networkID, commandID);
         }
         return cmd;

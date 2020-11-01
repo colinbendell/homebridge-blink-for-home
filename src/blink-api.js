@@ -473,7 +473,7 @@ class BlinkAPI {
      * }
      */
     async getAccountHomescreen(maxTTL = 30) {
-        return await this.get(`/api/v3/accounts/{accountID}/homescreen`,  maxTTL);
+        return await this.get(`/api/v3/accounts/{accountID}/homescreen`, maxTTL);
     }
 
     /**

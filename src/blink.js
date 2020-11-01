@@ -230,7 +230,10 @@ class BlinkCamera extends BlinkDevice {
     async setEnabled(target = true) {
         if (this.enabled !== Boolean(target)) await this.blink.setCameraMotionSensorState(this.networkID, this.cameraID, target)
     }
-    getPrivacyMode() { return this.accessory.context.privacyMode !== undefined ? this.accessory.context.privacyMode : true; }
+    getPrivacyMode() {
+        if (this.blink.config["hide-privacy-switch"]) return false;
+        return this.accessory.context.privacyMode !== undefined ? this.accessory.context.privacyMode : true;
+    }
     setPrivacyMode(val) { return this.accessory.context.privacyMode = val; }
 
     async getThumbnail() {
@@ -514,7 +517,7 @@ class Blink {
         try {
             //TODO: check that it is on battery?
             const ttl = this.config["avoid-thumbnail-battery-drain"] === false ? THUMBNAIL_TTL_MIN : THUMBNAIL_TTL_MAX;
-            const res = this.network.get(this.networkID).armed ? await this.blinkAPI.getMediaChange(ttl) : {};
+            const res = this.networks.get(networkID).armed ? await this.blinkAPI.getMediaChange(ttl) : {};
             const media = (res.media || [])
                 .filter(m => m.network_id === networkID)
                 .filter(m => !cameraID || m.device_id === cameraID)
@@ -531,10 +534,10 @@ class Blink {
             else if ((Date.parse(latestMedia.created_at) || 0) > thumbnailCreatedAt) {
                 return latestMedia.thumbnail;
             }
+            return this.cameras.get(cameraID).thumbnail;
         }
-        catch {}
+        catch (e) {this.log.error(e);}
 
-        return this.cameras.get(cameraID).thumbnail;
     }
     async getCameraStatus(networkID, cameraID, maxTTL = BATTERY_TTL) {
         const camera = this.cameras.get(cameraID);

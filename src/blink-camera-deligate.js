@@ -6,8 +6,11 @@ const {
     getDefaultIpAddress,
     ReturnAudioTranscoder,
     RtpSplitter,
+    reservePorts,
+    releasePorts
 } = require('@homebridge/camera-utils');
 
+const {Http2TLSTunnel} = require('./proxy');
 // class SessionInfo {
 //     address: string, // address of the HAP controller
 //
@@ -44,54 +47,62 @@ class BlinkCameraDelegate {
         this.log = logger || console.log;
 
         StreamRequestTypes = this.hap.StreamRequestTypes;
-        this.ffmpegDebugOutput = false;
-        this.controller = this.hap.CameraController
         // keep track of sessions
         this.pendingSessions = new Map();
+        this.proxySessions = new Map();
         this.ongoingSessions = new Map();
+    }
 
-        const options = {
-            cameraStreamCount: 2, // HomeKit requires at least 2 streams, but 1 is also just fine
-            delegate: this,
+    get ffmpegDebugOutput() {
+        return true;
+    }
 
-            streamingOptions: {
-                // srtp: true, // legacy option which will just enable AES_CM_128_HMAC_SHA1_80 (can still be used though)
-                supportedCryptoSuites: [this.hap.SRTPCryptoSuites.NONE, this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80], // NONE is not supported by iOS just there for testing with Wireshark for example
-                video: {
-                    codec: {
-                        profiles: [hap.H264Profile.BASELINE, hap.H264Profile.MAIN, hap.H264Profile.HIGH],
-                        levels: [hap.H264Level.LEVEL3_1, hap.H264Level.LEVEL3_2, hap.H264Level.LEVEL4_0],
-                    },
-                    resolutions: [
-                        [1920, 1080, 30], // width, height, framerate
-                        [1280, 960, 30],
-                        [1280, 720, 30],
-                        [1024, 768, 30],
-                        [640, 480, 30],
-                        [640, 360, 30],
-                        [480, 360, 30],
-                        [480, 270, 30],
-                        [320, 240, 30],
-                        [320, 240, 15], // Apple Watch requires this configuration (Apple Watch also seems to required OPUS @16K)
-                        [320, 180, 30],
-                    ],
-                },
-                /* audio option is omitted, as it is not supported in this example; HAP-NodeJS will fake an appropriate audio codec
-                audio: {
-                    comfort_noise: false, // optional, default false
-                    codecs: [
-                        {
-                            type: AudioStreamingCodecType.OPUS,
-                            audioChannels: 1, // optional, default 1
-                            samplerate: [AudioStreamingSamplerate.KHZ_16, AudioStreamingSamplerate.KHZ_24], // 16 and 24 must be present for AAC-ELD or OPUS
+    get controller() {
+        if (!this._controller) {
+            const options = {
+                cameraStreamCount: 2, // HomeKit requires at least 2 streams, but 1 is also just fine
+                delegate: this,
+
+                streamingOptions: {
+                    // srtp: true, // legacy option which will just enable AES_CM_128_HMAC_SHA1_80 (can still be used though)
+                    supportedCryptoSuites: [this.hap.SRTPCryptoSuites.NONE, this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80], // NONE is not supported by iOS just there for testing with Wireshark for example
+                    video: {
+                        codec: {
+                            profiles: [this.hap.H264Profile.BASELINE, this.hap.H264Profile.MAIN, this.hap.H264Profile.HIGH],
+                            levels: [this.hap.H264Level.LEVEL3_1, this.hap.H264Level.LEVEL3_2, this.hap.H264Level.LEVEL4_0],
                         },
-                    ],
-                },
-                // */
+                        resolutions: [
+                            [1920, 1080, 30], // width, height, framerate
+                            [1280, 960, 30],
+                            [1280, 720, 30],
+                            [1024, 768, 30],
+                            [640, 480, 30],
+                            [640, 360, 30],
+                            [480, 360, 30],
+                            [480, 270, 30],
+                            [320, 240, 30],
+                            [320, 240, 15], // Apple Watch requires this configuration (Apple Watch also seems to required OPUS @16K)
+                            [320, 180, 30],
+                        ],
+                    },
+                    /* audio option is omitted, as it is not supported in this example; HAP-NodeJS will fake an appropriate audio codec
+                    audio: {
+                        comfort_noise: false, // optional, default false
+                        codecs: [
+                            {
+                                type: AudioStreamingCodecType.OPUS,
+                                audioChannels: 1, // optional, default 1
+                                samplerate: [AudioStreamingSamplerate.KHZ_16, AudioStreamingSamplerate.KHZ_24], // 16 and 24 must be present for AAC-ELD or OPUS
+                            },
+                        ],
+                    },
+                    // */
+                }
             }
-        }
 
-        this.controller = new hap.CameraController(options);
+            this._controller = new this.hap.CameraController(options);
+        }
+        return this._controller;
     }
 
     async handleSnapshotRequest(request, callback) {
@@ -129,8 +140,6 @@ class BlinkCameraDelegate {
             videoSSRC: videoSSRC,
         };
 
-        // const currentAddress = ip.address("public", request.addressVersion); // ipAddress version must match
-        const currentAddress = "127.0.0.1";
         const response = {
             // SOMEDAY: remove address as it is not needed after homebridge 1.1.3
             address: await getDefaultIpAddress(request.addressVersion === 'ipv6'),
@@ -144,19 +153,36 @@ class BlinkCameraDelegate {
             // audio is omitted as we do not support audio in this example
         };
 
-        this.pendingSessions[sessionId] = sessionInfo;
+        this.pendingSessions.set(sessionId, sessionInfo);
+
+        const liveViewURL = await this.blinkCamera.getLiveViewURL();
+        if (/^rtsp|^imm/.test(liveViewURL)) {
+            const [,protocol, host, path,] = /([a-z]+):\/\/([^:\/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
+            const ports = await reservePorts({count: 1});
+            const listenPort = ports[0];
+            const proxyServer = new Http2TLSTunnel(listenPort, host);
+            await proxyServer.start();
+            const rtspProxy = {
+                protocol, host, path, listenPort, proxyServer
+            }
+            this.proxySessions.set(sessionId, rtspProxy);
+        }
+        else {
+            this.proxySessions.set(sessionId, {path: liveViewURL});
+        }
         callback(null, response);
     }
 
     // called when iOS device asks stream to start/stop/reconfigure
     handleStreamRequest(request, callback) {
-        this.log.info('handleStreamRequest');
-        this.log.info(request);
+        this.log.debug('handleStreamRequest');
+        this.log.debug(request);
         const sessionId = request.sessionID;
 
         switch (request.type) {
             case StreamRequestTypes.START:
-                const sessionInfo = this.pendingSessions[sessionId];
+                const sessionInfo = this.pendingSessions.get(sessionId);
+                const rtspProxy = this.proxySessions.get(sessionId);
 
                 const video = request.video;
 
@@ -178,8 +204,12 @@ class BlinkCameraDelegate {
                 const videoSRTP = sessionInfo.videoSRTP.toString("base64");
 
                 this.log.info(`Starting video stream (${width}x${height}, ${fps} fps, ${maxBitrate} kbps, ${mtu} mtu)...`);
+                let inputCommand = `-loop 1 -f image2 -i ${rtspProxy.path}`;
+                if (rtspProxy.proxyServer) {
+                    inputCommand = `-loglevel repeat+level+trace -i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`;
+                }
 
-                let videoffmpegCommand = `-f lavfi -i testsrc=size=${width}x${height}:rate=${fps} -map 0:0 ` +
+                let videoffmpegCommand = `${inputCommand} -map 0:0 ` +
                     `-c:v libx264 -pix_fmt yuv420p -r ${fps} -an -sn -dn -b:v ${maxBitrate}k -bufsize ${2 * maxBitrate}k -maxrate ${maxBitrate}k ` +
                     `-payload_type ${payloadType} -ssrc ${ssrc} -f rtp `; // -profile:v ${profile} -level:v ${level}
 
@@ -194,6 +224,8 @@ class BlinkCameraDelegate {
                 }
 
                 const ffmpegVideo = spawn('ffmpeg', videoffmpegCommand.split(' '), {env: process.env});
+                this.ongoingSessions.set(sessionId, ffmpegVideo);
+                this.pendingSessions.delete(sessionId);
 
                 let started = false;
                 ffmpegVideo.stderr.on('data', data => {
@@ -230,8 +262,6 @@ class BlinkCameraDelegate {
                     }
                 });
 
-                this.ongoingSessions[sessionId] = ffmpegVideo;
-                delete this.pendingSessions[sessionId];
 
                 break;
             case StreamRequestTypes.RECONFIGURE:
@@ -240,7 +270,7 @@ class BlinkCameraDelegate {
                 callback();
                 break;
             case StreamRequestTypes.STOP:
-                const ffmpegProcess = this.ongoingSessions[sessionId] || this.pendingSessions[sessionId];
+                const ffmpegProcess = this.ongoingSessions.get(sessionId) || this.pendingSessions.get(sessionId);
 
                 try {
                     if (ffmpegProcess) {
@@ -251,7 +281,8 @@ class BlinkCameraDelegate {
                     this.log.error(e);
                 }
 
-                delete this.ongoingSessions[sessionId];
+                this.pendingSessions.delete(sessionId);
+                this.ongoingSessions.delete(sessionId);
 
                 this.log.info("Stopped streaming session!");
                 callback();
@@ -320,7 +351,7 @@ class BlinkCameraDelegate {
 
             this.sessions[this.hap.uuid.unparse(request.sessionID)] = sipSession
 
-            const audioSsrc = hap.CameraController.generateSynchronisationSource();
+            const audioSsrc = this.hap.CameraController.generateSynchronisationSource();
             const incomingAudioRtcpPort = await sipSession.reservePort();
             const ffmpegOptions = {
                 input: ['-vn'],
@@ -452,7 +483,7 @@ class BlinkCameraDelegate {
 
     _handleStreamRequest(request, callback) {
         const sessionID = request.sessionID;
-        const sessionKey = hap.uuid.unparse(sessionID);
+        const sessionKey = this.hap.uuid.unparse(sessionID);
         const session = this.sessions[sessionKey];
         const requestType = request.type;
 

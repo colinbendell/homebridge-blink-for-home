@@ -258,6 +258,16 @@ class BlinkCamera extends BlinkDevice {
         return data;
     }
 
+    async getLiveViewURL() {
+        if (!this.armed || !this.enabled) {
+            if (this.getPrivacyMode()) {
+                return `${__dirname}/privacy.png`;
+            }
+        }
+        const data = await this.blink.getCameraLiveView(this.networkID, this.cameraID);
+        return data.server;
+    }
+
     createAccessory(cachedAccessories = []) {
         if (this.accessory) return this.accessory;
         super.createAccessory(cachedAccessories, Categories.CAMERA)
@@ -576,6 +586,17 @@ class Blink {
         return media;
     }
 
+    async getCameraLiveView(networkID, cameraID) {
+        const camera = this.cameras.get(cameraID);
+        let res;
+        if (camera.model === "owl") {
+            res = await this.blinkAPI.getOwlLiveView(networkID, cameraID);
+        }
+        else {
+            res = await this.blinkAPI.getCameraLiveViewV5(networkID, cameraID);
+        }
+        return res;
+    }
     async getUrl(url) {
         return await this.blinkAPI.getUrl(url);
     }

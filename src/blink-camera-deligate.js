@@ -54,7 +54,7 @@ class BlinkCameraDelegate {
     }
 
     get ffmpegDebugOutput() {
-        return true;
+        return false;
     }
 
     get controller() {
@@ -206,7 +206,7 @@ class BlinkCameraDelegate {
                 this.log.info(`Starting video stream (${width}x${height}, ${fps} fps, ${maxBitrate} kbps, ${mtu} mtu)...`);
                 let inputCommand = `-loop 1 -f image2 -i ${rtspProxy.path}`;
                 if (rtspProxy.proxyServer) {
-                    inputCommand = `-loglevel repeat+level+trace -i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`;
+                    inputCommand = `-i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`;
                 }
 
                 let videoffmpegCommand = `${inputCommand} -map 0:0 ` +

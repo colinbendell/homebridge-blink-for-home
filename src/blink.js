@@ -318,18 +318,22 @@ class Blink {
         this.blinkAPI = new BlinkAPI(email, password, clientUUID, pin);
         logger = logger || console.log;
 
-        this.log = function (...data) {logger(...data)};
-        this.log.error = function (...data) {logger.error(...data)};
-        this.log.info = function (...data) {if (config["enable-verbose-logging"]) { logger.info(...data) }};
-        this.log.debug = function (...data) {
-            if (config["enable-debug-logging"] || logger.debugEnabled) {
-                if (logger.debugEnabled) {
-                    return logger.debug(...data);
+        if (logger.debugEnabled) {
+            this.log = logger;
+        }
+        else {
+            this.log = function (...data) {logger(...data)};
+            this.log.error = function (...data) {logger.error(...data)};
+            this.log.info = function (...data) {if (config["enable-verbose-logging"]) { logger.info(...data) }};
+            this.log.debug = function (...data) {
+                if (config["enable-debug-logging"] || logger.debugEnabled) {
+                    if (logger.debugEnabled) {
+                        return logger.debug(...data);
+                    }
+                    return logger.info(...data);
                 }
-                return logger.info(...data);
             }
         }
-
         this.blinkAPI.log = this.log;
         this.config = config;
         setupHAP(homebridgeAPI); // this is not really that ideal and should be refactored

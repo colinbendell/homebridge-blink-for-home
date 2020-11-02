@@ -116,7 +116,7 @@ class BlinkNetwork extends BlinkDevice{
     get model() { return (this.data.syncModule || {}).type; }
 
     get armed() { return Boolean(this.data.armed); }
-    get armedAt() { return this.accessory.context.armedAt; }
+    get armedAt() { return this.accessory.context.armedAt || 0; }
     set armedAt(val) { this.accessory.context.armedAt = val; }
     get armedState() { return this.accessory.context.armed; }
     set armedState(val) { this.accessory.context.armed = val; }
@@ -147,13 +147,13 @@ class BlinkNetwork extends BlinkDevice{
 
     async setTargetArmed(val) {
         this.armedState = val;
-        const targetArmed = !(val === Characteristic.SecuritySystemTargetState.DISARM);
+        const targetArmed = (val !== Characteristic.SecuritySystemTargetState.DISARM);
+        if (targetArmed) {
+            // only if we are going from disarmed to armed
+            this.armedAt = Date.now();
+        }
 
         if (this.armed !== targetArmed) {
-            if (!this.armed) {
-                // only if we are going from disarmed to armed
-                this.armedAt = Date.now();
-            }
             await this.blink.setArmedState(this.networkID, targetArmed);
         }
     }
@@ -166,12 +166,13 @@ class BlinkNetwork extends BlinkDevice{
         const validValues = [
             Characteristic.SecuritySystemTargetState.STAY_ARM,
             Characteristic.SecuritySystemTargetState.AWAY_ARM,
+            Characteristic.SecuritySystemTargetState.NIGHT_ARM,
             Characteristic.SecuritySystemTargetState.DISARM,
         ]
         const securitySystem = this.addService(Service.SecuritySystem);
         this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState, `${this.name} Armed (Current)`, this.getArmed);
         this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState, `${this.name} Armed (Target)`, this.getArmed, this.setTargetArmed);
-        // securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
+        securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
 
         return this;
     }

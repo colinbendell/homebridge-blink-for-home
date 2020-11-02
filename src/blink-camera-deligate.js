@@ -27,6 +27,21 @@ const {Http2TLSTunnel} = require('./proxy');
 //      */
 // }
 
+const AudioStreamingCodecType = {
+    PCMU: "PCMU",
+    PCMA: "PCMA",
+    AAC_ELD: "AAC-eld",
+    OPUS: "OPUS",
+    MSBC: "mSBC",
+    AMR: "AMR",
+    AMR_WB: "AMR-WB"
+}
+const AudioStreamingSamplerate = {
+    KHZ_8: 8,
+    KHZ_16: 16,
+    KHZ_24: 24
+}
+
 const FFMPEGH264ProfileNames = [
     "baseline",
     "main",
@@ -54,7 +69,7 @@ class BlinkCameraDelegate {
     }
 
     get ffmpegDebugOutput() {
-        return false;
+        return true;
     }
 
     get controller() {
@@ -72,8 +87,8 @@ class BlinkCameraDelegate {
                             levels: [this.hap.H264Level.LEVEL3_1, this.hap.H264Level.LEVEL3_2, this.hap.H264Level.LEVEL4_0],
                         },
                         resolutions: [
-                            [1920, 1080, 30], // width, height, framerate
-                            [1280, 960, 30],
+                            // [1920, 1080, 30], // width, height, framerate
+                            // [1280, 960, 30],
                             [1280, 720, 30],
                             [1024, 768, 30],
                             [640, 480, 30],
@@ -85,18 +100,15 @@ class BlinkCameraDelegate {
                             [320, 180, 30],
                         ],
                     },
-                    /* audio option is omitted, as it is not supported in this example; HAP-NodeJS will fake an appropriate audio codec
-                    audio: {
-                        comfort_noise: false, // optional, default false
-                        codecs: [
-                            {
-                                type: AudioStreamingCodecType.OPUS,
-                                audioChannels: 1, // optional, default 1
-                                samplerate: [AudioStreamingSamplerate.KHZ_16, AudioStreamingSamplerate.KHZ_24], // 16 and 24 must be present for AAC-ELD or OPUS
-                            },
-                        ],
-                    },
-                    // */
+                    // audio option is omitted, as it is not supported in this example; HAP-NodeJS will fake an appropriate audio codec
+                    // audio: {
+                    //     codecs: [
+                    //         {
+                    //             type: AudioStreamingCodecType.AAC_ELD,
+                    //             samplerate: AudioStreamingSamplerate.KHZ_16,
+                    //         },
+                    //     ],
+                    // },
                 }
             }
 
@@ -204,26 +216,42 @@ class BlinkCameraDelegate {
                 const videoSRTP = sessionInfo.videoSRTP.toString("base64");
 
                 this.log.info(`Starting video stream (${width}x${height}, ${fps} fps, ${maxBitrate} kbps, ${mtu} mtu)...`);
-                let inputCommand = `-loop 1 -f image2 -i ${rtspProxy.path}`;
+                const videoffmpegCommand = [];
+
                 if (rtspProxy.proxyServer) {
-                    inputCommand = `-i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`;
+                    videoffmpegCommand.push(`-i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`);
+                }
+                else {
+                    videoffmpegCommand.push(`-loop 1 -f image2 -i ${rtspProxy.path}`);
                 }
 
-                let videoffmpegCommand = `${inputCommand} -map 0:0 ` +
-                    `-c:v libx264 -pix_fmt yuv420p -r ${fps} -an -sn -dn -b:v ${maxBitrate}k -bufsize ${2 * maxBitrate}k -maxrate ${maxBitrate}k ` +
-                    `-payload_type ${payloadType} -ssrc ${ssrc} -f rtp `; // -profile:v ${profile} -level:v ${level}
+                videoffmpegCommand.push(...[
+                    //`-map 0:a`,
+                    //`-ac 1 -ar 16k`, // audio channel: 1, audio sample rate: 16k
+                    //`-b:a 24k -bufsize 24k`,
+                    //`-flags +global_header`,
+                    // '-acodec copy',
+                    `-map 0:0`,
+                    '-vcodec copy',
+                    // `-c:v libx264 -pix_fmt yuv420p -r ${fps}`,
+                    // `-an -sn -dn`, //disable audio, subtitles, data
+                    // `-b:v ${maxBitrate}k -bufsize ${2 * maxBitrate}k -maxrate ${maxBitrate}k`,
+                    // `-profile:v ${profile} -level:v ${level}`,
+                    `-payload_type ${payloadType}`,
+                    `-ssrc ${ssrc} -f rtp`,
+                ]);
 
                 if (cryptoSuite === this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80) { // actually ffmpeg just supports AES_CM_128_HMAC_SHA1_80
-                    videoffmpegCommand += `-srtp_out_suite AES_CM_128_HMAC_SHA1_80 -srtp_out_params ${videoSRTP} s`;
+                    videoffmpegCommand.push(`-srtp_out_suite AES_CM_128_HMAC_SHA1_80 -srtp_out_params ${videoSRTP}`);
                 }
 
-                videoffmpegCommand += `rtp://${address}:${videoPort}?rtcpport=${videoPort}&localrtcpport=${videoPort}&pkt_size=${mtu}`;
+                videoffmpegCommand.push(`${cryptoSuite === this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80 ? 'srtp' : 'rtp'}://${address}:${videoPort}?rtcpport=${videoPort}&localrtcpport=${videoPort}&pkt_size=${mtu}`);
 
                 if (this.ffmpegDebugOutput) {
-                    this.log.debug("FFMPEG command: ffmpeg " + videoffmpegCommand);
+                    this.log.debug("FFMPEG command: ffmpeg " + videoffmpegCommand.flat().flatMap(c => c.split(' ')).join(' '));
                 }
 
-                const ffmpegVideo = spawn('ffmpeg', videoffmpegCommand.split(' '), {env: process.env});
+                const ffmpegVideo = spawn('ffmpeg', videoffmpegCommand.flat().flatMap(c => c.split(' ')), {env: process.env});
                 this.ongoingSessions.set(sessionId, ffmpegVideo);
                 this.pendingSessions.delete(sessionId);
 

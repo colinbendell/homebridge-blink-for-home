@@ -1,4 +1,4 @@
-const Blink = require("./blink");
+const {Blink} = require("./blink");
 
 // Blink Security Platform Plugin for HomeBridge (https://github.com/colinbendell/homebridge-blink-for-home)
 //
@@ -46,13 +46,13 @@ class HomebridgeBlink {
 
         try {
             this.blink = await this.setupBlink();
+            // TODO: signal updates? (alarm state?)
             // await this.conn.subscribe(handleUpdates);
             // await this.conn.observe(handleUpdates);
 
-            const data = await this.blink.initData();
+            const data = [...this.blink.networks.values(), ...this.blink.cameras.values()];
             this.accessoryLookup = data.map(entry => entry.createAccessory(this.cachedAccessories));
 
-            //TODO: clean up cached accessory registration (merge instead of remove + add)
             this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.cachedAccessories);
             this.cachedAccessories = [];
             this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.accessoryLookup.map(blinkDevice => blinkDevice.accessory || blinkDevice));
@@ -82,6 +82,7 @@ class HomebridgeBlink {
             this.poll()
         }
 
+        await this.blink.refreshCameraThumbnail();
         await this.blink.refreshData();
         this.timerID = setInterval(intervalPoll, BLINK_STATUS_EVENT_LOOP * 1000);
     }
@@ -90,11 +91,19 @@ class HomebridgeBlink {
         if (!this.config.username && !this.config.password) {
             throw('Missing Blink {\'email\',\'password\'} in config.json');
         }
+        const clientUUID = this.api.hap.uuid.generate(`${this.config.name}${this.config.username}`);
+        const auth = {
+            email: this.config.username,
+            password: this.config.password,
+            pin: this.config.pin,
+        }
 
-        const clientID = this.api.hap.uuid.generate(`${this.config.name}${this.config.username}`);
-        const blink = new Blink(this.config.username, this.config.password, clientID, this.config.pin, this.api, this.log, this.config);
+        const blink = new Blink(clientUUID, auth, this.api, this.log, this.config);
         try {
             await blink.authenticate();
+            await blink.refreshData();
+            //TODO: move this off the startup loop?
+            if (this.config["enable-startup-diagnostic"]) await this.diagnosticDebug();
         }
         catch (e) {
             this.log.error(e);

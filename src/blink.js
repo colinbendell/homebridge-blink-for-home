@@ -13,7 +13,7 @@ const MOTION_TRIGGER_DECAY = 90; //90s
 const STATUS_POLL = 45;
 
 function setupHAP(homebridgeAPI) {
-    if (!Accessory) {
+    if (!Accessory && homebridgeAPI) {
         hap = homebridgeAPI.hap;
         Accessory = homebridgeAPI.platformAccessory;
         Categories = homebridgeAPI.hap.Categories;
@@ -28,16 +28,20 @@ class BlinkDevice {
         this.blink = blink;
         this._data = data;
         this.log = blink.log || console.log;
+        this._prefix = "Blink ";
     }
 
     get networkID() { return this.data.network_id || this.data.id; }
-    get name() { return `Blink ${this.data.name}`; }
+    get name() { return `${this._prefix}${this.data.name}`; }
     get serial() { return this.data.serial; }
     get firmware() { return this.data.fw_version; }
     get model() { return this.data.type; }
     get updatedAt() { return Date.parse(this.data.updated_at) || 0; }
 
-    get data() { return this.accessory && this.accessory.context.data ? this.accessory.context.data : this._data; }
+    get data() {
+        if (this.accessory && this.accessory.context.data) return this.accessory.context.data;
+        return this._data;
+    }
     set data(newInfo) {
         this._data = newInfo instanceof BlinkDevice ? newInfo.data : newInfo;
         if (this.accessory) this.accessory.context.data = this._data;
@@ -114,6 +118,7 @@ class BlinkNetwork extends BlinkDevice{
     get serial() { return (this.data.syncModule || {}).serial; }
     get firmware() { return (this.data.syncModule || {}).fw_version; }
     get model() { return (this.data.syncModule || {}).type; }
+    get status() { return (this.data.syncModule || {}).status; }
 
     get armed() { return Boolean(this.data.armed); }
     get armedAt() { return this.accessory.context.armedAt || 0; }
@@ -182,15 +187,23 @@ class BlinkCamera extends BlinkDevice {
     constructor(data, blink) {
         super(data, blink);
         this.id = data.id;
-        this.cameraID = data.id;
         this.cacheThumbnail = new Map();
     }
 
+    get cameraID() { return this.data.id; }
     get canonicalID() { return `Blink:Network:${this.networkID}:Camera:${this.cameraID}`; }
+    get status() { return this.data.status && this.data.status !== "done" ? this.data.status : this.network.status; }
     get armed() { return this.network.armed; }
     get enabled() { return Boolean(this.data.enabled); }
     get thumbnail() { return this.data.thumbnail; }
     get network() { return this.blink.networks.get(this.networkID); }
+    get privacyMode() { return this.getPrivacyMode(); }
+    get thumbnailCreatedAt() {
+        if (this.data.thumbnail_created_at) return this.data.thumbnail_created_at;
+        const [, year, month, day, hour, minute] = /(\d{4})_(\d\d)_(\d\d)__(\d\d)_(\d\d)(am|pm)?$/i.exec(this.thumbnail) || [];
+        this.data.thumbnail_created_at = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || 0;
+        return this.data.thumbnail_created_at;
+    }
 
     getTemperature() { return fahrenheitToCelsius(this.data.signals.temp) || null; }
     async getBattery() {
@@ -232,6 +245,7 @@ class BlinkCamera extends BlinkDevice {
         if (this.enabled !== Boolean(target)) await this.blink.setCameraMotionSensorState(this.networkID, this.cameraID, target)
     }
     getPrivacyMode() {
+        if (!this.accessory) return false;
         if (this.blink.config["hide-privacy-switch"]) return false;
         return this.accessory.context.privacyMode !== undefined ? this.accessory.context.privacyMode : true;
     }
@@ -325,8 +339,8 @@ class BlinkCamera extends BlinkDevice {
 }
 
 class Blink {
-    constructor(email, password, clientUUID, pin = null, homebridgeAPI, logger, config = {}) {
-        this.blinkAPI = new BlinkAPI(email, password, clientUUID, pin);
+    constructor(clientUUID, auth, homebridgeAPI, logger, config = {}) {
+        this.blinkAPI = new BlinkAPI(clientUUID, auth);
         logger = logger || console.log;
 
         if (logger.debugEnabled) {
@@ -347,7 +361,25 @@ class Blink {
         }
         this.blinkAPI.log = this.log;
         this.config = config;
-        setupHAP(homebridgeAPI); // this is not really that ideal and should be refactored
+        if (homebridgeAPI) setupHAP(homebridgeAPI); // this is not really that ideal and should be refactored
+    }
+
+    async _commandWait(networkID, commandID) {
+        if (!networkID || !commandID) return;
+        let cmd = await this.blinkAPI.getCommand(networkID || this.networkID, commandID);
+        while (cmd.complete === false) {
+            await sleep(400);
+            cmd = await this.blinkAPI.getCommand(networkID || this.networkID, commandID);
+        }
+        return cmd;
+    }
+
+    async _commandWaitAll(commands = []) {
+        return await Promise.all([commands].flatMap(c => this._commandWait(c.network_id, c.id)));
+    }
+
+    async getUrl(url) {
+        return await this.blinkAPI.getUrl(url);
     }
 
     async diagnosticDebug() {
@@ -432,55 +464,29 @@ class Blink {
         this.log('====== END BLINK DEBUG ======');
     }
 
-    async _commandWait(networkID, commandID) {
-        if (!networkID || !commandID) return;
-        let cmd = await this.blinkAPI.getCommand(networkID || this.networkID, commandID);
-        while (cmd.complete === false) {
-            await sleep(400);
-            cmd = await this.blinkAPI.getCommand(networkID || this.networkID, commandID);
-        }
-        return cmd;
-    }
-
-    async _commandWaitAll(commands = []) {
-        return await Promise.all([commands].flatMap(c => this._commandWait(c.network_id, c.id)));
-    }
-
-    async forceRefreshData() {
-        await this.blinkAPI.getAccountHomescreen(0);
-        return await this.refreshData()
-    }
-
-    async refreshData() {
-        const homescreen = await this.blinkAPI.getAccountHomescreen(this.config["camera-status-polling-seconds"] || STATUS_POLL);
+    async refreshData(force = false) {
+        const ttl = force ? 0 : (this.config["camera-status-polling-seconds"] || STATUS_POLL);
+        const homescreen = await this.blinkAPI.getAccountHomescreen(ttl);
         homescreen.cameras.push(...homescreen.owls);
         for (const network of homescreen.networks) {
             network.syncModule = homescreen.sync_modules.filter(sm => sm.network_id === network.id)[0];
-        //     network.cameras = homescreen.cameras.filter(c => c.network_id === network.id);
-        // }
-        // for (const camera of homescreen.cameras) {
-        //     camera.network = homescreen.networks.filter(n => n.id === camera.network_id)[0];
         }
 
         if (this.networks && this.networks.size > 0) {
             for (const n of homescreen.networks) {
-                this.networks.get(n.id).data = n;
+                //TODO: new networks?
+                if (this.networks.has(n.id)) this.networks.get(n.id).data = n;
             }
             for (const c of homescreen.cameras) {
-                this.cameras.get(c.id).data = c;
+                //TODO: new cameras?
+                if (this.cameras.has(c.id)) this.cameras.get(c.id).data = c;
             }
         }
+        else {
+            this.networks = new Map(homescreen.networks.map(n => [n.id, new BlinkNetwork(n, this)]));
+            this.cameras = new Map(homescreen.cameras.map(c => [c.id, new BlinkCamera(c, this)]));
+        }
         return homescreen;
-    }
-
-    async initData() {
-        if (this.config["enable-startup-diagnostic"]) await this.diagnosticDebug();
-        const homescreen = await this.refreshData();
-
-        this.networks = new Map(homescreen.networks.map(n => [n.id, new BlinkNetwork(n, this)]));
-        this.cameras = new Map(homescreen.cameras.map(c => [c.id, new BlinkCamera(c, this)]));
-
-        return [...this.networks.values(), ...this.cameras.values()];
     }
 
     async authenticate() {
@@ -496,9 +502,8 @@ class Blink {
             const cmd = await this.blinkAPI.disarmNetwork(networkID);
             await this._commandWaitAll(cmd);
         }
-        await this.forceRefreshData();
+        await this.refreshData(true);
     }
-
     async setCameraMotionSensorState(networkID, cameraID, enabled = true) {
         const camera = this.cameras.get(cameraID);
         if (camera.model === "owl") return;
@@ -511,45 +516,50 @@ class Blink {
             const cmd = await this.blinkAPI.disableCameraMotion(networkID, cameraID);
             await this._commandWaitAll(cmd);
         }
-        await this.forceRefreshData();
+        await this.refreshData(true);
     }
-    async refreshCameraThumbnail(networkID, cameraID) {
-        if (!networkID || !cameraID) return;
+    async refreshCameraThumbnail(networkID, cameraID, force = false) {
+        const cameras = [...this.cameras.values()]
+            .filter(camera => !networkID || camera.networkID === networkID)
+            .filter(camera => !cameraID || camera.cameraID === cameraID);
 
-        const camera = this.cameras.get(cameraID);
-        if (camera.model === "owl") {
-            const cmd = await this.blinkAPI.updateOwlThumbnail(networkID, cameraID);
-            await this._commandWaitAll(cmd);
-        }
-        else {
-            const cmd = await this.blinkAPI.updateCameraThumbnail(networkID, cameraID);
-            await this._commandWaitAll(cmd);
-        }
+        const status = await Promise.all(cameras.map(async camera => {
+            if (force || camera.armed || !camera.privacyMode) {
+                //TODO: check that it is on battery?
+                const ttl = this.config["avoid-thumbnail-battery-drain"] === false ? THUMBNAIL_TTL_MIN : THUMBNAIL_TTL_MAX;
+                if (Date.now() >= camera.thumbnailCreatedAt + (ttl * 1000)) {
+                    try {
+                        if (camera.model === "owl") {
+                            const cmd = await this.blinkAPI.updateOwlThumbnail(networkID, cameraID);
+                            await this._commandWaitAll(cmd);
+                        }
+                        else {
+                            const cmd = await this.blinkAPI.updateCameraThumbnail(networkID, cameraID);
+                            await this._commandWaitAll(cmd);
+                        }
+                        return true; // we updated a camera
+                    }
+                    catch (e) {
+                        // network error? just eat it and retry later
+                        console.log(e);
+                        return false;
+                    }
+                }
+            }
+        }));
 
-        await this.forceRefreshData();
+        // only refresh the root data if we tripped any of the thumbnails to refresh
+        if (status.includes(true)) await this.refreshData(true);
     }
+
     async getCameraLastThumbnail(networkID, cameraID) {
         try {
-            //TODO: check that it is on battery?
-            const ttl = this.config["avoid-thumbnail-battery-drain"] === false ? THUMBNAIL_TTL_MIN : THUMBNAIL_TTL_MAX;
-            const res = this.networks.get(networkID).armed ? await this.blinkAPI.getMediaChange(ttl) : {};
-            const media = (res.media || [])
-                .filter(m => m.network_id === networkID)
-                .filter(m => !cameraID || m.device_id === cameraID)
-                .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
-            const latestMedia = media[0] || {};
-
-            let camera = this.cameras.get(cameraID);
-            const [, year, month, day, hour, minute] = /(\d{4})_(\d\d)_(\d\d)__(\d\d)_(\d\d)(am|pm)?$/i.exec(camera.thumbnail) || [];
-            const thumbnailCreatedAt = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || 0;
-
-            if (Date.now() >= Math.max(Date.parse(latestMedia.created_at) || 0, thumbnailCreatedAt) + ttl * 1000) {
-                await this.refreshCameraThumbnail(networkID, cameraID);
-            }
-            else if ((Date.parse(latestMedia.created_at) || 0) > thumbnailCreatedAt) {
+            const latestMedia = await this.getCameraLastMotion(networkID, cameraID);
+            const camera = this.cameras.get(cameraID);
+            if (latestMedia && latestMedia.created_at && Date.parse(latestMedia.created_at) > camera.thumbnailCreatedAt()) {
                 return latestMedia.thumbnail;
             }
-            return this.cameras.get(cameraID).thumbnail;
+            return camera.thumbnail;
         }
         catch (e) {this.log.error(e);}
 
@@ -598,9 +608,6 @@ class Blink {
         }
         return res;
     }
-    async getUrl(url) {
-        return await this.blinkAPI.getUrl(url);
-    }
 }
 
-module.exports = Blink;
+module.exports = {Blink};

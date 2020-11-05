@@ -3,50 +3,51 @@ const fetch = require('node-fetch');
 const http = require('http');
 const https = require('https');
 const {sleep} = require('./utils');
+const readini = require('./readini');
 
-const httpAgent = new http.Agent({
-    keepAlive: true,
-    maxSockets: 1
-});
-const httpsAgent = new https.Agent({
-    keepAlive: true,
-    maxSockets: 1
-});
-const agent = function(_parsedURL) {
-    if (_parsedURL.protocol === 'http:') {
-        return httpAgent;
-    }
-    else {
-        return httpsAgent;
-    }
-}
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 1 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 1 });
+const agent = (parsedURL) => parsedURL.protocol === 'http:' ? httpAgent : httpsAgent;
 
+// crypto.randomBytes(16).toString("hex").toUpperCase().replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5")
+const DEFAULT_BLINK_CLIENT_UUID = "1EAF7C88-2AAB-BC51-038D-DB96D6EEE22F";
 const BLINK_API_HOST = "immedia-semi.com";
-
 const CACHE = new Map();
 
 /**
  * https://github.com/MattTW/BlinkMonitorProtocol
  */
 class BlinkAPI {
-    constructor(email, password, clientUUID, pin = null, notificationKey) {
-        this.email = email;
-        this.password = password;
-        this.clientUUID = clientUUID || crypto.randomBytes(16).toString("hex").toUpperCase().replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5");
-        this.pin = pin;
-        this.notificationKey = notificationKey || crypto.randomBytes(32).toString("hex");
-        this.region = "prod";
-        this._log = console.log;
+    constructor(clientUUID, auth = {path: "~/.blink", section: 'default'}) {
+        let ini = readini(process.env.BLINK || auth.path, process.env.BLINK_SECTION || auth.section);
+        this.auth = Object.assign({
+            email: process.env.BLINK_EMAIL || ini.email,
+            password: process.env.BLINK_PASSWORD || ini.password,
+            pin: process.env.BLINK_PIN || ini.pin,
+            clientUUID: clientUUID || process.env.BLINK_CLIENT_UUID || ini.client || DEFAULT_BLINK_CLIENT_UUID,
+            notificationKey: process.env.BLINK_NOTIFICATION_KEY || ini.notification || crypto.randomBytes(32).toString("hex")
+        }, auth);
+
+        this._log = (...args) => console.log(...args);
         this._log.info = console.info;
         this._log.debug = console.debug;
         this._log.error = console.error;
     }
-    
-    init(email, password, clientUUID, pin = null) {
-        this.email = email;
-        this.password = password;
-        this.clientUUID = clientUUID;
-        this.pin = pin;
+
+    set region(val) { if (val) this._region = val; }
+    get region() { return this._region || "prod"; }
+    set token(val) { if (val) this._token = val; }
+    get token() { return this._token; }
+    set accountID(val) { if (val) this._accountID = val; }
+    get accountID() { return this._accountID; }
+    set clientID(val) { if (val) this._clientID = val; }
+    get clientID() { return this._clientID; }
+
+    init(token, accountID, clientID, region = "prod") {
+        this.token = token;
+        this.accountID = accountID;
+        this.clientID = clientID;
+        this.region = region;
     }
     
     get log() { return this._log; }
@@ -236,7 +237,7 @@ class BlinkAPI {
      **/
     async login(force = false, email = null, password = null, clientUUID = null, client = {}) {
         if (!force && this.token) return;
-        if (!this.email || !this.password) throw new Error('Email or Password is blank');
+        if (!this.auth.email || !this.auth.password) throw new Error('Email or Password is blank');
 
         client = client || {};
         const data = {
@@ -244,12 +245,12 @@ class BlinkAPI {
             "client_name": client.name || "unknown",
             "client_type": client.type || "ios",
             "device_identifier": client.device || "iPhone12,3",
-            "email": email || this.email,
-            "notification_key": client.notificationKey || this.notificationKey,
+            "email": email || this.auth.email,
+            "notification_key": client.notificationKey || this.auth.notificationKey,
             "os_version": client.os || "14.2",
-            "password": password || this.password,
+            "password": password || this.auth.password,
             "reauth": "true",
-            "unique_id": clientUUID || this.clientUUID
+            "unique_id": clientUUID || this.auth.clientUUID
         }
 
         const res = await this.post("/api/v4/account/login", data, false);
@@ -259,12 +260,11 @@ class BlinkAPI {
             throw new Error(res.message)
         }
         else {
-            this.accountID = (res.account || {}).id || this.accountID;
-            this.clientID = (res.client || {}).id || this.clientID;
-            this.token = (res.authtoken || {}).authtoken || this.token;
-            this.region = (res.region || {}).tier || this.region;
+            const data = Object.assign({authtoken:{}, account:{}, client:{}, region:{}}, res);
 
-            if ((res.client || {}).verification_required && this.pin) await this.verify();
+            this.init(res.authtoken.authtoken, res.account.id, res.client.id, res.region.tier)
+
+            if (res.client.verification_required && this.auth.pin) await this.verify();
         }
 
         return res;
@@ -306,7 +306,7 @@ class BlinkAPI {
      **/
     async verify(pin) {
         const data = {
-            pin: pin || this.pin
+            pin: pin || this.auth.pin
         }
         const res = await this.post(`/api/v4/account/{accountID}/client/{clientID}/pin/verify`, data, false);
 

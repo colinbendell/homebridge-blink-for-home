@@ -526,22 +526,22 @@ class Blink {
         const status = await Promise.all(cameras.map(async camera => {
             if (force || camera.armed || !camera.privacyMode) {
                 //TODO: check that it is on battery?
-                const ttl = this.config["avoid-thumbnail-battery-drain"] === false ? THUMBNAIL_TTL_MIN : THUMBNAIL_TTL_MAX;
+                const ttl = this.config["thumbnail-refresh-ttl"] || this.config["avoid-thumbnail-battery-drain"] === false ? THUMBNAIL_TTL_MIN : THUMBNAIL_TTL_MAX;
                 if (Date.now() >= camera.thumbnailCreatedAt + (ttl * 1000)) {
                     try {
                         if (camera.model === "owl") {
-                            const cmd = await this.blinkAPI.updateOwlThumbnail(networkID, cameraID);
+                            const cmd = await this.blinkAPI.updateOwlThumbnail(camera.networkID, camera.cameraID);
                             await this._commandWaitAll(cmd);
                         }
                         else {
-                            const cmd = await this.blinkAPI.updateCameraThumbnail(networkID, cameraID);
+                            const cmd = await this.blinkAPI.updateCameraThumbnail(camera.networkID, camera.cameraID);
                             await this._commandWaitAll(cmd);
                         }
                         return true; // we updated a camera
                     }
                     catch (e) {
                         // network error? just eat it and retry later
-                        console.log(e);
+                        console.error(e);
                         return false;
                     }
                 }
@@ -556,7 +556,7 @@ class Blink {
         try {
             const latestMedia = await this.getCameraLastMotion(networkID, cameraID);
             const camera = this.cameras.get(cameraID);
-            if (latestMedia && latestMedia.created_at && Date.parse(latestMedia.created_at) > camera.thumbnailCreatedAt()) {
+            if (latestMedia && latestMedia.created_at && Date.parse(latestMedia.created_at) > camera.thumbnailCreatedAt) {
                 return latestMedia.thumbnail;
             }
             return camera.thumbnail;

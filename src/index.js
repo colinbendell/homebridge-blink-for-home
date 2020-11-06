@@ -103,7 +103,7 @@ class HomebridgeBlink {
             await blink.authenticate();
             await blink.refreshData();
             //TODO: move this off the startup loop?
-            if (this.config["enable-startup-diagnostic"]) await this.diagnosticDebug();
+            if (this.config["enable-startup-diagnostic"]) await blink.diagnosticDebug();
         }
         catch (e) {
             this.log.error(e);

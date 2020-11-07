@@ -125,12 +125,12 @@ class BlinkNetwork extends BlinkDevice{
     set armedAt(val) { this.accessory.context.armedAt = val; }
     get armedState() { return this.accessory.context.armed; }
     set armedState(val) { this.accessory.context.armed = val; }
-    get cameras() { return [...this.blink.cameras.values()].filter(c => c.network_id === this.networkID); }
+    get cameras() { return [...this.blink.cameras.values()].filter(c => c.networkID === this.networkID); }
 
     async getArmed() {
         if (this.armed) {
             //const triggerStart = this.network.updatedAt - ARMED_DELAY*1000;
-            const triggerStart = Math.max(this.armedAt, this.updatedAt) - ARMED_DELAY*1000;
+            const triggerStart = Math.max(this.armedAt, this.updatedAt) + ARMED_DELAY*1000;
 
             if (triggerStart && Date.now() >= triggerStart) {
                 const cameraMotionDetected = await Promise.all(this.cameras.map(c => c.getMotionDetected()));
@@ -204,6 +204,9 @@ class BlinkCamera extends BlinkDevice {
         this.data.thumbnail_created_at = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || 0;
         return this.data.thumbnail_created_at;
     }
+    get isBatteryPower()  {
+        return (this.data.battery !== undefined)
+    }
 
     getTemperature() { return fahrenheitToCelsius(this.data.signals.temp) || null; }
     async getBattery() {
@@ -247,9 +250,12 @@ class BlinkCamera extends BlinkDevice {
     getPrivacyMode() {
         if (!this.accessory) return false;
         if (this.blink.config["hide-privacy-switch"]) return false;
-        return this.accessory.context.privacyMode !== undefined ? this.accessory.context.privacyMode : true;
+        return this.accessory.context._privacy !== undefined ? this.accessory.context._privacy : true;
     }
-    setPrivacyMode(val) { return this.accessory.context.privacyMode = val; }
+    setPrivacyMode(val) {
+        if (!this.accessory || this.blink.config["hide-privacy-switch"]) return;
+        return this.accessory.context._privacy = val;
+    }
 
     async getThumbnail() {
         // if we are in privacy mode, use a placeholder image
@@ -260,6 +266,14 @@ class BlinkCamera extends BlinkDevice {
                 }
 
                 return this.cacheThumbnail.get('privacy.png');
+            }
+            else if (!this.enabled) {
+                if (!this.cacheThumbnail.has('disabled.png')) {
+                    this.cacheThumbnail.set('disabled.png', fs.readFileSync(`${__dirname}/disabled.png`));
+                }
+
+                return this.cacheThumbnail.get('disabled.png');
+
             }
         }
 
@@ -277,6 +291,9 @@ class BlinkCamera extends BlinkDevice {
         if (!this.armed || !this.enabled) {
             if (this.getPrivacyMode()) {
                 return `${__dirname}/privacy.png`;
+            }
+            else if (!this.enabled) {
+                return `${__dirname}/disabled.png`;
             }
         }
         const data = await this.blink.getCameraLiveView(this.networkID, this.cameraID);
@@ -301,29 +318,29 @@ class BlinkCamera extends BlinkDevice {
         const microphone = this.addService(Service.Microphone);
         this.bindCharacteristic(microphone, Characteristic.Mute, 'Microphone', () => false);
 
-        const motionService = this.addService(Service.MotionSensor, `${this.name} Motion Detected`, 'motion-sensor.' + this.serial);
+        const motionService = this.addService(Service.MotionSensor, `Motion Detected`, 'motion-sensor.' + this.serial);
         this.bindCharacteristic(motionService, Characteristic.MotionDetected, 'Motion', this.getMotionDetected);
         this.bindCharacteristic(motionService, Characteristic.StatusActive, 'Motion Sensor Active', this.getMotionDetectActive);
 
         if (this.model !== "owl") {
             // Battery Levels are only available in non Minis
-            const batteryService = this.addService(Service.BatteryService, `${this.name} Battery`, 'battery-sensor.' + this.serial);
+            const batteryService = this.addService(Service.BatteryService, `Battery`, 'battery-sensor.' + this.serial);
             this.bindCharacteristic(batteryService, Characteristic.BatteryLevel, 'Battery Level', this.getBattery);
             this.bindCharacteristic(batteryService, Characteristic.ChargingState, 'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
             this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery, 'Battery LowBattery', this.getLowBattery);
 
             // No idea how to set the motion enabled/disabled on minis
-            const enabledSwitch = this.addService(Service.Switch, `${this.name} Motion Activated`, 'enabled.' + this.serial);
+            const enabledSwitch = this.addService(Service.Switch, `Enabled`, 'enabled.' + this.serial);
             this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
 
             // no temperaure sensor on the minis
-            const tempService = this.addService(Service.TemperatureSensor, `${this.name} Temperature`, 'temp-sensor.' + this.serial);
+            const tempService = this.addService(Service.TemperatureSensor, `Temperature`, 'temp-sensor.' + this.serial);
             this.bindCharacteristic(tempService, Characteristic.CurrentTemperature, 'Temperature', this.getTemperature);
             this.bindCharacteristic(tempService, Characteristic.StatusActive, 'Temperature Sensor Active', () => true);
         }
 
         if (!this.blink.config["hide-privacy-switch"]) {
-            const privacyModeService = this.addService(Service.Switch, `${this.name} Privacy Mode`, 'privacy.' + this.serial);
+            const privacyModeService = this.addService(Service.Switch, `Privacy Mode`, 'privacy.' + this.serial);
             this.bindCharacteristic(privacyModeService, Characteristic.On, 'Privacy Mode', this.getPrivacyMode, this.setPrivacyMode);
         }
 
@@ -525,24 +542,27 @@ class Blink {
 
         const status = await Promise.all(cameras.map(async camera => {
             if (force || camera.armed || !camera.privacyMode) {
-                //TODO: check that it is on battery?
-                const ttl = this.config["thumbnail-refresh-ttl"] || this.config["avoid-thumbnail-battery-drain"] === false ? THUMBNAIL_TTL_MIN : THUMBNAIL_TTL_MAX;
-                if (Date.now() >= camera.thumbnailCreatedAt + (ttl * 1000)) {
-                    try {
-                        if (camera.model === "owl") {
-                            const cmd = await this.blinkAPI.updateOwlThumbnail(camera.networkID, camera.cameraID);
-                            await this._commandWaitAll(cmd);
-                        }
-                        else {
-                            const cmd = await this.blinkAPI.updateCameraThumbnail(camera.networkID, camera.cameraID);
-                            await this._commandWaitAll(cmd);
-                        }
-                        return true; // we updated a camera
+                if (force || camera.enabled) {
+                    let ttl = THUMBNAIL_TTL_MAX;
+                    if (!camera.isBatteryPower || this.config["avoid-thumbnail-battery-drain"] === false) {
+                        ttl = this.config["camera-thumbnail-refresh-seconds"] || THUMBNAIL_TTL_MIN;
                     }
-                    catch (e) {
-                        // network error? just eat it and retry later
-                        console.error(e);
-                        return false;
+                    if (Date.now() >= camera.thumbnailCreatedAt + (ttl * 1000)) {
+                        try {
+                            if (camera.model === "owl") {
+                                const cmd = await this.blinkAPI.updateOwlThumbnail(camera.networkID, camera.cameraID);
+                                await this._commandWaitAll(cmd);
+                            }
+                            else {
+                                const cmd = await this.blinkAPI.updateCameraThumbnail(camera.networkID, camera.cameraID);
+                                await this._commandWaitAll(cmd);
+                            }
+                            return true; // we updated a camera
+                        } catch (e) {
+                            // network error? just eat it and retry later
+                            console.error(e);
+                            return false;
+                        }
                     }
                 }
             }

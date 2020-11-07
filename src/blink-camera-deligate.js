@@ -9,6 +9,7 @@ const {
     reservePorts,
     releasePorts
 } = require('@homebridge/camera-utils');
+const pathToFfmpeg = require('ffmpeg-for-homebridge')
 
 const {Http2TLSTunnel} = require('./proxy');
 // class SessionInfo {
@@ -128,8 +129,8 @@ class BlinkCameraDelegate {
 
     // called when iOS request rtp setup
     async prepareStream(request, callback) {
-        this.log.info('prepareStream');
-        this.log.info(request);
+        this.log.debug('prepareStream');
+        this.log.debug(request);
 
         const sessionId = request.sessionID;
         const targetAddress = request.targetAddress;
@@ -219,24 +220,32 @@ class BlinkCameraDelegate {
                 const videoffmpegCommand = [];
 
                 if (rtspProxy.proxyServer) {
-                    videoffmpegCommand.push(`-i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`);
+                    videoffmpegCommand.push(...[
+                        `-i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`,
+                        //`-map 0:a`,
+                        //`-ac 1 -ar 16k`, // audio channel: 1, audio sample rate: 16k
+                        //`-b:a 24k -bufsize 24k`,
+                        //`-flags +global_header`,
+                        // '-acodec copy',
+                        `-map 0:0`,
+                        '-vcodec copy',
+                        // `-c:v libx264 -pix_fmt yuv420p -r ${fps}`,
+                        // `-an -sn -dn`, //disable audio, subtitles, data
+                        // `-b:v ${maxBitrate}k -bufsize ${2 * maxBitrate}k -maxrate ${maxBitrate}k`,
+                        // `-profile:v ${profile} -level:v ${level}`,
+                    ]);
                 }
                 else {
-                    videoffmpegCommand.push(`-loop 1 -f image2 -i ${rtspProxy.path}`);
+                    videoffmpegCommand.push(...[
+                        `-loop 1 -f image2 -i ${rtspProxy.path}`,
+                        `-c:v libx264 -pix_fmt yuv420p -r ${fps}`,
+                        `-an -sn -dn`, //disable audio, subtitles, data
+                        `-b:v ${maxBitrate}k -bufsize ${2 * maxBitrate}k -maxrate ${maxBitrate}k`,
+                        `-profile:v ${profile} -level:v ${level}`,
+                    ]);
                 }
 
                 videoffmpegCommand.push(...[
-                    //`-map 0:a`,
-                    //`-ac 1 -ar 16k`, // audio channel: 1, audio sample rate: 16k
-                    //`-b:a 24k -bufsize 24k`,
-                    //`-flags +global_header`,
-                    // '-acodec copy',
-                    `-map 0:0`,
-                    '-vcodec copy',
-                    // `-c:v libx264 -pix_fmt yuv420p -r ${fps}`,
-                    // `-an -sn -dn`, //disable audio, subtitles, data
-                    // `-b:v ${maxBitrate}k -bufsize ${2 * maxBitrate}k -maxrate ${maxBitrate}k`,
-                    // `-profile:v ${profile} -level:v ${level}`,
                     `-payload_type ${payloadType}`,
                     `-ssrc ${ssrc} -f rtp`,
                 ]);
@@ -251,7 +260,7 @@ class BlinkCameraDelegate {
                     this.log.debug("FFMPEG command: ffmpeg " + videoffmpegCommand.flat().flatMap(c => c.split(' ')).join(' '));
                 }
 
-                const ffmpegVideo = spawn('ffmpeg', videoffmpegCommand.flat().flatMap(c => c.split(' ')), {env: process.env});
+                const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', videoffmpegCommand.flat().flatMap(c => c.split(' ')), {env: process.env});
                 this.ongoingSessions.set(sessionId, ffmpegVideo);
                 this.pendingSessions.delete(sessionId);
 
@@ -276,7 +285,7 @@ class BlinkCameraDelegate {
                     const message = "[Video] ffmpeg exited with code: " + code + " and signal: " + signal;
 
                     if (code == null || code === 255) {
-                        this.log.info(message + " (Video stream stopped!)");
+                        this.log.debug(message + " (Video stream stopped!)");
                     }
                     else {
                         this.log.error(message + " (error)");
@@ -294,7 +303,7 @@ class BlinkCameraDelegate {
                 break;
             case StreamRequestTypes.RECONFIGURE:
                 // not supported by this example
-                this.log.info("Received (unsupported) request to reconfigure to: " + JSON.stringify(request.video));
+                this.log.debug("Received (unsupported) request to reconfigure to: " + JSON.stringify(request.video));
                 callback();
                 break;
             case StreamRequestTypes.STOP:
@@ -320,7 +329,7 @@ class BlinkCameraDelegate {
 
     async _prepareStream(request, callback) {
         const start = Date.now()
-        this.log.info(`Preparing Live Stream for ${this.ringCamera.name}`)
+        this.log.debug(`Preparing Live Stream for ${this.ringCamera.name}`)
 
         try {
             const {

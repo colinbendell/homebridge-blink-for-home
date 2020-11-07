@@ -232,7 +232,7 @@ class BlinkCamera extends BlinkDevice {
         // use the last time we armed or the current updated_at field to determine if the motion was recent
         const network = this.blink.networks.get(this.networkID);
         const triggerStart = (network.armedAt || network.updatedAt || 0) - ARMED_DELAY*1000;
-        const lastDeviceUpdate = Math.max(Date.parse(this.updatedAt), network.updatedAt, 0) + MOTION_TRIGGER_DECAY*1000;
+        const lastDeviceUpdate = Math.max(this.updatedAt, network.updatedAt, 0) + MOTION_TRIGGER_DECAY*1000;
         if (Date.now() > lastDeviceUpdate) return false;
 
         const lastMotion = await this.blink.getCameraLastMotion(this.networkID, this.cameraID);
@@ -549,6 +549,7 @@ class Blink {
                     }
                     if (Date.now() >= camera.thumbnailCreatedAt + (ttl * 1000)) {
                         try {
+                            this.log(`Refreshing snapshot for ${camera.name}`)
                             if (camera.model === "owl") {
                                 const cmd = await this.blinkAPI.updateOwlThumbnail(camera.networkID, camera.cameraID);
                                 await this._commandWaitAll(cmd);
@@ -574,8 +575,12 @@ class Blink {
 
     async getCameraLastThumbnail(networkID, cameraID) {
         try {
-            const latestMedia = await this.getCameraLastMotion(networkID, cameraID);
             const camera = this.cameras.get(cameraID);
+            if (camera.thumbnailCreatedAt > camera.updatedAt - 2 * 1000) {
+                return camera.thumbnail;
+            }
+
+            const latestMedia = await this.getCameraLastMotion(networkID, cameraID);
             if (latestMedia && latestMedia.created_at && Date.parse(latestMedia.created_at) > camera.thumbnailCreatedAt) {
                 return latestMedia.thumbnail;
             }

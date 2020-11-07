@@ -36,10 +36,17 @@
                 "type": "boolean"
             },
             "avoid-thumbnail-battery-drain": {
-                "title": "Avoid thumbnail battery drain",
+                "title": "Reduce battery drain for thumbnails",
                 "default": true,
                 "description": "Causes thumbnails for cameras using battery to be fetched at a minimum 10 minute interval to avoid draining the battery. This is useful if have the Home app open constantly, causing frequent snapshot requests.",
                 "type": "boolean"
+            },
+            "camera-thumbnail-refresh-seconds": {
+                "title": "Camera Thumbnail Refresh (seconds)",
+                "type": "integer",
+                "minimum": 1,
+                "placeholder": "60",
+                "description": "Force Thumbnail refresh every N seconds. For battery operated camera's, disable 'Reduce battery drain for thumbnails' option"
             },
             "camera-status-polling-seconds": {
                 "title": "Camera Status Polling (seconds)",
@@ -76,7 +83,7 @@
         { "key": "password", "placeholder": "password", "notitle": true },
         { "key": "pin", "placeholder": "2FA pin", "notitle": true },
         { "type": "section", "title": "Advanced Settings", "expandable": true, "expanded": false,
-            "items": ["hide-privacy-switch", "enable-liveview", "avoid-thumbnail-battery-drain",
+            "items": ["hide-privacy-switch", "enable-liveview", "avoid-thumbnail-battery-drain", "camera-thumbnail-refresh-seconds",
                       "camera-status-polling-seconds", "enable-verbose-logging", "enable-debug-logging", "enable-startup-diagnostic"]
         }
     ]

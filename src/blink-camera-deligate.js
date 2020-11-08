@@ -169,6 +169,7 @@ class BlinkCameraDelegate {
         this.pendingSessions.set(sessionId, sessionInfo);
 
         const liveViewURL = await this.blinkCamera.getLiveViewURL();
+        console.log(`LiveView Stream: ${liveViewURL}`);
         if (/^rtsp|^imm/.test(liveViewURL)) {
             const [,protocol, host, path,] = /([a-z]+):\/\/([^:\/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
             const ports = await reservePorts({count: 1});

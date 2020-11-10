@@ -1,5 +1,7 @@
 # homebridge-blink-for-home
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+[![npm](https://badgen.net/npm/v/homebridge-blink-for-home)](https://www.npmjs.com/package/homebridge-blink-for-home)
+[![npm](https://badgen.net/npm/dt/homebridge-blink-for-home)](https://www.npmjs.com/package/homebridge-blink-for-home)
 
 ![](img/overview.jpg)
 

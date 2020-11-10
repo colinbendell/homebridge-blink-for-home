@@ -120,7 +120,7 @@ class BlinkCameraDelegate {
 
     async handleSnapshotRequest(request, callback) {
         if (this.blinkCamera) {
-            await this.blink.refreshThumbnail();
+            await this.blinkCamera.refreshThumbnail();
             const bytes = await this.blinkCamera.getThumbnail();
             return callback(null, new Buffer(bytes));
         }

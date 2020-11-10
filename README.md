@@ -1,4 +1,6 @@
 # homebridge-blink-for-home
+[![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
+
 ![](img/overview.jpg)
 
 ## Overview

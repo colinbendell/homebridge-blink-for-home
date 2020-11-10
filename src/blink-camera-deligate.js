@@ -120,6 +120,7 @@ class BlinkCameraDelegate {
 
     async handleSnapshotRequest(request, callback) {
         if (this.blinkCamera) {
+            await this.blink.refreshThumbnail();
             const bytes = await this.blinkCamera.getThumbnail();
             return callback(null, new Buffer(bytes));
         }
@@ -222,7 +223,7 @@ class BlinkCameraDelegate {
 
                 if (rtspProxy.proxyServer) {
                     videoffmpegCommand.push(...[
-                        `-i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`,
+                        `-user-agent "ImmediaWalnutPlayer" -i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`,
                         //`-map 0:a`,
                         //`-ac 1 -ar 16k`, // audio channel: 1, audio sample rate: 16k
                         //`-b:a 24k -bufsize 24k`,

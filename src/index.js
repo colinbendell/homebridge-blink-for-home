@@ -82,7 +82,7 @@ class HomebridgeBlink {
             this.poll()
         }
 
-        await this.blink.refreshCameraThumbnail();
+        // await this.blink.refreshCameraThumbnail();
         await this.blink.refreshData();
         this.timerID = setInterval(intervalPoll, BLINK_STATUS_EVENT_LOOP * 1000);
     }

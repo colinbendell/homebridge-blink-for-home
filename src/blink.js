@@ -115,10 +115,11 @@ class BlinkNetwork extends BlinkDevice{
     }
 
     get canonicalID() { return `Blink:Network:${this.networkID}`; }
-    get serial() { return (this.data.syncModule || {}).serial; }
-    get firmware() { return (this.data.syncModule || {}).fw_version; }
-    get model() { return (this.data.syncModule || {}).type; }
-    get status() { return (this.data.syncModule || {}).status; }
+    get syncModule() { return this.data.syncModule; }
+    get serial() { return (this.syncModule || {}).serial; }
+    get firmware() { return (this.syncModule || {}).fw_version; }
+    get model() { return (this.syncModule || {}).type; }
+    get status() { return (this.syncModule || {}).status; }
 
     get armed() { return Boolean(this.data.armed); }
     get armedAt() { return this.accessory.context.armedAt || 0; }
@@ -257,6 +258,10 @@ class BlinkCamera extends BlinkDevice {
         return this.accessory.context._privacy = val;
     }
 
+    async refreshThumbnail() {
+        return await this.blink.refreshCameraThumbnail(this.networkID, this.cameraID);
+    }
+
     async getThumbnail() {
         // if we are in privacy mode, use a placeholder image
         if (!this.armed || !this.enabled) {
@@ -311,12 +316,13 @@ class BlinkCamera extends BlinkDevice {
 //        this.bindCharacteristic(this.getService(Service.AccessoryInformation), Characteristic.ReceivedSignalStrengthIndication, 'Wifi Strength', this.getWifi);
 
         // const cameraMode = this.addService(Service.CameraOperatingMode, 'Camera Operating Mode', 'activated mode.' + this.serial);
-        // this.bindCharacteristic(cameraMode, Characteristic.HomeKitCameraActive, 'Camera Active', this.getEnabled, this.setEnabled);
-        // this.bindCharacteristic(cameraMode, Characteristic.EventSnapshotsActive, 'Privacy Mode', this.getEnabled, this.setEnabled);
-        // this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive, 'Privacy Mode', this.getPrivacyMode, this.setPrivacyMode);
+        // this.bindCharacteristic(cameraMode, Characteristic.HomeKitCameraActive, 'Camera Active', this.getEnabled);
+        // this.bindCharacteristic(cameraMode, Characteristic.EventSnapshotsActive, 'Privacy Mode', this.getEnabled);
+        // this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive, 'Privacy Mode', this.getPrivacyMode);
+        // this.bindCharacteristic(cameraMode, Characteristic.ThirdPartyCameraActive, 'Third Party Camera Active', this.getPrivacyMode);
 
-        const microphone = this.addService(Service.Microphone);
-        this.bindCharacteristic(microphone, Characteristic.Mute, 'Microphone', () => false);
+        // const microphone = this.addService(Service.Microphone);
+        // this.bindCharacteristic(microphone, Characteristic.Mute, 'Microphone', () => false);
 
         const motionService = this.addService(Service.MotionSensor, `Motion Detected`, 'motion-sensor.' + this.serial);
         this.bindCharacteristic(motionService, Characteristic.MotionDetected, 'Motion', this.getMotionDetected);
@@ -468,6 +474,12 @@ class Blink {
             for (const owl of homescreen.owls) {
                 this.log('getOwlConfig()');
                 this.log(JSON.stringify(await this.blinkAPI.getOwlConfig(owl.network_id, owl.id).catch(e => this.log.error(e))));
+                this.log('getOwlMotionRegions()');
+                this.log(JSON.stringify(await this.blinkAPI.getCameraMotionRegions(owl.network_id, owl.id).catch(e => this.log.error(e))));
+                this.log('getOwlSignals()');
+                this.log(JSON.stringify(await this.blinkAPI.getCameraSignals(owl.network_id, owl.id).catch(e => this.log.error(e))));
+                this.log('getOwlStatus()');
+                this.log(JSON.stringify(await this.blinkAPI.getCameraStatus(owl.network_id, owl.id, 0).catch(e => this.log.error(e))));
                 this.log('getOwlFirmware()');
                 this.log(JSON.stringify(await this.blinkAPI.getOwlFirmware(owl.serial).catch(e => this.log.error(e))));
                 this.log('getDevice()');
@@ -522,9 +534,6 @@ class Blink {
         await this.refreshData(true);
     }
     async setCameraMotionSensorState(networkID, cameraID, enabled = true) {
-        const camera = this.cameras.get(cameraID);
-        if (camera.model === "owl") return;
-
         if (enabled) {
             const cmd = await this.blinkAPI.enableCameraMotion(networkID, cameraID);
             await this._commandWaitAll(cmd);
@@ -604,7 +613,7 @@ class Blink {
             .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
         return media[0];
     }
-    async getSavedMedia() {
+    async getSavedMedia(networkID, cameraID) {
         const res = await this.blinkAPI.getMediaChange();
         const media = res.media || [];
         for (const camera of this.cameras.values()) {
@@ -615,11 +624,14 @@ class Blink {
                     created_at: new Date(thumbnailCreatedAt).toISOString(),
                     updated_at: new Date(thumbnailCreatedAt).toISOString(),
                     thumbnail: camera.thumbnail,
-                    device_id: camera.cameraID
+                    device_id: camera.cameraID,
+                    network_id: camera.networkID
                 });
             }
         }
-        return media;
+        return media
+            .filter(m => !networkID || m.network_id === networkID)
+            .filter(m => !cameraID || m.device_id === cameraID);
     }
 
     async getCameraLiveView(networkID, cameraID) {

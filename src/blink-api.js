@@ -1,5 +1,6 @@
 const crypto = require("crypto");
-const fetch = require('node-fetch');
+// const fetch = require('node-fetch');
+const { fetch } = require( 'fetch-h2' );
 const http = require('http');
 const https = require('https');
 const {sleep} = require('./utils');
@@ -82,15 +83,15 @@ class BlinkAPI {
         }
 
         const headers = {
-            "User-Agent": "Blink/8854 CFNetwork/1202 Darwin/20.1.0",
-            "app-build": "IOS_8854",
+            "User-Agent": "Blink/9015 CFNetwork/1206 Darwin/20.1.0",
+            "app-build": "IOS_9015",
             "Locale": "en_US",
             "accept-language": "en_US",
             "Accept": "*/*",
         };
         if (this.token) headers["TOKEN_AUTH"] = this.token;
 
-        const options = {method, headers, agent};
+        const options = {method, headers};
         if (body) {
             options.body = JSON.stringify(body);
             options.headers['Content-Type'] = 'application/json';
@@ -578,6 +579,8 @@ class BlinkAPI {
     }
 
     async deleteMedia(medialist = []) {
+        if (!medialist || medialist.length === 0) return;
+        if (!Array.isArray(medialist)) medialist = [medialist];
         return await this.post(`/api/v1/accounts/{accountID}/media/delete`, {media_list: medialist});
     }
 
@@ -918,8 +921,12 @@ class BlinkAPI {
         return await this.post(`/network/${networkID}/camera/${cameraID}/thumbnail`);
     }
 
-    async updateCameraMotion(networkID, cameraID, type = "clip") {
-        return await this.post(`/network/${networkID}/camera/${cameraID}/${type}`);
+    async updateCameraClip(networkID, cameraID) {
+        return await this.post(`/network/${networkID}/camera/${cameraID}/clip`);
+    }
+
+    async deleteCameraClip(clipID) {
+        return await this.deleteMedia(clipID);
     }
 
     async enableCameraMotion(networkID, cameraID) {

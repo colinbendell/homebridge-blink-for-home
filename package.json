@@ -2,7 +2,7 @@
     "name": "homebridge-blink-for-home",
     "displayName": "Blink for Home",
     "private": false,
-    "version": "3.5.17",
+    "version": "3.5.18",
     "description": "Blink for Home Cameras for homebridge",
     "license": "MIT",
     "keywords": [
@@ -27,12 +27,12 @@
     "dependencies": {
         "@homebridge/camera-utils": "^1.3.0",
         "commander": "^6.2.0",
-        "ffmpeg-for-homebridge": "0.0.9",
-        "node-fetch": "^2.6.1"
+        "fetch-h2": "^2.5.1",
+        "ffmpeg-for-homebridge": "0.0.9"
     },
     "devDependencies": {
         "eslint": "^7.12.1",
-        "homebridge": "^1.2.2",
+        "homebridge": "^1.2.3",
         "homebridge-config-ui-x": "^4.32.0",
         "nodemon": "^2.0.6"
     },

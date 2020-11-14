@@ -223,7 +223,7 @@ class BlinkCameraDelegate {
 
                 if (rtspProxy.proxyServer) {
                     videoffmpegCommand.push(...[
-                        `-user-agent "ImmediaWalnutPlayer" -i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`,
+                        `-i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`,
                         //`-map 0:a`,
                         //`-ac 1 -ar 16k`, // audio channel: 1, audio sample rate: 16k
                         //`-b:a 24k -bufsize 24k`,
@@ -262,7 +262,10 @@ class BlinkCameraDelegate {
                     this.log.debug("FFMPEG command: ffmpeg " + videoffmpegCommand.flat().flatMap(c => c.split(' ')).join(' '));
                 }
 
-                const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', videoffmpegCommand.flat().flatMap(c => c.split(' ')), {env: process.env});
+                const ffmpegCommandClean = ['-user-agent "Immedia WalnutPlayer"'];
+                ffmpegCommandClean.push(...videoffmpegCommand.flat().flatMap(c => c.split(' ')));
+
+                const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
                 this.ongoingSessions.set(sessionId, ffmpegVideo);
                 this.pendingSessions.delete(sessionId);
 

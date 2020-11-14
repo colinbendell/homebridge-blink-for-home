@@ -272,7 +272,8 @@ class BlinkCamera extends BlinkDevice {
 
                 return this.cacheThumbnail.get('privacy.png');
             }
-            else if (!this.enabled) {
+            else if (this.armed && !this.enabled) {
+                // only show the "disabled" image when the system is armed but the camera is disabled
                 if (!this.cacheThumbnail.has('disabled.png')) {
                     this.cacheThumbnail.set('disabled.png', fs.readFileSync(`${__dirname}/disabled.png`));
                 }
@@ -296,9 +297,6 @@ class BlinkCamera extends BlinkDevice {
         if (!this.armed || !this.enabled) {
             if (this.getPrivacyMode()) {
                 return `${__dirname}/privacy.png`;
-            }
-            else if (!this.enabled) {
-                return `${__dirname}/disabled.png`;
             }
         }
         const data = await this.blink.getCameraLiveView(this.networkID, this.cameraID);
@@ -391,12 +389,21 @@ class Blink {
         if (homebridgeAPI) setupHAP(homebridgeAPI); // this is not really that ideal and should be refactored
     }
 
+    async getCommand(networkID, commandID) {
+        if (!networkID || !commandID) return;
+        return await this.blinkAPI.getCommand(networkID, commandID);
+    }
+    async stopCommand(networkID, commandID) {
+        if (!networkID || !commandID) return;
+        return await this.blinkAPI.deleteCommand(networkID, commandID);
+    }
+
     async _commandWait(networkID, commandID) {
         if (!networkID || !commandID) return;
-        let cmd = await this.blinkAPI.getCommand(networkID || this.networkID, commandID);
+        let cmd = await this.blinkAPI.getCommand(networkID, commandID);
         while (cmd.complete === false) {
             await sleep(400);
-            cmd = await this.blinkAPI.getCommand(networkID || this.networkID, commandID);
+            cmd = await this.blinkAPI.getCommand(networkID, commandID);
         }
         return cmd;
     }

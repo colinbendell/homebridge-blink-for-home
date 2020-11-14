@@ -1,8 +1,14 @@
 #!/usr/bin/env node
+const fs = require('fs');
+const {spawn} = require("child_process");
+const pathToFfmpeg = require('ffmpeg-for-homebridge')
 const program = require('commander');
 const {Blink} = require('./blink');
-const BlinkAPI = require('./blink-api');
-const fs = require('fs');
+const {sleep} = require('./utils');
+const {Http2TLSTunnel} = require('./proxy');
+const {
+    reservePorts
+} = require('@homebridge/camera-utils');
 
 process.on('SIGINT', function () {
     process.exit(1);
@@ -35,7 +41,7 @@ async function getCamera(id) {
     await blink.refreshData();
     const camera = [...blink.cameras.values()].filter(c => c.name === c._prefix + id || c.id === Number.parseInt(id)).pop();
     if (!camera) {
-        return console.error(`No camera: ${id}`);
+        throw new Error(`No camera: ${id}`);
     }
     return {blink, camera};
 }
@@ -128,10 +134,69 @@ async function list(options) {
 
 async function liveview(id, options) {
     try {
-        const {blink, camera} = getCamera(id);
+        const {blink, camera} = await getCamera(id);
+        console.log(camera);
         const res = await blink.getCameraLiveView(camera.networkID, camera.cameraID);
         if (res.server) {
-            console.log(res.server);
+            if (options.save) {
+
+                const liveViewURL = res.server;
+                const [,protocol, host, path,] = /([a-z]+):\/\/([^:\/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
+                const ports = await reservePorts({count: 1});
+                const listenPort = ports[0];
+                const proxyServer = new Http2TLSTunnel(listenPort, host);
+                await proxyServer.start();
+
+                const videoffmpegCommand = [
+                    `-y -rtsp_transport tcp -i rtsp://localhost:${listenPort}${path}`,
+                    `-acodec copy -vcodec copy`,
+                    `-g 30 -hls_time 1 out.m3u8 -vcodec copy`,
+                    `foo.mp4`,
+                ]
+                const ffmpegCommandClean = ['-user-agent', '"Immedia WalnutPlayer"'];
+                ffmpegCommandClean.push(...videoffmpegCommand.flat().flatMap(c => c.split(' ')));
+                console.log(ffmpegCommandClean);
+
+                let started = true;
+                const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
+                ffmpegVideo.stderr.on('data', data => {
+                    if (!started) {
+                        started = true;
+                        console.debug("FFMPEG: received first frame");
+                    }
+                    console.debug("VIDEO: " + String(data));
+                });
+                ffmpegVideo.on('error', error => {
+                    console.error("[Video] Failed to start video stream: " + error.message);
+                    try {proxyServer.stop()} catch {}
+                });
+                ffmpegVideo.on('exit', (code, signal) => {
+                    console.log("[Video] ffmpeg exited with code: " + code + " and signal: " + signal);
+                    try {proxyServer.stop()} catch {}
+                });
+
+                let start = Date.now();
+                let cmdWaitInterval;
+                const commandPoll = async () => {
+                    if (cmdWaitInterval) clearInterval(cmdWaitInterval);
+
+                    const cmd = await blink.getCommand(camera.networkID, res.command_id);
+                    if (cmd.complete === false) {
+                        if (Date.now() - start > options.duration * 1000) {
+                            ffmpegVideo.kill('SIGINT');
+                            await sleep(200);
+                            await blink.stopCommand(camera.networkID, res.command_id).catch(e => console.error(e));
+                        }
+                        cmdWaitInterval = setInterval(commandPoll, 300);
+                    }
+                }
+                commandPoll();
+
+            }
+            else {
+                console.log(res.server);
+                blink.stopCommand(camera.networkID, res.command_id);
+            }
         }
         else {
             console.log(res.message);
@@ -209,6 +274,8 @@ program
 program
     .command('liveview <id>')
     .description('request the liveview RTSP for a stream')
+    .option('--save', 'save the stream', false)
+    .option('--duration <seconds>', 'save the stream', 30)
     .action(liveview);
 
 program

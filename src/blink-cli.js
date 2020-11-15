@@ -135,45 +135,39 @@ async function list(options) {
 async function liveview(id, options) {
     try {
         const {blink, camera} = await getCamera(id);
-        console.log(camera);
         const res = await blink.getCameraLiveView(camera.networkID, camera.cameraID);
         if (res.server) {
             if (options.save) {
-
                 const liveViewURL = res.server;
                 const [,protocol, host, path,] = /([a-z]+):\/\/([^:\/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
                 const ports = await reservePorts({count: 1});
                 const listenPort = ports[0];
-                const proxyServer = new Http2TLSTunnel(listenPort, host);
+                const proxyServer = new Http2TLSTunnel(listenPort, host,"0.0.0.0", 443, protocol);
                 await proxyServer.start();
+                const filename = (new Date()).toISOString().replace(/[^0-9a-zA-Z-]/g, '_');
 
                 const videoffmpegCommand = [
-                    `-y -rtsp_transport tcp -i rtsp://localhost:${listenPort}${path}`,
-                    `-acodec copy -vcodec copy`,
-                    `-g 30 -hls_time 1 out.m3u8 -vcodec copy`,
-                    `foo.mp4`,
+                    // `-loglevel repeat+level+trace`,
+                    // `-rtsp_transport tcp`,
+                    // `-rtpflags skip_rtcp`,
+                    `-rtpflags send_bye`,
+                    `-rtpflags h264_mode0`,
+                    // `-rtsp_flags prefer_tcp`,
+                    `-y -i rtsp://localhost:${listenPort}${path}`,
+                    `-acodec copy -vcodec copy -g 30 -hls_time 1 ${filename}.m3u8`,
                 ]
+                if (options.mp4) {
+                    videoffmpegCommand.pop();
+                    videoffmpegCommand.push(`-acodec copy -vcodec copy -g 30 ${filename}.mp4`)
+                }
                 const ffmpegCommandClean = ['-user-agent', '"Immedia WalnutPlayer"'];
                 ffmpegCommandClean.push(...videoffmpegCommand.flat().flatMap(c => c.split(' ')));
                 console.log(ffmpegCommandClean);
-
-                let started = true;
                 const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
-                ffmpegVideo.stderr.on('data', data => {
-                    if (!started) {
-                        started = true;
-                        console.debug("FFMPEG: received first frame");
-                    }
-                    console.debug("VIDEO: " + String(data));
-                });
-                ffmpegVideo.on('error', error => {
-                    console.error("[Video] Failed to start video stream: " + error.message);
-                    try {proxyServer.stop()} catch {}
-                });
-                ffmpegVideo.on('exit', (code, signal) => {
-                    console.log("[Video] ffmpeg exited with code: " + code + " and signal: " + signal);
-                    try {proxyServer.stop()} catch {}
-                });
+                ffmpegVideo.stdout.on('data', data => { console.info("VIDEO: " + String(data)); });
+                ffmpegVideo.stderr.on('data', data => { console.info("VIDEO: " + String(data)); });
+                ffmpegVideo.on('error', error => { try {proxyServer.stop()} catch {} });
+                ffmpegVideo.on('exit', (code, signal) => { try {proxyServer.stop()} catch {} });
 
                 let start = Date.now();
                 let cmdWaitInterval;

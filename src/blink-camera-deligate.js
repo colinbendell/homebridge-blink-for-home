@@ -262,7 +262,7 @@ class BlinkCameraDelegate {
                     this.log.debug("FFMPEG command: ffmpeg " + videoffmpegCommand.flat().flatMap(c => c.split(' ')).join(' '));
                 }
 
-                const ffmpegCommandClean = ['-user-agent', '"Immedia WalnutPlayer"'];
+                const ffmpegCommandClean = ['-user-agent', 'Immedia WalnutPlayer'];
                 ffmpegCommandClean.push(...videoffmpegCommand.flat().flatMap(c => c.split(' ')));
 
                 const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});

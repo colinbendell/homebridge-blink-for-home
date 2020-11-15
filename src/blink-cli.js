@@ -154,13 +154,15 @@ async function liveview(id, options) {
                     `-rtpflags h264_mode0`,
                     // `-rtsp_flags prefer_tcp`,
                     `-y -i rtsp://localhost:${listenPort}${path}`,
-                    `-acodec copy -vcodec copy -g 30 -hls_time 1 ${filename}.m3u8`,
+                    `-acodec copy -vcodec copy -g 30`,
                 ]
-                if (options.mp4) {
-                    videoffmpegCommand.pop();
-                    videoffmpegCommand.push(`-acodec copy -vcodec copy -g 30 ${filename}.mp4`)
+                if (options.hls) {
+                    videoffmpegCommand.push(`-hls_time 1 ${filename}.m3u8`)
                 }
-                const ffmpegCommandClean = ['-user-agent', '"Immedia WalnutPlayer"'];
+                if (options.mp4) {
+                    videoffmpegCommand.push(`-vcodec copy ${filename}.mp4`)
+                }
+                const ffmpegCommandClean = ['-user-agent', 'Immedia WalnutPlayer'];
                 ffmpegCommandClean.push(...videoffmpegCommand.flat().flatMap(c => c.split(' ')));
                 console.log(ffmpegCommandClean);
                 const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
@@ -269,6 +271,8 @@ program
     .command('liveview <id>')
     .description('request the liveview RTSP for a stream')
     .option('--save', 'save the stream', false)
+    .option('--hls', 'save the stream as an hls stream', false)
+    .option('--no-mp4', 'save the stream as an mp4', false)
     .option('--duration <seconds>', 'save the stream', 30)
     .action(liveview);
 

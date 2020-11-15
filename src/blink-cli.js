@@ -1,14 +1,22 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const {spawn} = require("child_process");
+const tls = require("tls");
+
 const pathToFfmpeg = require('ffmpeg-for-homebridge')
 const program = require('commander');
 const {Blink} = require('./blink');
 const {sleep} = require('./utils');
 const {Http2TLSTunnel} = require('./proxy');
-const {
-    reservePorts
-} = require('@homebridge/camera-utils');
+const {reservePorts} = require('@homebridge/camera-utils');
+
+const Crypto = require('crypto');
+const {tmpdir} = require( 'os');
+const Path = require( 'path');
+
+function tmpFile(ext) {
+    return Path.join(tmpdir(),`archive.${Crypto.randomBytes(6).readUIntLE(0,6).toString(36)}.${ext}`);
+}
 
 process.on('SIGINT', function () {
     process.exit(1);
@@ -137,61 +145,148 @@ async function liveview(id, options) {
         const {blink, camera} = await getCamera(id);
         const res = await blink.getCameraLiveView(camera.networkID, camera.cameraID);
         if (res.server) {
+            console.log(`Reading: ${res.server}`);
             if (options.save) {
                 const liveViewURL = res.server;
                 const [,protocol, host, path,] = /([a-z]+):\/\/([^:\/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
                 const ports = await reservePorts({count: 1});
                 const listenPort = ports[0];
-                const proxyServer = new Http2TLSTunnel(listenPort, host,"0.0.0.0", 443, protocol);
-                await proxyServer.start();
                 const filename = (new Date()).toISOString().replace(/[^0-9a-zA-Z-]/g, '_');
 
-                const videoffmpegCommand = [
-                    // `-loglevel repeat+level+trace`,
-                    // `-rtsp_transport tcp`,
-                    // `-rtpflags skip_rtcp`,
-                    `-rtpflags send_bye`,
-                    `-rtpflags h264_mode0`,
-                    // `-rtsp_flags prefer_tcp`,
-                    `-y -i rtsp://localhost:${listenPort}${path}`,
-                    `-acodec copy -vcodec copy -g 30`,
-                ]
-                if (options.hls) {
-                    videoffmpegCommand.push(`-hls_time 1 ${filename}.m3u8`)
-                }
-                if (options.mp4) {
-                    videoffmpegCommand.push(`-vcodec copy ${filename}.mp4`)
-                }
-                const ffmpegCommandClean = ['-user-agent', 'Immedia WalnutPlayer'];
-                ffmpegCommandClean.push(...videoffmpegCommand.flat().flatMap(c => c.split(' ')));
-                console.log(ffmpegCommandClean);
-                const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
-                ffmpegVideo.stdout.on('data', data => { console.info("VIDEO: " + String(data)); });
-                ffmpegVideo.stderr.on('data', data => { console.info("VIDEO: " + String(data)); });
-                ffmpegVideo.on('error', error => { try {proxyServer.stop()} catch {} });
-                ffmpegVideo.on('exit', (code, signal) => { try {proxyServer.stop()} catch {} });
+                // This is a hack: for legacy systems we setup a TLS socket and set ffmpeg to use rtsp://
+                // for modern blink cameras we have to hack the immis:// protocol
+                if (protocol.startsWith('rtsp')) {
+                    // STEP1: setup TLS proxy
+                    const proxyServer = new Http2TLSTunnel(listenPort, host, "0.0.0.0", 443, protocol);
+                    await proxyServer.start();
 
-                let start = Date.now();
-                let cmdWaitInterval;
-                const commandPoll = async () => {
-                    if (cmdWaitInterval) clearInterval(cmdWaitInterval);
-
-                    const cmd = await blink.getCommand(camera.networkID, res.command_id);
-                    if (cmd.complete === false) {
-                        if (Date.now() - start > options.duration * 1000) {
-                            ffmpegVideo.kill('SIGINT');
-                            await sleep(200);
-                            await blink.stopCommand(camera.networkID, res.command_id).catch(e => console.error(e));
-                        }
-                        cmdWaitInterval = setInterval(commandPoll, 300);
+                    // STEP2: ffmpeg using rtsp:// as input
+                    const videoffmpegCommand = [
+                        `-hide_banner -loglevel warning`,
+                        `-rtpflags send_bye`,
+                        `-rtpflags h264_mode0`,
+                        `-y -i rtsp://localhost:${listenPort}${path}`,
+                        `-acodec copy -vcodec copy -g 30`,
+                    ]
+                    if (options.hls) {
+                        videoffmpegCommand.push(`-hls_time 1 ${filename}.m3u8`)
+                        console.log(`Saving: ${filename}.m3u8`);
                     }
-                }
-                commandPoll();
+                    if (options.mp4) {
+                        videoffmpegCommand.push(`-vcodec copy ${filename}.mp4`)
+                        console.log(`Saving: ${filename}.mp4`);
+                    }
+                    const ffmpegCommandClean = ['-user-agent', 'Immedia WalnutPlayer'];
+                    ffmpegCommandClean.push(...videoffmpegCommand.flat().flatMap(c => c.split(' ')));
+                    console.debug(ffmpegCommandClean);
 
+                    const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
+                    ffmpegVideo.stdout.on('data', data => { console.info("VIDEO: " + String(data)); });
+                    ffmpegVideo.stderr.on('data', data => { console.info("VIDEO: " + String(data)); });
+                    ffmpegVideo.on('error', error => { try { proxyServer.stop() } catch { } });
+                    ffmpegVideo.on('exit', (code, signal) => { try { proxyServer.stop() } catch { } });
+
+                    // STEP3: Cleanup and timeout
+                    let start = Date.now();
+                    let cmdWaitInterval;
+                    const commandPoll = async () => {
+                        if (cmdWaitInterval) clearInterval(cmdWaitInterval);
+
+                        const cmd = await blink.getCommand(camera.networkID, res.command_id);
+                        if (cmd.complete === false) {
+                            if (Date.now() - start > options.duration * 1000) {
+                                ffmpegVideo.kill('SIGINT');
+                                await sleep(200);
+                                await blink.stopCommand(camera.networkID, res.command_id).catch(e => console.error(e));
+                            }
+                            cmdWaitInterval = setInterval(commandPoll, 300);
+                        }
+                    }
+                    commandPoll();
+                }
+                else {
+                    // TODO: cleanup and refactor
+
+                    let start = Date.now();
+
+                    // STEP1: create a TLS connection and buffer the response ot a temp file
+                    const tempFilename = tmpFile(filename);
+                    const outputFile = fs.createWriteStream(tempFilename);
+
+                    const tlsOptions = {host: host, rejectUnauthorized: false, port:443, timeout: 1000, checkServerIdentity: () => {}}
+                    //servername: host,
+
+                    const tlsSocket = tls.connect(tlsOptions);
+                    tlsSocket.on('secureConnect', function() {
+                        console.debug("connect to %s:%d success", tlsSocket.remoteAddress, tlsSocket.remotePort);
+                        const id = path.replace(/[\/]|__.*/g, '');
+                        const data_prefix = Buffer.from(new Uint8Array(
+                            [0x00,0x00,0x00,0x1c,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x2b,0x04,0x08,0x00,0x00,
+                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+                            0x00,0x00,0x00,0x00,0x00,0x10]));
+                        const data_suffix =new Uint8Array([0x00,0x00,0x00,0x01,0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]);
+                        // tlsSocket.pipe(ffmpegVideo.stdin);
+                        tlsSocket.write(Buffer.concat([data_prefix,Buffer.from(id),data_suffix]));
+                        tlsSocket.pipe(outputFile);
+                        // tlsSocket.on('data', function(data) {ffmpegVideo.stdin.write(data);});
+                        start = Date.now();
+                    })
+                    tlsSocket.on("error",  (error) => { console.error(error); try {ffmpegVideo.stdin.destroy();} catch {} });
+                    tlsSocket.on("close",  () => { try {ffmpegVideo.stdin.destroy();} catch {} });
+                    this.tlsSocket = tlsSocket;
+
+                    // STEP2: timeout and cleanup
+                    let cmdWaitInterval;
+                    const commandPoll = async () => {
+                        if (cmdWaitInterval) clearInterval(cmdWaitInterval);
+
+                        const cmd = await blink.getCommand(camera.networkID, res.command_id);
+                        if (cmd.complete === false) {
+                            if (Date.now() - start > options.duration * 1000) {
+                                // try {ffmpegVideo.stdin.destroy();} catch {}
+                                outputFile.close();
+                                await sleep(100);
+
+                                try {ffmpegVideo.kill('SIGINT');} catch {}
+                                try {tlsSocket.end();} catch {}
+
+                                await sleep(200);
+                                await blink.stopCommand(camera.networkID, res.command_id).catch(e => console.error(e));
+                            }
+                            cmdWaitInterval = setInterval(commandPoll, 300);
+                        }
+                        else {
+                            //STEP3: transcode with ffmpeg
+                            //TODO: move out and refactor
+                            const videoffmpegCommand = [
+                                `-hide_banner -loglevel warning`,
+                                `-i ${tempFilename}`,
+                                `-c copy`,
+                            ]
+                            if (options.hls) {
+                                videoffmpegCommand.push(`-hls_time 1 ${filename}.m3u8`)
+                                console.log(`Saving: ${filename}.m3u8`);
+                            }
+                            if (options.mp4) {
+                                videoffmpegCommand.push(`${filename}.mp4`)
+                                console.log(`Saving: ${filename}.mp4`);
+                            }
+                            console.debug(videoffmpegCommand.flat().flatMap(c => c.split(' ')));
+                            const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', videoffmpegCommand.flat().flatMap(c => c.split(' ')), {env: process.env});
+                            ffmpegVideo.stdout.on('data', data => { console.info("VIDEO: " + String(data)); });
+                            ffmpegVideo.stderr.on('data', data => { console.error("VIDEO: " + String(data)); });
+                            ffmpegVideo.on('exit', (code, signal) => { try { fs.unlinkSync(tempFilename); } catch { } });
+                        }
+                    }
+                    commandPoll();
+                }
             }
             else {
                 console.log(res.server);
-                blink.stopCommand(camera.networkID, res.command_id);
+                await blink.stopCommand(camera.networkID, res.command_id);
             }
         }
         else {

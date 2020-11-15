@@ -59,7 +59,7 @@ class Http2TLSTunnel {
         const connectionListener = (tcpSocket) => {
             this.tcpSocket = tcpSocket;
             console.debug("client connected from %s:%d", tcpSocket.remoteAddress, tcpSocket.remotePort);
-            console.log(`connecting to: ${this.targetHost}`);
+            console.debug(`connecting to: ${this.targetHost}`);
 
             const tlsOptions = {host: this.targetHost, rejectUnauthorized: false, port:443, timeout: 1000, checkServerIdentity: () => {}}
             //servername: this.targetHost,

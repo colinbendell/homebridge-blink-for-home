@@ -223,6 +223,7 @@ class BlinkCameraDelegate {
 
                 if (rtspProxy.proxyServer) {
                     videoffmpegCommand.push(...[
+                        `-hide_banner -loglevel warning`,
                         `-i rtsp://localhost:${rtspProxy.listenPort}${rtspProxy.path}`,
                         //`-map 0:a`,
                         //`-ac 1 -ar 16k`, // audio channel: 1, audio sample rate: 16k
@@ -239,6 +240,7 @@ class BlinkCameraDelegate {
                 }
                 else {
                     videoffmpegCommand.push(...[
+                        `-hide_banner -loglevel warning`,
                         `-loop 1 -f image2 -i ${rtspProxy.path}`,
                         `-c:v libx264 -pix_fmt yuv420p -r ${fps}`,
                         `-an -sn -dn`, //disable audio, subtitles, data
@@ -258,12 +260,13 @@ class BlinkCameraDelegate {
 
                 videoffmpegCommand.push(`${cryptoSuite === this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80 ? 'srtp' : 'rtp'}://${address}:${videoPort}?rtcpport=${videoPort}&localrtcpport=${videoPort}&pkt_size=${mtu}`);
 
-                if (this.ffmpegDebugOutput) {
-                    this.log.debug("FFMPEG command: ffmpeg " + videoffmpegCommand.flat().flatMap(c => c.split(' ')).join(' '));
-                }
-
-                const ffmpegCommandClean = ['-user-agent', 'Immedia WalnutPlayer'];
+                // TODO: this is a mess. cleanup the user-agent parameter so it doesn't get split
+                const ffmpegCommandClean = rtspProxy.proxyServer ? ['-user-agent', 'Immedia WalnutPlayer'] : [];
                 ffmpegCommandClean.push(...videoffmpegCommand.flat().flatMap(c => c.split(' ')));
+
+                if (this.ffmpegDebugOutput) {
+                    this.log.debug("FFMPEG command: ffmpeg " + ffmpegCommandClean.join(' '));
+                }
 
                 const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
                 this.ongoingSessions.set(sessionId, ffmpegVideo);
@@ -332,6 +335,7 @@ class BlinkCameraDelegate {
         }
     }
 
+    //handleCloseConnection
     async _prepareStream(request, callback) {
         const start = Date.now()
         this.log.debug(`Preparing Live Stream for ${this.ringCamera.name}`)

@@ -175,11 +175,9 @@ class BlinkCameraDelegate {
             const [,protocol, host, path,] = /([a-z]+):\/\/([^:\/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
             const ports = await reservePorts({count: 1});
             const listenPort = ports[0];
-            const proxyServer = new Http2TLSTunnel(listenPort, host);
+            const proxyServer = new Http2TLSTunnel(listenPort, host, "0.0.0.0", 443, protocol);
             await proxyServer.start();
-            const rtspProxy = {
-                protocol, host, path, listenPort, proxyServer
-            }
+            const rtspProxy = { protocol, host, path, listenPort, proxyServer }
             this.proxySessions.set(sessionId, rtspProxy);
         }
         if (/^immis/.test(liveViewURL)) {

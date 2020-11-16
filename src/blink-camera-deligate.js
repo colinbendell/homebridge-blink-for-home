@@ -171,7 +171,7 @@ class BlinkCameraDelegate {
 
         const liveViewURL = await this.blinkCamera.getLiveViewURL();
         console.log(`LiveView Stream: ${liveViewURL}`);
-        if (/^rtsp|^imm/.test(liveViewURL)) {
+        if (/^rtsp/.test(liveViewURL)) {
             const [,protocol, host, path,] = /([a-z]+):\/\/([^:\/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
             const ports = await reservePorts({count: 1});
             const listenPort = ports[0];
@@ -181,6 +181,9 @@ class BlinkCameraDelegate {
                 protocol, host, path, listenPort, proxyServer
             }
             this.proxySessions.set(sessionId, rtspProxy);
+        }
+        if (/^immis/.test(liveViewURL)) {
+            this.proxySessions.set(sessionId, {path: `${__dirname}/unsupported.png`});
         }
         else {
             this.proxySessions.set(sessionId, {path: liveViewURL});

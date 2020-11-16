@@ -326,16 +326,16 @@ class BlinkCamera extends BlinkDevice {
         this.bindCharacteristic(motionService, Characteristic.MotionDetected, 'Motion', this.getMotionDetected);
         this.bindCharacteristic(motionService, Characteristic.StatusActive, 'Motion Sensor Active', this.getMotionDetectActive);
 
+        // No idea how to set the motion enabled/disabled on minis
+        const enabledSwitch = this.addService(Service.Switch, `Enabled`, 'enabled.' + this.serial);
+        this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
+
         if (this.model !== "owl") {
             // Battery Levels are only available in non Minis
             const batteryService = this.addService(Service.BatteryService, `Battery`, 'battery-sensor.' + this.serial);
             this.bindCharacteristic(batteryService, Characteristic.BatteryLevel, 'Battery Level', this.getBattery);
             this.bindCharacteristic(batteryService, Characteristic.ChargingState, 'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
             this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery, 'Battery LowBattery', this.getLowBattery);
-
-            // No idea how to set the motion enabled/disabled on minis
-            const enabledSwitch = this.addService(Service.Switch, `Enabled`, 'enabled.' + this.serial);
-            this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
 
             // no temperaure sensor on the minis
             const tempService = this.addService(Service.TemperatureSensor, `Temperature`, 'temp-sensor.' + this.serial);

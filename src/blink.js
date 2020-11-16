@@ -197,9 +197,9 @@ class BlinkNetwork extends BlinkDevice{
         this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState, `${this.name} Armed (Target)`, this.getArmed, this.setTargetArmed);
         securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
         if (!this.blink.config["hide-manual-arm-switch"]) {
-            const occupiedService = this.addService(Service.Switch, `${this.name} Manual Arm`, 'armed.' + this.serial);
-            this.bindCharacteristic(occupiedService, Characteristic.On, 'Manual Arm', this.getManualArmed, this.setManualArmed);
-            this.bindCharacteristic(occupiedService, Characteristic.Name, `${this.name} Manual Arm`, () => `Manual Arm`);
+            const occupiedService = this.addService(Service.Switch, `${this.name} Arm`, 'armed.' + this.serial);
+            this.bindCharacteristic(occupiedService, Characteristic.On, `${this.name} Arm`, this.getManualArmed, this.setManualArmed);
+            this.bindCharacteristic(occupiedService, Characteristic.Name, `${this.name} Arm`, () => `Manual Arm`);
         }
         return this;
     }

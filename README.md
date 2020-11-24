@@ -44,6 +44,24 @@ If you have 2FA enabled, you will need to first set the username / password to f
 
 _NB: The Device in the email 2FA will appear to be an iPad Mini. This is intentional to increase masquerading._
 
+## Features & Behaviors
+
+This homebridge application includes a number of features such as:
+* Motion detection
+* Enable / Disable of Cameras
+* Privacy Mode
+* Thumbnail refreshing
+* Liveview (currently on Gen1 cameras)
+
+Many of these features are interconnected. Below describes the expected flows:
+
+|        |Armed|Disarmed|
+|--------|--------------|------------|
+|✅PrivacyMode <br> ✅Camera|Thumbnail Refreshed|![](src/privacy.png)|
+|✅PrivacyMode <br> ❌Camera|![](src/disabled.png)|![](src/privacy.png)|
+|❌PrivacyMode <br> ✅Camera|Thumbnail Refreshed|Thumbnail Refreshed|
+|❌PrivacyMode <br> ❌Camera|![](src/disabled.png)|Last Thumbnail (no refresh)|
+
 ## Accessories
 Two main accessory types will be present: `Security System` and `Camera` accessories. 
 

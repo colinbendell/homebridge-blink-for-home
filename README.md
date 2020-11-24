@@ -3,7 +3,7 @@
 [![npm](https://badgen.net/npm/v/homebridge-blink-for-home)](https://www.npmjs.com/package/homebridge-blink-for-home)
 [![npm](https://badgen.net/npm/dt/homebridge-blink-for-home)](https://www.npmjs.com/package/homebridge-blink-for-home)
 
-![](img/overview.jpg)
+<img src="https://github.com/colinbendell/homebridge-blink-for-home/raw/main/img/overview.jpg" width="200">
 
 ## Overview
 

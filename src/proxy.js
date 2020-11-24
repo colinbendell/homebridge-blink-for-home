@@ -67,7 +67,7 @@ class Http2TLSTunnel {
             const tlsSocket = tls.connect(tlsOptions);
             tlsSocket.on('secureConnect', function() {
                 console.debug("connect to %s:%d success", tlsSocket.remoteAddress, tlsSocket.remotePort);
-                if (this._protocol) {
+                if (protocol) {
                     tcpSocket.pipe(prepender).pipe(tlsSocket);
                 }
                 else {

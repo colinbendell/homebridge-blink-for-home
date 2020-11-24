@@ -180,7 +180,7 @@ class BlinkCameraDelegate {
             const rtspProxy = { protocol, host, path, listenPort, proxyServer }
             this.proxySessions.set(sessionId, rtspProxy);
         }
-        if (/^immis/.test(liveViewURL)) {
+        else if (/^immis/.test(liveViewURL)) {
             this.proxySessions.set(sessionId, {path: `${__dirname}/unsupported.png`});
         }
         else {
@@ -243,23 +243,25 @@ class BlinkCameraDelegate {
                     videoffmpegCommand.push(...[
                         `-hide_banner -loglevel warning`,
                         `-loop 1 -f image2 -i ${rtspProxy.path}`,
-                        `-c:v libx264 -pix_fmt yuv420p -r ${fps}`,
+                        `-c:v libx264 -pix_fmt yuv420p -r 1`,
                         `-an -sn -dn`, //disable audio, subtitles, data
-                        `-b:v ${maxBitrate}k -bufsize ${2 * maxBitrate}k -maxrate ${maxBitrate}k`,
-                        `-profile:v ${profile} -level:v ${level}`,
+                        // `-b:v ${maxBitrate}k -bufsize ${2 * maxBitrate}k -maxrate ${maxBitrate}k`,
+                        // `-profile:v ${profile} -level:v ${level}`,
                     ]);
                 }
 
                 videoffmpegCommand.push(...[
-                    `-payload_type ${payloadType}`,
-                    `-ssrc ${ssrc} -f rtp`,
+                    // `-payload_type ${payloadType}`,
+                    `-f rtp`,
                 ]);
 
+                let targetProtocol = "rtp";
                 if (cryptoSuite === this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80) { // actually ffmpeg just supports AES_CM_128_HMAC_SHA1_80
-                    videoffmpegCommand.push(`-srtp_out_suite AES_CM_128_HMAC_SHA1_80 -srtp_out_params ${videoSRTP}`);
+                    videoffmpegCommand.push(`-ssrc ${ssrc} -srtp_out_suite AES_CM_128_HMAC_SHA1_80 -srtp_out_params ${videoSRTP}`);
+                    targetProtocol = "srtp";
                 }
 
-                videoffmpegCommand.push(`${cryptoSuite === this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80 ? 'srtp' : 'rtp'}://${address}:${videoPort}?rtcpport=${videoPort}&localrtcpport=${videoPort}&pkt_size=${mtu}`);
+                videoffmpegCommand.push(`${targetProtocol}://${address}:${videoPort}?rtcpport=${videoPort}&localrtcpport=${videoPort}&pkt_size=${mtu}`);
 
                 // TODO: this is a mess. cleanup the user-agent parameter so it doesn't get split
                 const ffmpegCommandClean = rtspProxy.proxyServer ? ['-user-agent', 'Immedia WalnutPlayer'] : [];

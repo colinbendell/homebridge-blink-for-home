@@ -555,24 +555,41 @@ class Blink {
     }
 
     async setArmedState(networkID, arm = true) {
-        if (arm) {
-            const cmd = await this.blinkAPI.armNetwork(networkID);
-            await this._commandWaitAll(cmd);
-        }
-        else {
-            const cmd = await this.blinkAPI.disarmNetwork(networkID);
-            await this._commandWaitAll(cmd);
+        let cmd;
+        while (!cmd) {
+            if (arm) {
+                cmd = await this.blinkAPI.armNetwork(networkID);
+                await this._commandWaitAll(cmd);
+            }
+            else {
+                cmd = await this.blinkAPI.disarmNetwork(networkID);
+                await this._commandWaitAll(cmd);
+            }
+            if (cmd.message && /busy/i.test(cmd.message)) {
+                this.log.info(`Sleeping 5s: ${cmd.message}`);
+                await sleep(5000);
+                cmd = null;
+            }
+
         }
         await this.refreshData(true);
     }
     async setCameraMotionSensorState(networkID, cameraID, enabled = true) {
-        if (enabled) {
-            const cmd = await this.blinkAPI.enableCameraMotion(networkID, cameraID);
-            await this._commandWaitAll(cmd);
-        }
-        else {
-            const cmd = await this.blinkAPI.disableCameraMotion(networkID, cameraID);
-            await this._commandWaitAll(cmd);
+        let cmd;
+        while (!cmd) {
+            if (enabled) {
+                cmd = await this.blinkAPI.enableCameraMotion(networkID, cameraID);
+                await this._commandWaitAll(cmd);
+            }
+            else {
+                cmd = await this.blinkAPI.disableCameraMotion(networkID, cameraID);
+                await this._commandWaitAll(cmd);
+            }
+            if (cmd.message && /busy/i.test(cmd.message)) {
+                this.log.info(`Sleeping 5s: ${cmd.message}`);
+                await sleep(5000);
+                cmd = null;
+            }
         }
         await this.refreshData(true);
     }
@@ -592,13 +609,21 @@ class Blink {
                     if (force || Date.now() >= camera.thumbnailCreatedAt + (ttl * 1000)) {
                         try {
                             this.log(`Refreshing snapshot for ${camera.name}`)
-                            if (camera.model === "owl") {
-                                const cmd = await this.blinkAPI.updateOwlThumbnail(camera.networkID, camera.cameraID);
-                                await this._commandWaitAll(cmd);
-                            }
-                            else {
-                                const cmd = await this.blinkAPI.updateCameraThumbnail(camera.networkID, camera.cameraID);
-                                await this._commandWaitAll(cmd);
+                            let cmd;
+                            while (!cmd) {
+                                if (camera.model === "owl") {
+                                    cmd = await this.blinkAPI.updateOwlThumbnail(camera.networkID, camera.cameraID);
+                                    await this._commandWaitAll(cmd);
+                                }
+                                else {
+                                    cmd = await this.blinkAPI.updateCameraThumbnail(camera.networkID, camera.cameraID);
+                                    await this._commandWaitAll(cmd);
+                                }
+                                if (cmd.message && /busy/i.test(cmd.message)) {
+                                    this.log.info(`Sleeping 5s: ${cmd.message}`);
+                                    await sleep(5000);
+                                    cmd = null;
+                                }
                             }
                             return true; // we updated a camera
                         } catch (e) {

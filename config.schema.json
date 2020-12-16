@@ -23,6 +23,22 @@
                 "description": "The PIN sent during 2FA (leave blank on first use; enter after first auth attempt)",
                 "type": "number"
             },
+            "hide-alarm": {
+                "title": "Hide Alarm (Security System)",
+                "placeholder": false,
+                "description": "Security-System will have to be controled by Blink App, if Hidden.",
+                "type": "boolean"
+            },
+            "hide-manual-arm-switch": {
+                "title": "Hide Manual Arm Switch",
+                "placeholder": false,
+                "type": "boolean"
+            },
+            "hide-enabled-switch": {
+                "title": "Hide enabled Switch (Global)",
+                "placeholder": false,
+                "type": "boolean"
+            },
             "hide-privacy-switch": {
                 "title": "Hide Privacy-Mode Switch (Global)",
                 "placeholder": false,

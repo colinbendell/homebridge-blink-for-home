@@ -23,6 +23,7 @@ function setupHAP(homebridgeAPI) {
   }
 }
 
+
 class BlinkDevice {
   constructor(data, blink) {
     this.blink = blink;
@@ -93,6 +94,7 @@ class BlinkDevice {
     }
     this.boundCharacteristics.push([service, characteristic]);
   }
+  
   createAccessory(cachedAccessories = [], category = null) {
     if (this.accessory) return this.accessory;
 
@@ -180,6 +182,7 @@ class BlinkNetwork extends BlinkDevice {
     return this.armed;
   }
   async setManualArmed(value) {
+    if (!this.blink.config["hide-alarm"]) {
     if (value) {
       if (
         this.armedState &&
@@ -198,9 +201,10 @@ class BlinkNetwork extends BlinkDevice {
     return await this.setTargetArmed(
       Characteristic.SecuritySystemTargetState.DISARM
     );
-  }
+  }}
 
   async getArmed() {
+    if (!this.blink.config["hide-alarm"]) {
     if (this.armed) {
       //const triggerStart = this.network.updatedAt - ARMED_DELAY*1000;
       const triggerStart =
@@ -228,6 +232,7 @@ class BlinkNetwork extends BlinkDevice {
     }
     return Characteristic.SecuritySystemCurrentState.DISARMED;
   }
+  }
 
   async setTargetArmed(val) {
     this.armedState = val;
@@ -244,16 +249,16 @@ class BlinkNetwork extends BlinkDevice {
 
   createAccessory(cachedAccessories = []) {
     if (this.accessory) return this.accessory;
-
+    
     super.createAccessory(cachedAccessories, Categories.SECURITY_SYSTEM);
-
+    if (!this.blink.config["hide-alarm"]) {
     const validValues = [
       Characteristic.SecuritySystemTargetState.STAY_ARM,
       Characteristic.SecuritySystemTargetState.AWAY_ARM,
       Characteristic.SecuritySystemTargetState.NIGHT_ARM,
       Characteristic.SecuritySystemTargetState.DISARM,
     ];
-    if (!this.blink.config["hide-alarm"]) {
+    
       const securitySystem = this.addService(Service.SecuritySystem);
       this.bindCharacteristic(
         securitySystem,

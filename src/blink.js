@@ -360,6 +360,10 @@ class BlinkCamera extends BlinkDevice {
 
             // no temperaure sensor on the minis
             const tempService = this.addService(Service.TemperatureSensor, `Temperature`, 'temp-sensor.' + this.serial);
+            // allow negative values
+            tempService.getCharacteristic(Characteristic.CurrentTemperature).setProps({
+ 				minValue: -100
+ 	          });
             this.bindCharacteristic(tempService, Characteristic.CurrentTemperature, 'Temperature', this.getTemperature);
             this.bindCharacteristic(tempService, Characteristic.StatusActive, 'Temperature Sensor Active', () => true);
         }

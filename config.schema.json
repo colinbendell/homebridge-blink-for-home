@@ -55,6 +55,13 @@
                 "placeholder": "45",
                 "description": "Camera status does not update live and must be fetched periodically. By default this is done every 45 seconds"
             },
+            "camera-motion-polling-seconds": {
+                "title": "Camera Motion Polling (seconds)",
+                "type": "integer",
+                "minimum": 0,
+                "placeholder": "20",
+                "description": "Camera motion detection does not update live and must be fetched periodically. By default this is done every 20 seconds"
+            },
             "enable-verbose-logging": {
                 "title": "Enable Verbose Logging",
                 "default": false,
@@ -84,7 +91,7 @@
         { "key": "pin", "placeholder": "2FA pin", "notitle": true },
         { "type": "section", "title": "Advanced Settings", "expandable": true, "expanded": false,
             "items": ["hide-privacy-switch", "enable-liveview", "avoid-thumbnail-battery-drain", "camera-thumbnail-refresh-seconds",
-                      "camera-status-polling-seconds", "enable-verbose-logging", "enable-debug-logging", "enable-startup-diagnostic"]
+                      "camera-status-polling-seconds", "camera-motion-polling-seconds", "enable-verbose-logging", "enable-debug-logging", "enable-startup-diagnostic"]
         }
     ]
 }

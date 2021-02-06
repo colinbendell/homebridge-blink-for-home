@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 // const fetch = require('node-fetch');
-const { fetch } = require( 'fetch-h2' );
+const { fetch } = require( '@adobe/helix-fetch' );
 const http = require('http');
 const https = require('https');
 const {sleep} = require('./utils');
@@ -574,8 +574,8 @@ class BlinkAPI {
      *   ]
      * }
      **/
-    async getMediaChange(maxTTL = 60, after = "1970-01-01T00:00:01+0000", page = 1) {
-        return await this.get(`/api/v1/accounts/{accountID}/media/changed?since=1970-01-01T00:00:01+0000&page=1`, maxTTL);
+    async getMediaChange(maxTTL = 60, after = "2021-02-01T00:00:01+0000", page = 1) {
+        return await this.get(`/api/v1/accounts/{accountID}/media/changed?since=2021-02-01T00:00:01+0000&page=1`, maxTTL);
     }
 
     async deleteMedia(medialist = []) {

@@ -36,7 +36,7 @@ class Http2TLSTunnel {
                 // readable side of the transform stream
                 while ((index = this._rest.indexOf('\n')) !== -1) {
                     // The `end` parameter is non-inclusive, so increase it to include the newline we found
-                    const line = this._rest.slice(0, ++index).toString().replace(/[a-zA-Z]{3,6}:\/\/localhost:\d+/, `${protocol}://${host}:443`);
+                    const line = this._rest.slice(0, ++index).toString().replace(/[a-zA-Z]{3,6}:\/\/localhost:\d+/, `${protocol}://${host}:443`).replace("localhost", host);
                     // `start` is inclusive, but we are already one char ahead of the newline -> all good
                     this._rest = this._rest.slice(index)
                     // We have a single line here! Prepend the string we want
@@ -75,6 +75,19 @@ class Http2TLSTunnel {
                 }
 
                 tlsSocket.pipe(tcpSocket);
+                let isPlay = false;
+                tcpSocket.on('data', function(data) {
+                    if (!isPlay && data.toString().startsWith("PLAY")) {
+                        isPlay = true;
+                    }
+                    else {
+                        console.log(data.toString());
+                    }
+                });
+
+                tlsSocket.on('data', function(data) {
+                    if (!isPlay) console.log(data.toString());
+                });
             })
 
             tlsSocket.on("error",  (error) => {

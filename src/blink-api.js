@@ -1,6 +1,5 @@
 const crypto = require("crypto");
-// const fetch = require('node-fetch');
-const { fetch } = require("fetch-h2");
+// const fetch = require('node-fetch');\
 const { fetch } = require( '@adobe/helix-fetch' );
 const http = require("http");
 const https = require("https");

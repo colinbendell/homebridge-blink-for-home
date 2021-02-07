@@ -274,9 +274,9 @@ class BlinkAPI {
         else {
             const data = Object.assign({authtoken:{}, account:{}, client:{}, region:{}}, res);
 
-            this.init(res.authtoken.authtoken, res.account.id, res.client.id, res.region.tier)
+            this.init(res.auth.token, res.account.account_id, res.account.client_id, res.account.tier)
 
-            if (res.client.verification_required && this.auth.pin) await this.verify();
+            if (res.account.client_verification_required && this.auth.pin) await this.verify();
         }
 
         return res;

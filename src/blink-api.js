@@ -102,9 +102,13 @@ class BlinkAPI {
         this.log.debug(options);
         const urlPrefix = targetPath.startsWith("http") ? '' : `https://rest-${this.region || "prod"}.${BLINK_API_HOST}`;
         let res = await fetch(`${urlPrefix}${targetPath}`, options)
-            .catch(e => {
+            .catch(async e => {
                 this.log.error(e);
                 //TODO: handle network errors more gracefully
+                if (autologin) {
+                    this.token = null; // force a login on network connection loss
+                    return await this._request(method, path, body, maxTTL, false);
+                }
                 return Promise.reject(e)
             });
         this.log.debug(res.status + " " + res.statusText);
@@ -125,9 +129,8 @@ class BlinkAPI {
             //TODO: what happens if the buffer isn't fully consumed?
             res._body = Buffer.from(await res.arrayBuffer());
         }
-
-        // if the API call resulted in 401 Unauthorized (token expired?), try logging in again.
         if (res.status === 401) {
+            // if the API call resulted in 401 Unauthorized (token expired?), try logging in again.
             if (autologin) {
                 await this.login(true);
                 return await this._request(method, path, body, maxTTL, false);
@@ -141,7 +144,8 @@ class BlinkAPI {
         else if (this.status >= 500) {
             //TODO: how do we get out of infinite retry?
             this.log.error(`RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`);
-            await sleep(500);
+            this.token = null; // force a re-login if 5xx errors
+            await sleep(1000);
             return await this._request(method, path, body, maxTTL, false);
         }
         else if (this.status === 429) {

@@ -1,5 +1,5 @@
 {
-    "name": "homebridge-blink-for-home",
+    "name": "@donavanbecker/homebridge-blink-for-home",
     "displayName": "Blink for Home",
     "private": false,
     "version": "3.6.2",
@@ -11,11 +11,10 @@
         "blink for home",
         "blink camera"
     ],
+    "publishConfig": {
+        "access": "public"
+    },
     "main": "src/index.js",
-    "files": [
-        "src",
-        "config.schema.json"
-    ],
     "repository": {
         "type": "git",
         "url": "git@github.com:colinbendell/homebridge-blink-for-home.git"
@@ -27,6 +26,7 @@
     "dependencies": {
         "@homebridge/camera-utils": "^1.3.0",
         "commander": "^6.2.1",
+        "@adobe/helix-fetch": "^1.9.2",
         "fetch-h2": "^2.5.1",
         "ffmpeg-for-homebridge": "0.0.9"
     },
@@ -37,6 +37,7 @@
         "nodemon": "^2.0.6"
     },
     "scripts": {
+        "update": "npm update && npm install",
         "lint": "eslint src/**.js --max-warnings=0",
         "watch": "npm run build && npm link && nodemon",
         "build": "",

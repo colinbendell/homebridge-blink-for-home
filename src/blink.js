@@ -1161,7 +1161,9 @@ class Blink {
     return await this.blinkAPI.getCameraStatus(networkID, cameraID, maxTTL);
   }
   async getCameraLastMotion(networkID, cameraID = null) {
-    const res = await this.blinkAPI.getMediaChange(MOTION_POLL);
+    const motionConfig = this.config["camera-motion-polling-seconds"];
+    const motionPoll = motionConfig === 0 ? 0 : motionConfig || MOTION_POLL;
+    const res = await this.blinkAPI.getMediaChange(motionPoll);
     const media = (res.media || [])
       .filter((m) => !networkID || m.network_id === networkID)
       .filter((m) => !cameraID || m.device_id === cameraID)

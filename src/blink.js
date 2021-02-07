@@ -102,10 +102,7 @@ class BlinkDevice {
 
         this.accessory = new Accessory(`Blink ${this.name}`, this.uuid, category);
 
-        this.addService = this.accessory._associatedHAPAccessory.addService.bind(this.accessory);
-        this.getService = this.accessory._associatedHAPAccessory.getService.bind(this.accessory);
-
-        this.getService(Service.AccessoryInformation)
+        this.accessory.getService(Service.AccessoryInformation)
             .setCharacteristic(Characteristic.FirmwareRevision, this.firmware || 'Unknown')
             .setCharacteristic(Characteristic.Manufacturer, 'Blink')
             .setCharacteristic(Characteristic.Model, this.model || 'Unknown')
@@ -205,12 +202,12 @@ class BlinkNetwork extends BlinkDevice{
             Characteristic.SecuritySystemTargetState.NIGHT_ARM,
             Characteristic.SecuritySystemTargetState.DISARM,
         ]
-        const securitySystem = this.addService(Service.SecuritySystem);
+        const securitySystem = this.accessory.addService(Service.SecuritySystem);
         this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState, `${this.name} Armed (Current)`, this.getArmed);
         this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState, `${this.name} Armed (Target)`, this.getArmed, this.setTargetArmed);
         securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
         if (!this.blink.config["hide-manual-arm-switch"]) {
-            const occupiedService = this.addService(Service.Switch, `${this.name} Arm`, 'armed.' + this.serial);
+            const occupiedService = this.accessory.addService(Service.Switch, `${this.name} Arm`, 'armed.' + this.serial);
             this.bindCharacteristic(occupiedService, Characteristic.On, `${this.name} Arm`, this.getManualArmed, this.setManualArmed);
             this.bindCharacteristic(occupiedService, Characteristic.Name, `${this.name} Arm`, () => `Manual Arm`);
         }
@@ -338,38 +335,38 @@ class BlinkCamera extends BlinkDevice {
 
 //        this.bindCharacteristic(this.getService(Service.AccessoryInformation), Characteristic.ReceivedSignalStrengthIndication, 'Wifi Strength', this.getWifi);
 
-        // const cameraMode = this.addService(Service.CameraOperatingMode, 'Camera Operating Mode', 'activated mode.' + this.serial);
+        // const cameraMode = this.accessory.addService(Service.CameraOperatingMode, 'Camera Operating Mode', 'activated mode.' + this.serial);
         // this.bindCharacteristic(cameraMode, Characteristic.HomeKitCameraActive, 'Camera Active', this.getEnabled);
         // this.bindCharacteristic(cameraMode, Characteristic.EventSnapshotsActive, 'Privacy Mode', this.getEnabled);
         // this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive, 'Privacy Mode', this.getPrivacyMode);
         // this.bindCharacteristic(cameraMode, Characteristic.ThirdPartyCameraActive, 'Third Party Camera Active', this.getPrivacyMode);
 
-        // const microphone = this.addService(Service.Microphone);
+        // const microphone = this.accessory.addService(Service.Microphone);
         // this.bindCharacteristic(microphone, Characteristic.Mute, 'Microphone', () => false);
 
-        const motionService = this.addService(Service.MotionSensor, `Motion Detected`, 'motion-sensor.' + this.serial);
+        const motionService = this.accessory.addService(Service.MotionSensor, `Motion Detected`, 'motion-sensor.' + this.serial);
         this.bindCharacteristic(motionService, Characteristic.MotionDetected, 'Motion', this.getMotionDetected);
         this.bindCharacteristic(motionService, Characteristic.StatusActive, 'Motion Sensor Active', this.getMotionDetectActive);
 
         // No idea how to set the motion enabled/disabled on minis
-        const enabledSwitch = this.addService(Service.Switch, `Enabled`, 'enabled.' + this.serial);
+        const enabledSwitch = this.accessory.addService(Service.Switch, `Enabled`, 'enabled.' + this.serial);
         this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
 
         if (this.model !== "owl") {
             // Battery Levels are only available in non Minis
-            const batteryService = this.addService(Service.BatteryService, `Battery`, 'battery-sensor.' + this.serial);
+            const batteryService = this.accessory.addService(Service.BatteryService, `Battery`, 'battery-sensor.' + this.serial);
             this.bindCharacteristic(batteryService, Characteristic.BatteryLevel, 'Battery Level', this.getBattery);
             this.bindCharacteristic(batteryService, Characteristic.ChargingState, 'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
             this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery, 'Battery LowBattery', this.getLowBattery);
 
             // no temperaure sensor on the minis
-            const tempService = this.addService(Service.TemperatureSensor, `Temperature`, 'temp-sensor.' + this.serial);
+            const tempService = this.accessory.addService(Service.TemperatureSensor, `Temperature`, 'temp-sensor.' + this.serial);
             this.bindCharacteristic(tempService, Characteristic.CurrentTemperature, 'Temperature', this.getTemperature);
             this.bindCharacteristic(tempService, Characteristic.StatusActive, 'Temperature Sensor Active', () => true);
         }
 
         if (!this.blink.config["hide-privacy-switch"]) {
-            const privacyModeService = this.addService(Service.Switch, `Privacy Mode`, 'privacy.' + this.serial);
+            const privacyModeService = this.accessory.addService(Service.Switch, `Privacy Mode`, 'privacy.' + this.serial);
             this.bindCharacteristic(privacyModeService, Characteristic.On, 'Privacy Mode', this.getPrivacyMode, this.setPrivacyMode);
         }
 

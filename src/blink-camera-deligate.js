@@ -174,7 +174,9 @@ class BlinkCameraDelegate {
 
         this.pendingSessions.set(sessionId, sessionInfo);
 
+        //TODO: this is messy as hell - massive cleanup necessary
         const liveViewURL = await this.blinkCamera.getLiveViewURL();
+
         console.log(`LiveView Stream: ${liveViewURL}`);
         if (/^rtsp/.test(liveViewURL)) {
             const [,protocol, host, path,] = /([a-z]+):\/\/([^:\/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
@@ -195,15 +197,15 @@ class BlinkCameraDelegate {
     }
 
     // called when iOS device asks stream to start/stop/reconfigure
-    handleStreamRequest(request, callback) {
+    async handleStreamRequest(request, callback) {
         this.log.debug('handleStreamRequest');
         this.log.debug(request);
         const sessionId = request.sessionID;
+        const sessionInfo = this.pendingSessions.get(sessionId);
+        const rtspProxy = this.proxySessions.get(sessionId);
 
         switch (request.type) {
             case StreamRequestTypes.START:
-                const sessionInfo = this.pendingSessions.get(sessionId);
-                const rtspProxy = this.proxySessions.get(sessionId);
 
                 const video = request.video;
 
@@ -250,8 +252,9 @@ class BlinkCameraDelegate {
                         `-hide_banner -loglevel warning`,
                         `-loop 1 -f image2 -i ${rtspProxy.path}`,
                         `-c:v libx264 -pix_fmt yuv420p -r ${fps}`,
+                        `-x264-params keyint=60`,
                         `-an -sn -dn`, //disable audio, subtitles, data
-                        // `-b:v ${maxBitrate}k -bufsize ${2 * maxBitrate}k -maxrate ${maxBitrate}k`,
+                        `-b:v ${maxBitrate}k -bufsize ${2 * maxBitrate}k -maxrate ${maxBitrate}k`,
                         // `-profile:v ${profile} -level:v ${level}`,
                     ]);
                 }
@@ -282,7 +285,8 @@ class BlinkCameraDelegate {
                 this.pendingSessions.delete(sessionId);
 
                 let started = false;
-                ffmpegVideo.stderr.on('data', data => {
+                setTimeout(() => {started = true}, 1000);
+                ffmpegVideo.stdout.on('data', data => {
                     if (!started) {
                         started = true;
                         this.log.debug("FFMPEG: received first frame");
@@ -316,7 +320,6 @@ class BlinkCameraDelegate {
                     }
                 });
 
-
                 break;
             case StreamRequestTypes.RECONFIGURE:
                 // not supported by this example
@@ -325,6 +328,7 @@ class BlinkCameraDelegate {
                 break;
             case StreamRequestTypes.STOP:
                 const ffmpegProcess = this.ongoingSessions.get(sessionId);
+                if (rtspProxy.proxyServer) await rtspProxy.proxyServer.stop();
                 try {
                     if (ffmpegProcess) {
                         ffmpegProcess.kill('SIGKILL');

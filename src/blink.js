@@ -139,6 +139,16 @@ class BlinkNetwork extends BlinkDevice{
     set armedState(val) { this.accessory.context.armed = val; }
     get cameras() { return [...this.blink.cameras.values()].filter(c => c.networkID === this.networkID); }
 
+    set commandID(val) { this.commandID = val; }
+    get commandID() { return this.commandID; }
+
+    async getCommandBusy() {
+        if (this.commandID) {
+            const res = await this.blink.getCommand(this.networkID, this.commandID).catch(() => {});
+            return Boolean(res.completed);
+        }
+        return false;
+    }
     async getManualArmed() {
         return this.armed;
     }
@@ -422,25 +432,35 @@ class Blink {
 
     async getCommand(networkID, commandID) {
         if (!networkID || !commandID) return;
-        return await this.blinkAPI.getCommand(networkID, commandID);
+        return await this.blinkAPI.getCommand(networkID, commandID).catch(() => {}) || {};
     }
     async stopCommand(networkID, commandID) {
         if (!networkID || !commandID) return;
-        return await this.blinkAPI.deleteCommand(networkID, commandID);
+        return await this.blinkAPI.deleteCommand(networkID, commandID).catch(() => {});
     }
 
-    async _commandWait(networkID, commandID) {
+    async _commandWait(networkID, commandID, timeout = null) {
         if (!networkID || !commandID) return;
-        let cmd = await this.blinkAPI.getCommand(networkID, commandID);
+
+        const network = this.networks.get(networkID);
+        network.commandID = commandID;
+
+        const start = Date.now();
+        let cmd = await this.getCommand(networkID, commandID);
         while (cmd.complete === false) {
             await sleep(400);
-            cmd = await this.blinkAPI.getCommand(networkID, commandID) || {};
+            cmd = await this.getCommand(networkID, commandID);
+
+            if (timeout && Date.now() - start > timeout * 1000) {
+                await this.stopCommand(networkID, commandID);
+            }
         }
+        network.commandID = null;
         return cmd;
     }
 
     async _commandWaitAll(commands = []) {
-        return await Promise.all([commands].flatMap(c => this._commandWait(c.network_id, c.id)));
+        return await Promise.all([commands].flatMap(c => this._commandWait(c.network_id, c.id || c.command_id)));
     }
 
     async _command(fn) {
@@ -742,7 +762,7 @@ class Blink {
             .filter(m => !cameraID || m.device_id === cameraID);
     }
 
-    async getCameraLiveView(networkID, cameraID) {
+    async getCameraLiveView(networkID, cameraID, timeout = 30) {
         const camera = this.cameras.get(cameraID);
         let res;
         if (camera.model === "owl") {
@@ -751,7 +771,19 @@ class Blink {
         else {
             res = await this.blinkAPI.getCameraLiveViewV5(camera.networkID, camera.cameraID);
         }
+
+        //TODO: we should stash and keep track of this
+        this._commandWait(camera.networkID, res.command_id, timeout * 1000)
+
         return res;
+    }
+
+    async stopCameraLiveView(networkID) {
+        const network = this.networks.get(networkID);
+        if (network.commandID) {
+            await this.stopCommand(networkID, network.commandID);
+        }
+        network.commandID = null;
     }
 }
 

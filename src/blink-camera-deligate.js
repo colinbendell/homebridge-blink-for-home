@@ -76,7 +76,7 @@ class BlinkCameraDelegate {
     get controller() {
         if (!this._controller) {
             const options = {
-                cameraStreamCount: 2, // HomeKit requires at least 2 streams, but 1 is also just fine
+                cameraStreamCount: 1, // HomeKit requires at least 2 streams, but 1 is also just fine
                 delegate: this,
 
                 streamingOptions: {
@@ -84,21 +84,26 @@ class BlinkCameraDelegate {
                     supportedCryptoSuites: [this.hap.SRTPCryptoSuites.NONE, this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80], // NONE is not supported by iOS just there for testing with Wireshark for example
                     video: {
                         codec: {
-                            profiles: [this.hap.H264Profile.BASELINE, this.hap.H264Profile.MAIN, this.hap.H264Profile.HIGH],
-                            levels: [this.hap.H264Level.LEVEL3_1, this.hap.H264Level.LEVEL3_2, this.hap.H264Level.LEVEL4_0],
+                            profiles: [
+                                // this.hap.H264Profile.BASELINE, this.hap.H264Profile.MAIN,
+                                this.hap.H264Profile.HIGH],
+                            levels: [
+                                // this.hap.H264Level.LEVEL3_1,
+                                // this.hap.H264Level.LEVEL3_2,
+                                this.hap.H264Level.LEVEL4_0],
                         },
                         resolutions: [
                             // [1920, 1080, 30], // width, height, framerate
                             // [1280, 960, 30],
-                            [1280, 720, 30],
-                            [1024, 768, 30],
-                            [640, 480, 30],
-                            [640, 360, 30],
-                            [480, 360, 30],
-                            [480, 270, 30],
-                            [320, 240, 30],
+                            [1280, 720, 24],
+                            // [1024, 768, 30],
+                            // [640, 480, 30],
+                            // [640, 360, 30],
+                            // [480, 360, 30],
+                            // [480, 270, 30],
+                            // [320, 240, 30],
                             [320, 240, 15], // Apple Watch requires this configuration (Apple Watch also seems to required OPUS @16K)
-                            [320, 180, 30],
+                            // [320, 180, 30],
                         ],
                     },
                     // audio option is omitted, as it is not supported in this example; HAP-NodeJS will fake an appropriate audio codec

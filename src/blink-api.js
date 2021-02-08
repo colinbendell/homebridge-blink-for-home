@@ -83,9 +83,10 @@ class BlinkAPI {
         }
 
         const headers = {
-            "User-Agent": "Blink/9015 CFNetwork/1206 Darwin/20.1.0",
-            "app-build": "IOS_9015",
+            "User-Agent": "Blink/9289 CFNetwork/1233 Darwin/20.4.0",
+            "app-build": "IOS_9289",
             "Locale": "en_US",
+            "x-blink-time-zone": "America/New York",
             "accept-language": "en_US",
             "Accept": "*/*",
         };
@@ -101,17 +102,35 @@ class BlinkAPI {
         this.log.debug(options);
         const urlPrefix = targetPath.startsWith("http") ? '' : `https://rest-${this.region || "prod"}.${BLINK_API_HOST}`;
         let res = await fetch(`${urlPrefix}${targetPath}`, options)
-            .catch(e => {
+            .catch(async e => {
                 this.log.error(e);
                 //TODO: handle network errors more gracefully
+                if (autologin) {
+                    this.token = null; // force a login on network connection loss
+                    return await this._request(method, path, body, maxTTL, false);
+                }
                 return Promise.reject(e)
             });
         this.log.debug(res.status + " " + res.statusText);
         this.log.debug(Object.fromEntries(res.headers.entries()));
         // TODO: deal with network failures
 
-        // if the API call resulted in 401 Unauthorized (token expired?), try logging in again.
+        if (/application\/json/.test(res.headers.get('content-type'))) {
+            const json = await res.json();
+            res._body = json; // stash it for the cache because .json() isn't re-callable
+            console.debug(JSON.stringify(json));
+        }
+        else if (/text/.test(res.headers.get('content-type'))) {
+            const txt = await res.text();
+            res._body = txt; // stash it for the cache because .json() isn't re-callable
+            console.debug(txt);
+        }
+        else {
+            //TODO: what happens if the buffer isn't fully consumed?
+            res._body = Buffer.from(await res.arrayBuffer());
+        }
         if (res.status === 401) {
+            // if the API call resulted in 401 Unauthorized (token expired?), try logging in again.
             if (autologin) {
                 await this.login(true);
                 return await this._request(method, path, body, maxTTL, false);
@@ -125,7 +144,8 @@ class BlinkAPI {
         else if (this.status >= 500) {
             //TODO: how do we get out of infinite retry?
             this.log.error(`RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`);
-            await sleep(500);
+            this.token = null; // force a re-login if 5xx errors
+            await sleep(1000);
             return await this._request(method, path, body, maxTTL, false);
         }
         else if (this.status === 429) {
@@ -139,26 +159,17 @@ class BlinkAPI {
             this.log.error(Object.fromEntries(res.headers));
             throw new Error(`${method} ${targetPath} (${res.headers.get('status') || res.status + " " + res.statusText})`)
         }
-        //TODO: what about 3xx?
+        //TODO: what about other 3xx?
         else if (res.status === 200) {
             if (method === "GET") {
-                CACHE.set(method + targetPath, res);
+                CACHE.set(method + path, res);
             }
         }
 
-        if (res.headers.get('content-type') === 'application/json') {
-            const json = await res.json();
-            res._body = json; // stash it for the cache because .json() isn't re-callable
-            this.log.debug(JSON.stringify(json));
-            return json;
+        if (method !== "GET") {
+            CACHE.delete("GET" + path);
         }
-        else if (/text/.test(res.headers.get('content-type'))) {
-            const txt = await res.text();
-            res._body = txt; // stash it for the cache because .json() isn't re-callable
-            this.log.debug(txt);
-            return txt;
-        }
-        return await res.arrayBuffer();
+        return res._body;
     }
 
     async getUrl(url) {
@@ -248,13 +259,13 @@ class BlinkAPI {
             "device_identifier": client.device || "iPhone12,3",
             "email": email || this.auth.email,
             "notification_key": client.notificationKey || this.auth.notificationKey,
-            "os_version": client.os || "14.2",
+            "os_version": client.os || "14.5",
             "password": password || this.auth.password,
             "reauth": "true",
             "unique_id": clientUUID || this.auth.clientUUID
         }
 
-        const res = await this.post("/api/v4/account/login", data, false);
+        const res = await this.post("/api/v5/account/login", data, false);
 
         // convenience function to avoid the business logic layer from having to handle this check constantly
         if (!res || /unauthorized|invalid/i.test(res.message)) {
@@ -263,9 +274,9 @@ class BlinkAPI {
         else {
             const data = Object.assign({authtoken:{}, account:{}, client:{}, region:{}}, res);
 
-            this.init(res.authtoken.authtoken, res.account.id, res.client.id, res.region.tier)
+            this.init(res.auth.token, res.account.account_id, res.account.client_id, res.account.tier)
 
-            if (res.client.verification_required && this.auth.pin) await this.verify();
+            if (res.account.client_verification_required && this.auth.pin) await this.verify();
         }
 
         return res;

@@ -184,7 +184,7 @@ class BlinkAPI {
 
     /**
      *
-     * POST https://rest-prod.immedia-semi.com/api/v4/account/login
+     * POST https://rest-prod.immedia-semi.com/api/v5/account/login
      *
      * :authority:       rest-prod.immedia-semi.com
      * locale:           en_CA
@@ -221,29 +221,41 @@ class BlinkAPI {
      * via:                     1.1 2c060d2b820e53bf308fe03fbfaed0e9.cloudfront.net (CloudFront)
      * x-amz-cf-pop:            ATL56-C1
      * x-amz-cf-id:             9gCCfKQ9_aGv53o0Gt75aNVRs0bxiWtkQ_FC-kWYJYLEeihFtm9BAw==
-     * [decoded gzip] JSON                                                                                                                                                                                                                                   [m:auto]
+     *
      * {
-     *     "accountID": {
-     *         "id": 22156,
-     *         "new_account": false,
-     *         "verification_required": false
-     *     },
-     *     "allow_pin_resend_seconds": 60,
-     *     "authtoken": {
-     *         "authtoken": "2YKEsy9BPb9puha1s4uBwe",
-     *         "message": "auth"
-     *     },
-     *     "client": {
-     *         "id": 2360401,
-     *         "verification_required": true
-     *     },
-     *     "force_password_reset": false,
-     *     "lockout_time_remaining": 0,
-     *     "region": {
-     *         "code": "us",
-     *         "description": "United States",
-     *         "tier": "prod"
-     *     }
+     *     "account": {
+     *        "account_id": 22156,
+     *        "account_verification_required": false,
+     *        "client_id": 2360401,
+     *        "client_verification_required": true,
+     *        "new_account": false,
+     *        "phone_verification_required": false,
+     *        "region": "ap",
+     *        "tier": "prod",
+     *        "user_id": 12147,
+     *        "verification_channel": "phone"
+     *    },
+     *    "allow_pin_resend_seconds": 60,
+     *    "auth": {
+     *        "token": "2YKEsy9BPb9puha1s4uBwe"
+     *    },
+     *    "force_password_reset": false,
+     *    "lockout_time_remaining": 0,
+     *    "phone": {
+     *        "country_calling_code": "1",
+     *        "last_4_digits": "5555",
+     *        "number": "+1******5555",
+     *        "valid": true
+     *    },
+     *    "verification": {
+     *        "email": {
+     *            "required": false
+     *        },
+     *        "phone": {
+     *            "channel": "sms",
+     *            "required": true
+     *        }
+     *    }
      * }
      *
      **/
@@ -586,7 +598,8 @@ class BlinkAPI {
      * }
      **/
     async getMediaChange(maxTTL = 60, after = "1970-01-01T00:00:01+0000", page = 1) {
-        return await this.get(`/api/v1/accounts/{accountID}/media/changed?since=1970-01-01T00:00:01+0000&page=1`, maxTTL);
+        const since = new Date(after);
+        return await this.get(`/api/v1/accounts/{accountID}/media/changed?since=${since.toISOString()}&page=${page}`, maxTTL);
     }
 
     async deleteMedia(medialist = []) {

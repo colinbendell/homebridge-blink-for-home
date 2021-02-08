@@ -23,7 +23,7 @@ class HomebridgeBlink {
         this.log = log;
         this.config = config;
         this.api = api;
-        this.accessoryLookup = new Map();
+        this.accessoryLookup = [];
         this.cachedAccessories = [];
 
         this.accessories = {};
@@ -36,13 +36,13 @@ class HomebridgeBlink {
 
     async init() {
         this.log.info('Init Blink');
-        const updateAccessories = function (data = [], accessories = new Map()) {
-            for (const entry of data) {
-                if (accessories.has(data.canonicalID)) accessories.get(data.canonicalID).data = entry;
-            }
-        };
-
-        const handleUpdates = data => updateAccessories(data, this.accessoryLookup);
+        // const updateAccessories = function (data = [], accessories = new Map()) {
+        //     for (const entry of data) {
+        //         if (accessories.has(data.canonicalID)) accessories.get(data.canonicalID).data = entry;
+        //     }
+        // };
+        //
+        // const handleUpdates = data => updateAccessories(data, this.accessoryLookup);
 
         try {
             this.blink = await this.setupBlink();
@@ -55,7 +55,7 @@ class HomebridgeBlink {
 
             this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.cachedAccessories);
             this.cachedAccessories = [];
-            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.accessoryLookup.map(blinkDevice => blinkDevice.accessory || blinkDevice));
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.accessoryLookup.map(blinkDevice => blinkDevice.accessory).filter(e => !!e));
 
             //TODO: add new device discovery & removal
             await this.poll();

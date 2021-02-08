@@ -94,7 +94,7 @@ class BlinkDevice {
         return actual;
     };
     createAccessory(cachedAccessories = [], category = null) {
-        if (this.accessory) return this.accessory;
+        if (this.accessory) return this;
 
         this.log('Initing: ' + this.canonicalID);
 
@@ -116,6 +116,7 @@ class BlinkDevice {
         if (context) {
             this.accessory.context = Object.assign(this.accessory.context, context);
         }
+        return this;
     }
 }
 class BlinkNetwork extends BlinkDevice{
@@ -192,21 +193,27 @@ class BlinkNetwork extends BlinkDevice{
     }
 
     createAccessory(cachedAccessories = []) {
-        if (this.accessory) return this.accessory;
+        if (this.accessory) return this;
 
-        super.createAccessory(cachedAccessories, Categories.SECURITY_SYSTEM)
+        const hideAlarm = Boolean(this.blink.config["hide-alarm"]);
+        const hideManualArmSwitch = Boolean(this.blink.config["hide-manual-arm-switch"]);
+        if (hideAlarm && hideManualArmSwitch) return this;
 
-        const validValues = [
-            Characteristic.SecuritySystemTargetState.STAY_ARM,
-            Characteristic.SecuritySystemTargetState.AWAY_ARM,
-            Characteristic.SecuritySystemTargetState.NIGHT_ARM,
-            Characteristic.SecuritySystemTargetState.DISARM,
-        ]
-        const securitySystem = this.accessory.addService(Service.SecuritySystem);
-        this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState, `${this.name} Armed (Current)`, this.getArmed);
-        this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState, `${this.name} Armed (Target)`, this.getArmed, this.setTargetArmed);
-        securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({ validValues });
-        if (!this.blink.config["hide-manual-arm-switch"]) {
+        super.createAccessory(cachedAccessories, Categories.SECURITY_SYSTEM);
+
+        if (!hideAlarm) {
+            const securitySystem = this.accessory.addService(Service.SecuritySystem);
+            this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState, `${this.name} Armed (Current)`, this.getArmed);
+            this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState, `${this.name} Armed (Target)`, this.getArmed, this.setTargetArmed);
+            const validValues = [
+                Characteristic.SecuritySystemTargetState.STAY_ARM,
+                Characteristic.SecuritySystemTargetState.AWAY_ARM,
+                Characteristic.SecuritySystemTargetState.NIGHT_ARM,
+                Characteristic.SecuritySystemTargetState.DISARM,
+            ]
+            securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({validValues});
+        }
+        if (!hideManualArmSwitch) {
             const occupiedService = this.accessory.addService(Service.Switch, `${this.name} Arm`, 'armed.' + this.serial);
             this.bindCharacteristic(occupiedService, Characteristic.On, `${this.name} Arm`, this.getManualArmed, this.setManualArmed);
             this.bindCharacteristic(occupiedService, Characteristic.Name, `${this.name} Arm`, () => `Manual Arm`);
@@ -326,7 +333,7 @@ class BlinkCamera extends BlinkDevice {
     }
 
     createAccessory(cachedAccessories = []) {
-        if (this.accessory) return this.accessory;
+        if (this.accessory) return this;
         super.createAccessory(cachedAccessories, Categories.CAMERA)
 
         const cameraDelegate = new BlinkCameraDelegate(hap, this, this.log);

@@ -1,6 +1,11 @@
 const crypto = require("crypto");
+<<<<<<< HEAD
 // const fetch = require('node-fetch');\
 const { fetch } = require( '@adobe/helix-fetch' );
+=======
+// const fetch = require('node-fetch');
+const { fetch } = require("fetch-h2");
+>>>>>>> parent of 16d1577... 3.6.3
 const http = require("http");
 const https = require("https");
 const { sleep } = require("./utils");
@@ -669,11 +674,11 @@ class BlinkAPI {
    **/
   async getMediaChange(
     maxTTL = 60,
-    after = "2021-02-01T00:00:01+0000",
+    after = "1970-01-01T00:00:01+0000",
     page = 1
   ) {
     return await this.get(
-      `/api/v1/accounts/{accountID}/media/changed?since=2021-02-01T00:00:01+0000&page=1`,
+      `/api/v1/accounts/{accountID}/media/changed?since=1970-01-01T00:00:01+0000&page=1`,
       maxTTL
     );
   }

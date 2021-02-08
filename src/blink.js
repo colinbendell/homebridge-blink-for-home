@@ -355,9 +355,11 @@ class BlinkCamera extends BlinkDevice {
         this.bindCharacteristic(motionService, Characteristic.MotionDetected, 'Motion', this.getMotionDetected);
         this.bindCharacteristic(motionService, Characteristic.StatusActive, 'Motion Sensor Active', this.getMotionDetectActive);
 
-        // No idea how to set the motion enabled/disabled on minis
-        const enabledSwitch = this.accessory.addService(Service.Switch, `Enabled`, 'enabled.' + this.serial);
-        this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
+        if (!this.blink.config["hide-enabled-switch"]) {
+            // No idea how to set the motion enabled/disabled on minis
+            const enabledSwitch = this.accessory.addService(Service.Switch, `Enabled`, 'enabled.' + this.serial);
+            this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
+        }
 
         if (this.model !== "owl") {
             // Battery Levels are only available in non Minis
@@ -703,7 +705,9 @@ class Blink {
         return await this.blinkAPI.getCameraStatus(networkID, cameraID, maxTTL);
     }
     async getCameraLastMotion(networkID, cameraID = null) {
-        const res = await this.blinkAPI.getMediaChange(MOTION_POLL);
+        const motionConfig = this.config["camera-motion-polling-seconds"];
+        const motionPoll = Number.isInteger(motionConfig) ? motionConfig : MOTION_POLL;
+        const res = await this.blinkAPI.getMediaChange(motionPoll);
         const media = (res.media || [])
             .filter(m => !networkID || m.network_id === networkID)
             .filter(m => !cameraID || m.device_id === cameraID)

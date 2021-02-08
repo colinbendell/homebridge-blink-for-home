@@ -23,8 +23,25 @@
                 "description": "The PIN sent during 2FA (leave blank on first use; enter after first auth attempt)",
                 "type": "number"
             },
+            "hide-alarm": {
+                "title": "Hide Alarm (Security System)",
+                "placeholder": false,
+                "description": "When combined with the arm switch (used or automation), the Security-System will have to be controlled by Blink App.",
+                "type": "boolean"
+            },
+            "hide-manual-arm-switch": {
+                "title": "Hide Manual Arm Switch (for use in automation)",
+                "placeholder": false,
+                "description": "The manual arm switch allows for geo fencing automations. Hiding this switch removes this automation use",
+                "type": "boolean"
+            },
+            "hide-enabled-switch": {
+                "title": "Hide All Camera Enabled/Disable Switch",
+                "placeholder": false,
+                "type": "boolean"
+            },
             "hide-privacy-switch": {
-                "title": "Hide Privacy-Mode Switch (Global)",
+                "title": "Hide All Privacy-Mode Enable/Disable Switch ",
                 "placeholder": false,
                 "description": "Privacy-Mode prevents thumbnails from refreshing when the Security-System is not armed. Disabling this switch will globally disable privacy-mode on all cameras.",
                 "type": "boolean"
@@ -55,6 +72,13 @@
                 "placeholder": "45",
                 "description": "Camera status does not update live and must be fetched periodically. By default this is done every 45 seconds"
             },
+            "camera-motion-polling-seconds": {
+                "title": "Camera Motion Polling (seconds)",
+                "type": "integer",
+                "minimum": 0,
+                "placeholder": "20",
+                "description": "Camera motion detection does not update live and must be fetched periodically. By default this is done every 20 seconds"
+            },
             "enable-verbose-logging": {
                 "title": "Enable Verbose Logging",
                 "default": false,
@@ -83,8 +107,10 @@
         { "key": "password", "placeholder": "password", "notitle": true },
         { "key": "pin", "placeholder": "2FA pin", "notitle": true },
         { "type": "section", "title": "Advanced Settings", "expandable": true, "expanded": false,
-            "items": ["hide-privacy-switch", "enable-liveview", "avoid-thumbnail-battery-drain", "camera-thumbnail-refresh-seconds",
-                      "camera-status-polling-seconds", "enable-verbose-logging", "enable-debug-logging", "enable-startup-diagnostic"]
+            "items": ["hide-privacy-switch", "hide-alarm", "hide-manual-arm-switch", "hide-enabled-switch", "enable-liveview",
+                "avoid-thumbnail-battery-drain", "camera-thumbnail-refresh-seconds",
+                "camera-status-polling-seconds", "camera-motion-polling-seconds",
+                "enable-verbose-logging", "enable-debug-logging", "enable-startup-diagnostic"]
         }
     ]
 }

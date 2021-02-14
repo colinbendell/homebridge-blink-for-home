@@ -7,5 +7,5 @@ const celsiusToFahrenheit = temperature => Math.round((temperature * 1.8) + 32);
 module.exports = {
     sleep,
     fahrenheitToCelsius,
-    celsiusToFahrenheit
-}
+    celsiusToFahrenheit,
+};

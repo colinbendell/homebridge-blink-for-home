@@ -31,12 +31,36 @@
         "ffmpeg-for-homebridge": "0.0.9"
     },
     "devDependencies": {
-        "homebridge-config-ui-x": "^4.38.0",
-        "homebridge": "^1.2.3"
+        "eslint": "^7.20.0",
+        "eslint-config-google": "^0.14.0",
+        "homebridge": "^1.2.3",
+        "homebridge-config-ui-x": "^4.38.0"
     },
     "scripts": {
+        "lint": "eslint src/**.js --max-warnings=0",
         "watch": "npm run build && npm link",
         "build": "",
         "prepublishOnly": "npm run build"
+    },
+    "eslintConfig": {
+        "extends": [
+            "eslint:recommended",
+            "google"
+        ],
+        "parserOptions": {
+            "ecmaVersion": 2020
+        },
+        "env": {
+            "es6": true,
+            "node": true
+        },
+        "rules": {
+            "indent": ["error", 4],
+            "brace-style": ["error", "stroustrup"],
+            "max-len": ["error", 120],
+            "require-jsdoc": "off",
+            "valid-jsdoc": "off",
+            "arrow-parens": ["error", "as-needed"]
+        }
     }
 }

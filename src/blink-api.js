@@ -125,7 +125,7 @@ class BlinkAPI {
         const urlPrefix = targetPath.startsWith('http') ?
             '' :
             `https://rest-${this.region || 'prod'}.${BLINK_API_HOST}`;
-        const res = await fetch(`${urlPrefix}${targetPath}`, options).catch(async (e) => {
+        const res = await fetch(`${urlPrefix}${targetPath}`, options).catch(async e => {
             this.log.error(e);
             // TODO: handle network errors more gracefully
             if (autologin) {
@@ -524,7 +524,6 @@ class BlinkAPI {
     async getAccountHomescreen(maxTTL = 30) {
         return await this.get(`/api/v3/accounts/{accountID}/homescreen`, maxTTL);
     }
-
 
     /*
     {

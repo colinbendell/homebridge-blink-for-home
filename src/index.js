@@ -1,4 +1,4 @@
-const {Blink} = require("./blink");
+const {Blink} = require('./blink');
 
 // Blink Security Platform Plugin for HomeBridge (https://github.com/colinbendell/homebridge-blink-for-home)
 //
@@ -13,10 +13,10 @@ const {Blink} = require("./blink");
 //     }
 // ]
 
-const PLUGIN_NAME = "homebridge-blink-for-home";
-const PLATFORM_NAME = "Blink";
+const PLUGIN_NAME = 'homebridge-blink-for-home';
+const PLATFORM_NAME = 'Blink';
 
-const BLINK_STATUS_EVENT_LOOP = 10; //internal poll interval
+const BLINK_STATUS_EVENT_LOOP = 10; // internal poll interval
 
 class HomebridgeBlink {
     constructor(log, config, api) {
@@ -28,7 +28,7 @@ class HomebridgeBlink {
 
         this.accessories = {};
         if (!this.config.username && !this.config.password) {
-            throw('Missing Blink account credentials {\'email\',\'password\'} in config.json');
+            throw Error('Missing Blink account credentials {"email","password"} in config.json');
         }
 
         api.on('didFinishLaunching', () => this.init());
@@ -55,9 +55,10 @@ class HomebridgeBlink {
 
             this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.cachedAccessories);
             this.cachedAccessories = [];
-            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, this.accessoryLookup.map(blinkDevice => blinkDevice.accessory).filter(e => !!e));
+            this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME,
+                this.accessoryLookup.map(blinkDevice => blinkDevice.accessory).filter(e => !!e));
 
-            //TODO: add new device discovery & removal
+            // TODO: add new device discovery & removal
             await this.poll();
         }
         catch (err) {
@@ -79,8 +80,8 @@ class HomebridgeBlink {
     async poll() {
         const intervalPoll = () => {
             if (this.timerID) clearInterval(this.timerID);
-            this.poll()
-        }
+            this.poll();
+        };
 
         // await this.blink.refreshCameraThumbnail();
         try {
@@ -95,21 +96,21 @@ class HomebridgeBlink {
 
     async setupBlink() {
         if (!this.config.username && !this.config.password) {
-            throw('Missing Blink {\'email\',\'password\'} in config.json');
+            throw Error('Missing Blink {"email","password"} in config.json');
         }
         const clientUUID = this.api.hap.uuid.generate(`${this.config.name}${this.config.username}`);
         const auth = {
             email: this.config.username,
             password: this.config.password,
             pin: this.config.pin,
-        }
+        };
 
         const blink = new Blink(clientUUID, auth, this.api, this.log, this.config);
         try {
             await blink.authenticate();
             await blink.refreshData();
-            //TODO: move this off the startup loop?
-            if (this.config["enable-startup-diagnostic"]) await blink.diagnosticDebug();
+            // TODO: move this off the startup loop?
+            if (this.config['enable-startup-diagnostic']) await blink.diagnosticDebug();
         }
         catch (e) {
             this.log.error(e);
@@ -124,7 +125,7 @@ class HomebridgeBlink {
     }
 }
 
-module.exports = function (homebridge) {
+module.exports = function(homebridge) {
     homebridge.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, HomebridgeBlink, true);
     return homebridge;
 };

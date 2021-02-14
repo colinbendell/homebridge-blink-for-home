@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 const fs = require('fs');
-const {spawn} = require("child_process");
-const tls = require("tls");
+const {spawn} = require('child_process');
+const tls = require('tls');
 
-const pathToFfmpeg = require('ffmpeg-for-homebridge')
+const pathToFfmpeg = require('ffmpeg-for-homebridge');
 const program = require('commander');
 const {Blink} = require('./blink');
 const {sleep} = require('./utils');
@@ -11,28 +11,27 @@ const {Http2TLSTunnel} = require('./proxy');
 const {reservePorts} = require('@homebridge/camera-utils');
 
 const Crypto = require('crypto');
-const {tmpdir} = require( 'os');
-const Path = require( 'path');
+const {tmpdir} = require('os');
+const Path = require('path');
 
 function tmpFile(ext) {
-    return Path.join(tmpdir(),`archive.${Crypto.randomBytes(6).readUIntLE(0,6).toString(36)}.${ext}`);
+    return Path.join(tmpdir(), `archive.${Crypto.randomBytes(6).readUIntLE(0, 6).toString(36)}.${ext}`);
 }
 
-process.on('SIGINT', function () {
+process.on('SIGINT', function() {
     process.exit(1);
 });
 
-program
-    .version('1.0');
+program.version('1.0');
 
-function prettyTree(name, value, indent = "", first = false) {
+function prettyTree(name, value, indent = '', first = false) {
     if (value instanceof Map) {
-        const prefix = first ? "" : "+- ";
+        const prefix = first ? '' : '+- ';
         console.log(`${indent}${prefix}${name}`);
-        indent += first ? "" : "|  ";
+        indent += first ? '' : '|  ';
 
         for (const [childName, childValue] of value.entries()) {
-            prettyTree(childName, childValue, indent)
+            prettyTree(childName, childValue, indent);
         }
     }
     else {
@@ -47,7 +46,9 @@ function init() {
 async function getCamera(id) {
     const blink = init();
     await blink.refreshData();
-    const camera = [...blink.cameras.values()].filter(c => c.name === c._prefix + id || c.id === Number.parseInt(id)).pop();
+    const camera = [...blink.cameras.values()]
+        .filter(c => c.name === c._prefix + id || c.id === Number.parseInt(id))
+        .pop();
     if (!camera) {
         throw new Error(`No camera: ${id}`);
     }
@@ -59,7 +60,8 @@ async function login(options) {
     try {
         await blink.authenticate();
         console.log('Success');
-    } catch (e) {
+    }
+    catch (e) {
         console.error('Fail.');
         console.error(e.message);
     }
@@ -74,21 +76,23 @@ async function list(options) {
         if (options.csv) {
             if (options.devices) {
                 for (const dev of blink.networks.values()) {
-                    dev._prefix = "";
+                    dev._prefix = '';
                     if (dev.syncModule) {
-                        console.log(`SyncModule,"${dev.name}",${dev.networkID},,${dev.syncModule.id},${dev.model},${dev.serial},${dev.status},${dev.armed ? "armed" : "disarmed"}`)
+                        // eslint-disable-next-line max-len
+                        console.log(`SyncModule,"${dev.name}",${dev.networkID},,${dev.syncModule.id},${dev.model},${dev.serial},${dev.status},${dev.armed ? 'armed' : 'disarmed'}`);
                     }
                 }
                 for (const dev of blink.cameras.values()) {
-                    dev._prefix = "";
-                    console.log(`Camera,"${dev.network.name}",${dev.networkID},${dev.name},${dev.cameraID},${dev.model},${dev.serial},${dev.status},${dev.enabled ? "enabled" : "disabled"}`)
+                    dev._prefix = '';
+                    // eslint-disable-next-line max-len
+                    console.log(`Camera,"${dev.network.name}",${dev.networkID},${dev.name},${dev.cameraID},${dev.model},${dev.serial},${dev.status},${dev.enabled ? 'enabled' : 'disabled'}`);
                 }
-
             }
             if (options.media) {
                 for (const media of savedMedia.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))) {
                     const camera = blink.cameras.get(media.device_id);
-                    console.log(`${media.created_at.replace(/.000Z|\+00:00/, 'Z')},${media.id || ""},${camera.name},${camera.networkID},${camera.cameraID},${media.thumbnail}.jpg,${media.media || ""}`);
+                    // eslint-disable-next-line max-len
+                    console.log(`${media.created_at.replace(/.000Z|\+00:00/, 'Z')},${media.id || ''},${camera.name},${camera.networkID},${camera.cameraID},${media.thumbnail}.jpg,${media.media || ''}`);
                 }
             }
         }
@@ -98,9 +102,9 @@ async function list(options) {
             const cameras = new Map();
 
             for (const dev of blink.networks.values()) {
-                dev._prefix = "";
+                dev._prefix = '';
 
-                const name = `${dev.name} (${dev.networkID}) - ${dev.armed ? "armed" : "disarmed"}`;
+                const name = `${dev.name} (${dev.networkID}) - ${dev.armed ? 'armed' : 'disarmed'}`;
                 const data = new Map();
 
                 if (dev.syncModule) {
@@ -112,10 +116,10 @@ async function list(options) {
             for (const dev of blink.cameras.values()) {
                 const networkMap = networks.get(dev.networkID);
 
-                dev._prefix = "";
-                //if (!networkMap.has('cameras')) networkMap.set('cameras', new Map());
+                dev._prefix = '';
+                // if (!networkMap.has('cameras')) networkMap.set('cameras', new Map());
 
-                const name = `${dev.model}:${dev.name} (${dev.cameraID}) - ${dev.enabled ? "enabled" : "disabled"}`;
+                const name = `${dev.model}:${dev.name} (${dev.cameraID}) - ${dev.enabled ? 'enabled' : 'disabled'}`;
                 const data = new Map();
 
                 networkMap.set(name, data);
@@ -123,19 +127,23 @@ async function list(options) {
             }
             if (options.media) {
                 for (const media of savedMedia.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))) {
-                    const [date,time] = media.created_at.replace(/.000Z|\+00:00/, 'Z').split('T');
+                    const [date, time] = media.created_at.replace(/.000Z|\+00:00/, 'Z').split('T');
 
                     if (!cameras.get(media.device_id).has(date)) cameras.get(media.device_id).set(date, new Map());
-                    cameras.get(media.device_id).get(date).set(`${time} (${media.thumbnail ? 'img' : ''}${media.thumbnail && media.media ? ',' : ''}${media.media ? 'video' : ''})`, null);
+                    cameras.get(media.device_id).
+                        get(date).
+                        set(`${time} (${media.thumbnail ? 'img' : ''}${media.thumbnail && media.media ?
+                            ',' :
+                            ''}${media.media ? 'video' : ''})`, null);
                 }
-
             }
             for (const [name, value] of results.entries()) {
-                prettyTree(name, value, "", true);
+                prettyTree(name, value, '', true);
             }
         }
-        //console.log(JSON.stringify(Object.fromEntries(r.entries()), null, 2));
-    } catch (e) {
+        // console.log(JSON.stringify(Object.fromEntries(r.entries()), null, 2));
+    }
+    catch (e) {
         console.error(e.message);
     }
 }
@@ -148,7 +156,7 @@ async function liveview(id, options) {
             console.log(`Reading: ${res.server}`);
             if (options.save) {
                 const liveViewURL = res.server;
-                const [,protocol, host, path,] = /([a-z]+):\/\/([^:\/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
+                const [, protocol, host, path] = /([a-z]+):\/\/([^:/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
                 const ports = await reservePorts({count: 1});
                 const listenPort = ports[0];
                 const filename = (new Date()).toISOString().replace(/[^0-9a-zA-Z-]/g, '_');
@@ -157,7 +165,7 @@ async function liveview(id, options) {
                 // for modern blink cameras we have to hack the immis:// protocol
                 if (protocol.startsWith('rtsp')) {
                     // STEP1: setup TLS proxy
-                    const proxyServer = new Http2TLSTunnel(listenPort, host, "0.0.0.0", 443, protocol);
+                    const proxyServer = new Http2TLSTunnel(listenPort, host, '0.0.0.0', 443, protocol);
                     await proxyServer.start();
 
                     // STEP2: ffmpeg using rtsp:// as input
@@ -167,13 +175,13 @@ async function liveview(id, options) {
                         `-rtpflags h264_mode0`,
                         `-y -i rtsp://localhost:${listenPort}${path}`,
                         `-acodec copy -vcodec copy -g 30`,
-                    ]
+                    ];
                     if (options.hls) {
-                        videoffmpegCommand.push(`-hls_time 1 ${filename}.m3u8`)
+                        videoffmpegCommand.push(`-hls_time 1 ${filename}.m3u8`);
                         console.log(`Saving: ${filename}.m3u8`);
                     }
                     if (options.mp4) {
-                        videoffmpegCommand.push(`-vcodec copy ${filename}.mp4`)
+                        videoffmpegCommand.push(`-vcodec copy ${filename}.mp4`);
                         console.log(`Saving: ${filename}.mp4`);
                     }
                     const ffmpegCommandClean = ['-user-agent', 'Immedia WalnutPlayer'];
@@ -181,13 +189,31 @@ async function liveview(id, options) {
                     console.debug(ffmpegCommandClean);
 
                     const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
-                    ffmpegVideo.stdout.on('data', data => { console.info("VIDEO: " + String(data)); });
-                    ffmpegVideo.stderr.on('data', data => { console.info("VIDEO: " + String(data)); });
-                    ffmpegVideo.on('error', error => { try { proxyServer.stop() } catch { } });
-                    ffmpegVideo.on('exit', (code, signal) => { try { proxyServer.stop() } catch { } });
+                    ffmpegVideo.stdout.on('data', data => {
+                        console.info('VIDEO: ' + String(data));
+                    });
+                    ffmpegVideo.stderr.on('data', data => {
+                        console.info('VIDEO: ' + String(data));
+                    });
+                    ffmpegVideo.on('error', error => {
+                        try {
+                            proxyServer.stop();
+                        }
+                        catch {
+                            // continue regardless of error
+                        }
+                    });
+                    ffmpegVideo.on('exit', (code, signal) => {
+                        try {
+                            proxyServer.stop();
+                        }
+                        catch {
+                            // continue regardless of error
+                        }
+                    });
 
                     // STEP3: Cleanup and timeout
-                    let start = Date.now();
+                    const start = Date.now();
                     let cmdWaitInterval;
                     const commandPoll = async () => {
                         if (cmdWaitInterval) clearInterval(cmdWaitInterval);
@@ -201,7 +227,7 @@ async function liveview(id, options) {
                             }
                             cmdWaitInterval = setInterval(commandPoll, 300);
                         }
-                    }
+                    };
                     commandPoll();
                 }
                 else {
@@ -213,29 +239,54 @@ async function liveview(id, options) {
                     const tempFilename = tmpFile(filename);
                     const outputFile = fs.createWriteStream(tempFilename);
 
-                    const tlsOptions = {host: host, rejectUnauthorized: false, port:443, timeout: 1000, checkServerIdentity: () => {}}
-                    //servername: host,
+                    const tlsOptions = {
+                        host: host,
+                        rejectUnauthorized: false,
+                        port: 443,
+                        timeout: 1000,
+                        checkServerIdentity: () => {
+                        },
+                    };
+                    // servername: host,
 
                     const tlsSocket = tls.connect(tlsOptions);
                     tlsSocket.on('secureConnect', function() {
-                        console.debug("connect to %s:%d success", tlsSocket.remoteAddress, tlsSocket.remotePort);
-                        const id = path.replace(/[\/]|__.*/g, '');
-                        const data_prefix = Buffer.from(new Uint8Array(
-                            [0x00,0x00,0x00,0x1c,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x2b,0x04,0x08,0x00,0x00,
-                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-                            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
-                            0x00,0x00,0x00,0x00,0x00,0x10]));
-                        const data_suffix =new Uint8Array([0x00,0x00,0x00,0x01,0x0a,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00]);
+                        console.debug('connect to %s:%d success', tlsSocket.remoteAddress, tlsSocket.remotePort);
+                        const id = path.replace(/[/]|__.*/g, '');
+                        const dataPrefix = Buffer.from(new Uint8Array([
+                            0x00, 0x00, 0x00, 0x1c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2b, 0x04, 0x08, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
+                        ]));
+                        const dataSuffix =new Uint8Array([
+                            0x00, 0x00, 0x00, 0x01, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        ]);
                         // tlsSocket.pipe(ffmpegVideo.stdin);
-                        tlsSocket.write(Buffer.concat([data_prefix,Buffer.from(id),data_suffix]));
+                        tlsSocket.write(Buffer.concat([dataPrefix, Buffer.from(id), dataSuffix]));
                         tlsSocket.pipe(outputFile);
                         // tlsSocket.on('data', function(data) {ffmpegVideo.stdin.write(data);});
                         start = Date.now();
-                    })
-                    tlsSocket.on("error",  (error) => { console.error(error); try {ffmpegVideo.stdin.destroy();} catch {} });
-                    tlsSocket.on("close",  () => { try {ffmpegVideo.stdin.destroy();} catch {} });
+                    });
+                    // tlsSocket.on('error', error => {
+                    //     console.error(error);
+                    //     try {
+                    //         ffmpegVideo.stdin.destroy();
+                    //     }
+                    //     catch {
+                    //         // continue regardless of error
+                    //     }
+                    // });
+                    // tlsSocket.on('close', () => {
+                    //     try {
+                    //         ffmpegVideo.stdin.destroy();
+                    //     }
+                    //     catch {
+                    //         // continue regardless of error
+                    //     }
+                    // });
                     this.tlsSocket = tlsSocket;
 
                     // STEP2: timeout and cleanup
@@ -249,9 +300,10 @@ async function liveview(id, options) {
                                 // try {ffmpegVideo.stdin.destroy();} catch {}
                                 outputFile.close();
                                 await sleep(100);
-
-                                try {ffmpegVideo.kill('SIGINT');} catch {}
-                                try {tlsSocket.end();} catch {}
+                                await Promise.all([
+                                    // await ffmpegVideo.kill('SIGINT').catch(e => console.error(e)),
+                                    await tlsSocket.end().catch(e => console.error(e)),
+                                ]);
 
                                 await sleep(200);
                                 await blink.stopCommand(camera.networkID, res.command_id).catch(e => console.error(e));
@@ -259,28 +311,40 @@ async function liveview(id, options) {
                             cmdWaitInterval = setInterval(commandPoll, 300);
                         }
                         else {
-                            //STEP3: transcode with ffmpeg
-                            //TODO: move out and refactor
+                            // STEP3: transcode with ffmpeg
+                            // TODO: move out and refactor
                             const videoffmpegCommand = [
                                 `-hide_banner -loglevel warning`,
                                 `-i ${tempFilename}`,
                                 `-c copy`,
-                            ]
+                            ];
                             if (options.hls) {
-                                videoffmpegCommand.push(`-hls_time 1 ${filename}.m3u8`)
+                                videoffmpegCommand.push(`-hls_time 1 ${filename}.m3u8`);
                                 console.log(`Saving: ${filename}.m3u8`);
                             }
                             if (options.mp4) {
-                                videoffmpegCommand.push(`${filename}.mp4`)
+                                videoffmpegCommand.push(`${filename}.mp4`);
                                 console.log(`Saving: ${filename}.mp4`);
                             }
                             console.debug(videoffmpegCommand.flat().flatMap(c => c.split(' ')));
-                            const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', videoffmpegCommand.flat().flatMap(c => c.split(' ')), {env: process.env});
-                            ffmpegVideo.stdout.on('data', data => { console.info("VIDEO: " + String(data)); });
-                            ffmpegVideo.stderr.on('data', data => { console.error("VIDEO: " + String(data)); });
-                            ffmpegVideo.on('exit', (code, signal) => { try { fs.unlinkSync(tempFilename); } catch { } });
+                            const execCommands = videoffmpegCommand.flat().flatMap(c => c.split(' '));
+                            const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', execCommands, {env: process.env});
+                            ffmpegVideo.stdout.on('data', data => {
+                                console.info('VIDEO: ' + String(data));
+                            });
+                            ffmpegVideo.stderr.on('data', data => {
+                                console.error('VIDEO: ' + String(data));
+                            });
+                            ffmpegVideo.on('exit', (code, signal) => {
+                                try {
+                                    fs.unlinkSync(tempFilename);
+                                }
+                                catch {
+                                    // continue regardless of error
+                                }
+                            });
                         }
-                    }
+                    };
                     commandPoll();
                 }
             }
@@ -292,7 +356,8 @@ async function liveview(id, options) {
         else {
             console.log(res.message);
         }
-    } catch (e) {
+    }
+    catch (e) {
         console.error(e);
     }
 }
@@ -301,14 +366,14 @@ async function get(id, options) {
     try {
         const {blink, camera} = await getCamera(id);
 
-        const saveFile = async (url, suffix = ".jpg") => {
+        const saveFile = async (url, suffix = '.jpg') => {
             if (!url) {
                 return console.error('ERROR: Cannot find camera media');
             }
             else if (options.output || options.remoteFile) {
                 let filename = url.replace(/.*\//, '');
                 if (options.output) {
-                    filename = options.output + (options.video && options.image ? suffix : "");
+                    filename = options.output + (options.video && options.image ? suffix : '');
                 }
 
                 const data = await blink.getUrl(url);
@@ -317,21 +382,25 @@ async function get(id, options) {
                 fs.writeFileSync(filename, Buffer.from(data));
             }
             else {
-                console.log(imageUrl);
+                console.log(url);
             }
-        }
+        };
 
         const start = Date.now();
         if (options.video) {
-            if (options.refresh || options.force) await blink.refreshCameraVideo(camera.networkID, camera.cameraID, options.force);
+            if (options.refresh || options.force) {
+                await blink.refreshCameraVideo(camera.networkID, camera.cameraID, options.force);
+            }
             const videoUrl = await blink.getCameraLastVideo(camera.networkID, camera.cameraID);
-            await saveFile(videoUrl, ".mp4");
+            await saveFile(videoUrl, '.mp4');
         }
 
         if (options.image) {
-            if (options.refresh || options.force) await blink.refreshCameraThumbnail(camera.networkID, camera.cameraID, options.force);
+            if (options.refresh || options.force) {
+                await blink.refreshCameraThumbnail(camera.networkID, camera.cameraID, options.force);
+            }
             const imageUrl = await blink.getCameraLastThumbnail(camera.networkID, camera.cameraID);
-            await saveFile(imageUrl + ".jpg", ".jpg");
+            await saveFile(imageUrl + '.jpg', '.jpg');
         }
 
         if (options.delete) {
@@ -341,7 +410,8 @@ async function get(id, options) {
                 await blink.deleteCameraMotion(camera.networkID, camera.cameraID, lastMedia.id);
             }
         }
-    } catch (e) {
+    }
+    catch (e) {
         console.error(e);
     }
 }
@@ -354,6 +424,7 @@ program
     .command('login')
     .description('Test Authentication')
     .action(login);
+
 program
     .command('list')
     .description('List Blink devices and saved media')
@@ -362,6 +433,7 @@ program
     .option('--csv')
     .option('--detail')
     .action(list);
+
 program
     .command('liveview <id>')
     .description('request the liveview RTSP for a stream')
@@ -375,20 +447,19 @@ program
     .command('get <camera>')
     .description('retrieve the latest thumbnail (or --video clip) from the camera')
     .option('--refresh', 'Refresh the current thumbnail', false)
-    .option('--force', 'Force new refresh even if the last thumbnail was < 10min ago (implied --refresh)', false)
-    .option('--video', 'also retrieve the last video clip instead of the thumbnail (-o will force .jpg or .mp4 filename suffix)', false)
+    .option('--force',
+        'Force new refresh even if the last thumbnail was < 10min ago (implied --refresh)', false)
+    .option('--video',
+        'retrieve the last video clip instead of the thumbnail (-o will force .jpg or .mp4 filename suffix)', false)
     .option('--no-image', 'do not retrieve image from the camera ', false)
     .option('--delete', 'Auto delete clips if a video refresh was triggered', false)
     .option('-o, --output <file>', 'save the media to output')
     .option('-O, --remote-file', 'use the remote filename')
     .action(get);
 
+if (process.argv.indexOf('--debug') === -1) console.debug = () => {};
+if (process.argv.indexOf('--verbose') === -1 && process.argv.indexOf('--debug') === -1) console.info = () => {};
 
-if (process.argv.indexOf("--debug") === -1) console.debug = function () {};
-if (process.argv.indexOf("--verbose") === -1 && process.argv.indexOf("--debug") === -1) console.info = function () {};
-
-program
-    .parse(process.argv); // end with parse to parse through the input
-
+program.parse(process.argv); // end with parse to parse through the input
 
 if (process.argv.length <= 2) program.help();

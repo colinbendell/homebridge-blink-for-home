@@ -3,7 +3,7 @@ const crypto = require('crypto');
 // const fetch = require('node-fetch');
 const {fetch} = require('@adobe/helix-fetch');
 const {sleep} = require('./utils');
-const readini = require('./readini');
+const IniFile = require('./inifile');
 
 // crypto.randomBytes(16).toString("hex").toUpperCase().replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5")
 const DEFAULT_BLINK_CLIENT_UUID = '1EAF7C88-2AAB-BC51-038D-DB96D6EEE22F';
@@ -15,7 +15,7 @@ const CACHE = new Map();
  */
 class BlinkAPI {
     constructor(clientUUID, auth = {path: '~/.blink', section: 'default'}) {
-        const ini = readini(process.env.BLINK || auth.path, process.env.BLINK_SECTION || auth.section);
+        const ini = IniFile.read(process.env.BLINK || auth.path, process.env.BLINK_SECTION || auth.section);
         this.auth = Object.assign({
             email: process.env.BLINK_EMAIL || ini.email,
             password: process.env.BLINK_PASSWORD || ini.password,

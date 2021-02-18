@@ -139,9 +139,9 @@ class Http2TLSTunnel {
     }
 
     async stop() {
-        if (this.tcpSocket) await this.tcpSocket.end().catch(e => console.log(e));
-        if (this.tlsSocket) await this.tlsSocket.end().catch(e => console.log(e));
-        if (this._server && this._server.listening) await this._server.close().catch(e => console.log(e));
+        if (this.tcpSocket) (await this.tcpSocket.end()).catch(e => console.log(e));
+        if (this.tlsSocket) (await this.tlsSocket.end()).catch(e => console.log(e));
+        if (this._server && this._server.listening) (await this._server.close()).catch(e => console.log(e));
     }
 }
 

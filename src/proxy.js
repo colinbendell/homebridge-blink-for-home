@@ -125,7 +125,12 @@ class Http2TLSTunnel {
                 tlsSocket.end();
             });
             tlsSocket.on('close', hadError => {
-                tcpSocket.end();
+                try {
+                    tcpSocket.end();
+                }
+                catch (e) {
+                    console.error(e);
+                }
             });
             this.tlsSocket = tlsSocket;
         };
@@ -139,9 +144,30 @@ class Http2TLSTunnel {
     }
 
     async stop() {
-        if (this.tcpSocket) (await this.tcpSocket.end()).catch(e => console.log(e));
-        if (this.tlsSocket) (await this.tlsSocket.end()).catch(e => console.log(e));
-        if (this._server && this._server.listening) (await this._server.close()).catch(e => console.log(e));
+        if (this.tcpSocket) {
+            try {
+                await this.tcpSocket.end();
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
+        if (this.tlsSocket) {
+            try {
+                await this.tlsSocket.end()
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
+        if (this._server && this._server.listening) {
+            try {
+                await this._server.close();
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
     }
 }
 

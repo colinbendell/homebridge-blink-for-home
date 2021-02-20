@@ -199,11 +199,11 @@ class BlinkNetwork extends BlinkDevice {
     }
 
     set commandID(val) {
-        this.commandID = val;
+        this._commandID = val;
     }
 
     get commandID() {
-        return this.commandID;
+        return this._commandID;
     }
 
     async getCommandBusy() {

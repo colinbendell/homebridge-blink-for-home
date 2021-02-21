@@ -793,7 +793,7 @@ class Blink {
                         }
                         catch (e) {
                             // network error? just eat it and retry later
-                            console.error(e);
+                            this.log.error(e);
                             return false;
                         }
                     }
@@ -832,7 +832,7 @@ class Blink {
                         }
                         catch (e) {
                             // network error? just eat it and retry later
-                            console.error(e);
+                            this.log.error(e);
                             return false;
                         }
                     }

@@ -170,7 +170,7 @@ class BlinkCameraDelegate {
         // TODO: this is messy as hell - massive cleanup necessary
         const liveViewURL = await this.blinkCamera.getLiveViewURL();
 
-        console.log(`LiveView Stream: ${liveViewURL}`);
+        this.log(`LiveView Stream: ${liveViewURL}`);
         if (/^rtsp/.test(liveViewURL)) {
             const [, protocol, host, path] = /([a-z]+):\/\/([^:/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
             const ports = await reservePorts({count: 1});
@@ -300,7 +300,7 @@ class BlinkCameraDelegate {
         }
         else if (request.type === StreamRequestTypes.STOP) {
             const ffmpegProcess = this.ongoingSessions.get(sessionID);
-            if (rtspProxy.proxyServer) await rtspProxy.proxyServer?.stop()?.catch(e => console.error(e));
+            if (rtspProxy.proxyServer) await rtspProxy.proxyServer?.stop()?.catch(e => this.log.error(e));
             try {
                 if (ffmpegProcess) {
                     ffmpegProcess.kill('SIGKILL');

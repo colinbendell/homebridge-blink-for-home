@@ -57,7 +57,7 @@ class Http2TLSTunnel {
                     this._rest = this._rest.slice(index);
                     // We have a single line here! Prepend the string we want
                     this.push(Buffer.from(line));
-                    console.log(line.trimEnd());
+                    // console.debug(line.trimEnd());
                 }
 
                 return void done();
@@ -105,12 +105,12 @@ class Http2TLSTunnel {
                         isPlay = true;
                     }
                     else {
-                        console.log(data.toString());
+                        // console.debug(data.toString());
                     }
                 });
 
                 tlsSocket.on('data', function(data) {
-                    if (!isPlay) console.log(data.toString());
+                    // if (!isPlay) console.debug(data.toString());
                 });
             });
 

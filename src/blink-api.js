@@ -141,12 +141,12 @@ class BlinkAPI {
         if (/application\/json/.test(res.headers.get('content-type'))) {
             const json = await res.json();
             res._body = json; // stash it for the cache because .json() isn't re-callable
-            console.debug(JSON.stringify(json));
+            this.log.debug(JSON.stringify(json));
         }
         else if (/text/.test(res.headers.get('content-type'))) {
             const txt = await res.text();
             res._body = txt; // stash it for the cache because .json() isn't re-callable
-            console.debug(txt);
+            this.log.debug(txt);
         }
         else {
             // TODO: what happens if the buffer isn't fully consumed?

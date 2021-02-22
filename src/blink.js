@@ -290,7 +290,11 @@ class BlinkNetwork extends BlinkDevice {
                 Characteristic.SecuritySystemTargetState.NIGHT_ARM,
                 Characteristic.SecuritySystemTargetState.DISARM,
             ];
-            securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({validValues});
+            securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({
+        validValue: [1, 3],
+        validValueRanges: [0, 100],
+      });
+            
         }
         if (!hideManualArmSwitch) {
             const occupiedService = this.accessory.addService(Service.Switch, `${this.name} Arm`,

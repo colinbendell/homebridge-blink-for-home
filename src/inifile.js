@@ -7,9 +7,9 @@ class IniFile {
         const [, , section] = new RegExp(`(\\[${sectionName}\\])([^\\[]*)\\[?`, 'm').exec(data) || ['', '', ''];
 
         for (const line of section.split(/[\r\n]+/m)) {
-            const [name, ...value] = line?.trim()?.split(/=/);
+            const [name, ...value] = line.trim().split(/=/);
             if (name) {
-                result.set(name.trim(), value?.join('=')?.trim() || '');
+                result.set(name.trim(), value.join('=').trim());
             }
         }
         return Object.fromEntries(result);

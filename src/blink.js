@@ -221,7 +221,7 @@ class BlinkNetwork extends BlinkDevice {
 
     async setManualArmed(value) {
         if (value) {
-            if (this.armedState && this.armedState !== Characteristic.SecuritySystemTargetState.DISARM) {
+            if (Number.parseInt(this.armedState) < Characteristic.SecuritySystemTargetState.DISARM) {
                 // if old state is remembered, use it
                 return await this.setTargetArmed(this.armedState);
             }
@@ -245,8 +245,11 @@ class BlinkNetwork extends BlinkDevice {
                 }
             }
 
-            if (this.armedState >= 0 && this.armedState < Characteristic.SecuritySystemCurrentState.DISARMED) {
-                return this.armedState;
+            if (this.armedState) {
+                this.armedState = Number.parseInt(this.armedState) || 0;
+                if (this.armedState >= 0 && this.armedState < Characteristic.SecuritySystemCurrentState.DISARMED) {
+                    return this.armedState;
+                }
             }
             // else if (this.armedState < Characteristic.SecuritySystemCurrentState.DISARMED) {
             //     return this.armedState;

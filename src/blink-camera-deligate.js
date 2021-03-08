@@ -300,7 +300,12 @@ class BlinkCameraDelegate {
         }
         else if (request.type === StreamRequestTypes.STOP) {
             const ffmpegProcess = this.ongoingSessions.get(sessionID);
-            if (rtspProxy.proxyServer) await rtspProxy.proxyServer?.stop()?.catch(e => this.log.error(e));
+            try {
+                if (rtspProxy.proxyServer) await rtspProxy.proxyServer.stop();
+            }
+            catch (e) {
+                this.log.error(e);
+            }
             try {
                 if (ffmpegProcess) {
                     ffmpegProcess.kill('SIGKILL');

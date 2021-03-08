@@ -154,7 +154,7 @@ class Http2TLSTunnel {
         }
         if (this.tlsSocket) {
             try {
-                await this.tlsSocket.end()
+                await this.tlsSocket.end();
             }
             catch (e) {
                 console.error(e);

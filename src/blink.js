@@ -208,8 +208,7 @@ class BlinkNetwork extends BlinkDevice {
 
     async getCommandBusy() {
         if (this.commandID) {
-            const res = await this.blink.getCommand(this.networkID, this.commandID).catch(() => {
-            });
+            const res = await this.blink.getCommand(this.networkID, this.commandID).catch(() => {});
             return Boolean(res.completed);
         }
         return false;

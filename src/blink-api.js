@@ -128,12 +128,13 @@ class BlinkAPI {
         const res = await fetch(`${urlPrefix}${targetPath}`, options).catch(async e => {
             this.log.error(e);
             // TODO: handle network errors more gracefully
-            if (autologin) {
-                this.token = null; // force a login on network connection loss
-                return await this._request(method, path, body, maxTTL, false);
-            }
+            if (autologin) return null;
             return Promise.reject(e);
         });
+        if (!res || res === {}) {
+            await this.login(true); // force a login on network connection loss
+            return await this._request(method, path, body, maxTTL, false);
+        }
         this.log.debug(res.status + ' ' + res.statusText);
         this.log.debug(Object.fromEntries(res.headers.entries()));
         // TODO: deal with network failures

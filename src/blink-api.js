@@ -126,7 +126,7 @@ class BlinkAPI {
             '' :
             `https://rest-${this.region || 'prod'}.${BLINK_API_HOST}`;
         const res = await fetch(`${urlPrefix}${targetPath}`, options).catch(async e => {
-            this.log.error(e);
+            if (!/ECONNRESET|ETIMEDOUT|ESOCKETTIMEDOUT|disconnected/.test(e.message)) this.log.error(e);
             // TODO: handle network errors more gracefully
             if (autologin) return null;
             return Promise.reject(e);

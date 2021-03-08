@@ -361,10 +361,17 @@ class BlinkCamera extends BlinkDevice {
     }
 
     async getBattery() {
+        // Low battery reports 10%
+        if (this.getLowBattery() === Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW) return 10;
+
         if (!this.data.fullStatus) {
             this.data.fullStatus = await this.blink.getCameraStatus(this.networkID, this.cameraID, BATTERY_TTL);
         }
-        return Math.round(this.data.fullStatus.camera_status.battery_voltage / 180 * 100) || null;
+        const alkalineVolts = Math.max(this.data.fullStatus.camera_status.battery_voltage / 100, 0);
+
+        // AA and AAA Alkaline batteries are rated for 1.5V
+        // assume battery voltage between 1.2V and 1.8V is acceptable and express it as a function of 20% to 100%
+        return Math.max(Math.min(Math.round((alkalineVolts - 1.2) / (1.8 - 1.2) * 80 + 20), 100), 20);
     }
 
     getLowBattery() {

@@ -232,8 +232,9 @@ class BlinkNetwork extends BlinkDevice {
         return await this.setTargetArmed(Characteristic.SecuritySystemTargetState.DISARM);
     }
 
-    async getArmed() {
-        if (this.armed) {
+    async getCurrentArmedState() {
+        const armedState = await this.getArmedState();
+        if (armedState !== Characteristic.SecuritySystemCurrentState.DISARMED) {
             // const triggerStart = this.network.updatedAt - ARMED_DELAY*1000;
             const triggerStart = Math.max(this.armedAt, this.updatedAt) + ARMED_DELAY * 1000;
 
@@ -243,7 +244,12 @@ class BlinkNetwork extends BlinkDevice {
                     return Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
                 }
             }
+        }
+        return armedState;
+    }
 
+    async getArmedState() {
+        if (this.armed) {
             if (this.armedState) {
                 this.armedState = Number.parseInt(this.armedState) || 0;
                 if (this.armedState >= 0 && this.armedState < Characteristic.SecuritySystemCurrentState.DISARMED) {
@@ -259,7 +265,7 @@ class BlinkNetwork extends BlinkDevice {
     }
 
     async setTargetArmed(val) {
-        this.armedState = val;
+        this.armedState = Math.maval;
         const targetArmed = (val !== Characteristic.SecuritySystemTargetState.DISARM);
         if (targetArmed) {
             // only if we are going from disarmed to armed
@@ -283,9 +289,9 @@ class BlinkNetwork extends BlinkDevice {
         if (!hideAlarm) {
             const securitySystem = this.accessory.addService(Service.SecuritySystem);
             this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState,
-                `${this.name} Armed (Current)`, this.getArmed);
+                `${this.name} Armed (Current)`, this.getCurrentArmedState);
             this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState,
-                `${this.name} Armed (Target)`, this.getArmed, this.setTargetArmed);
+                `${this.name} Armed (Target)`, this.getArmedState, this.setTargetArmed);
             const validValues = [
                 Characteristic.SecuritySystemTargetState.STAY_ARM,
                 Characteristic.SecuritySystemTargetState.AWAY_ARM,

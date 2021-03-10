@@ -293,9 +293,7 @@ class BlinkNetwork extends BlinkDevice {
             this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState,
                 `${this.name} Armed (Target)`, this.getArmedState, this.setTargetArmed);
             const validValues = [
-                Characteristic.SecuritySystemTargetState.STAY_ARM,
                 Characteristic.SecuritySystemTargetState.AWAY_ARM,
-                Characteristic.SecuritySystemTargetState.NIGHT_ARM,
                 Characteristic.SecuritySystemTargetState.DISARM,
             ];
             securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({validValues});

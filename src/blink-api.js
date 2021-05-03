@@ -1052,11 +1052,17 @@ class BlinkAPI {
         return await this.deleteMedia(clipID);
     }
 
-    async enableCameraMotion(networkID, cameraID) {
+    async enableCameraMotion(networkID, cameraID, model) {
+        if (model === 'owl') {
+            return await this.updateOwlSettings(networkID, cameraID, { enabled: true });
+        }
         return await this.post(`/network/${networkID}/camera/${cameraID}/enable`);
     }
 
-    async disableCameraMotion(networkID, cameraID) {
+    async disableCameraMotion(networkID, cameraID, model) {
+        if (model === 'owl') {
+            return await this.updateOwlSettings(networkID, cameraID, { enabled: false });
+        }
         return await this.post(`/network/${networkID}/camera/${cameraID}/disable`);
     }
 

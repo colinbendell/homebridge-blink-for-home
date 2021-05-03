@@ -100,7 +100,7 @@ class BlinkDevice {
             this.log(`${desc} for ${this.name} is: ${disp}`);
         };
 
-        const setCallback = async (val, callback) => {
+        const setCallback = async (val, callback) => {            
             await Promise.resolve(setFunc.bind(this)(val))
                 .then(res => callback(null, res))
                 .catch(err => this.log.error(err) && callback(err));
@@ -421,7 +421,7 @@ class BlinkCamera extends BlinkDevice {
 
     async setEnabled(target = true) {
         if (this.enabled !== Boolean(target)) {
-            await this.blink.setCameraMotionSensorState(this.networkID, this.cameraID, target);
+            await this.blink.setCameraMotionSensorState(this.networkID, this.cameraID, target, this.model);
         }
     }
 
@@ -770,13 +770,14 @@ class Blink {
         await this.refreshData(true);
     }
 
-    async setCameraMotionSensorState(networkID, cameraID, enabled = true) {
+    async setCameraMotionSensorState(networkID, cameraID, enabled = true, model) {
         if (enabled) {
-            await this._command(async () => await this.blinkAPI.enableCameraMotion(networkID, cameraID));
+            await this._command(async () => await this.blinkAPI.enableCameraMotion(networkID, cameraID, model));
         }
         else {
-            await this._command(async () => await this.blinkAPI.disableCameraMotion(networkID, cameraID));
+            await this._command(async () => await this.blinkAPI.disableCameraMotion(networkID, cameraID, model));
         }
+    
         await this.refreshData(true);
     }
 

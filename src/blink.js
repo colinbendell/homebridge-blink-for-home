@@ -100,7 +100,7 @@ class BlinkDevice {
             this.log(`${desc} for ${this.name} is: ${disp}`);
         };
 
-        const setCallback = async (val, callback) => {            
+        const setCallback = async (val, callback) => {
             await Promise.resolve(setFunc.bind(this)(val))
                 .then(res => callback(null, res))
                 .catch(err => this.log.error(err) && callback(err));
@@ -777,7 +777,6 @@ class Blink {
         else {
             await this._command(async () => await this.blinkAPI.disableCameraMotion(networkID, cameraID, model));
         }
-    
         await this.refreshData(true);
     }
 

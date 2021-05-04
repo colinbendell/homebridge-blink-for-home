@@ -362,6 +362,11 @@ class BlinkCamera extends BlinkDevice {
         return (this.data.battery !== undefined);
     }
 
+    isCameraMini(model) {
+        if (model === 'owl') return true;
+        return false;
+    }
+
     getTemperature() {
         return fahrenheitToCelsius(this.data.signals.temp) || null;
     }
@@ -507,7 +512,7 @@ class BlinkCamera extends BlinkDevice {
             this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
         }
 
-        if (this.model !== 'owl') {
+        if (!isCameraMini(this.model)) {
             // Battery Levels are only available in non Minis
             const batteryService = this.accessory.addService(Service.BatteryService, `Battery`,
                 'battery-sensor.' + this.serial);
@@ -772,10 +777,10 @@ class Blink {
 
     async setCameraMotionSensorState(networkID, cameraID, enabled = true, model) {
         if (enabled) {
-            await this._command(async () => await this.blinkAPI.enableCameraMotion(networkID, cameraID, model));
+            await this._command(async () => await (isCameraMini(model) ? this.blinkAPI.updateOwlSettings(networkID, cameraID, { enabled: true }) : this.blinkAPI.enableCameraMotion(networkID, cameraID)));
         }
         else {
-            await this._command(async () => await this.blinkAPI.disableCameraMotion(networkID, cameraID, model));
+            await this._command(async () => await (isCameraMini(model) ? this.blinkAPI.updateOwlSettings(networkID, cameraID, { enabled: false }) : this.blinkAPI.disableCameraMotion(networkID, cameraID)));
         }
         await this.refreshData(true);
     }
@@ -795,7 +800,7 @@ class Blink {
                     if (force || Date.now() >= camera.thumbnailCreatedAt + (ttl * 1000)) {
                         try {
                             this.log(`Refreshing snapshot for ${camera.name}`);
-                            if (camera.model === 'owl') {
+                            if (isCameraMini(camera.model)) {
                                 await this._command(async () => await this.blinkAPI.updateOwlThumbnail(camera.networkID,
                                     camera.cameraID));
                             }
@@ -836,7 +841,7 @@ class Blink {
                     if (force || !lastMedia || Date.now() >= Date.parse(lastMedia.created_at) + (ttl * 1000)) {
                         try {
                             this.log(`Refreshing clip for ${camera.name}`);
-                            if (camera.model === 'owl') {
+                            if (isCameraMini(camera.model)) {
                                 // no-op
                             }
                             else {
@@ -896,7 +901,7 @@ class Blink {
 
     async getCameraStatus(networkID, cameraID, maxTTL = BATTERY_TTL) {
         const camera = this.cameras.get(cameraID);
-        if (camera.model === 'owl') {
+        if (isCameraMini(camera.model)) {
             return await this.blinkAPI.getOwlConfig(networkID, cameraID, maxTTL);
         }
         return await this.blinkAPI.getCameraStatus(networkID, cameraID, maxTTL);
@@ -944,7 +949,7 @@ class Blink {
     async getCameraLiveView(networkID, cameraID, timeout = 30) {
         const camera = this.cameras.get(cameraID);
         let res;
-        if (camera.model === 'owl') {
+        if (isCameraMini(camera.model)) {
             res = await this.blinkAPI.getOwlLiveView(camera.networkID, camera.cameraID);
         }
         else {

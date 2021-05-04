@@ -363,8 +363,7 @@ class BlinkCamera extends BlinkDevice {
     }
 
     isCameraMini(model) {
-        if (model === 'owl') return true;
-        return false;
+        return model === 'owl';
     }
 
     getTemperature() {

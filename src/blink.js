@@ -252,7 +252,7 @@ class BlinkNetwork extends BlinkDevice {
         if (this.armed) {
             this.armedState = Number.parseInt(this.armedState) || 0;
 
-            // Prevent from returning armedState bigger than DISARNED. In that case, TRIGGERED
+            // Prevent from returning armedState bigger than DISARMED. In that case, TRIGGERED
             if (this.armedState >= 0 && this.armedState < Characteristic.SecuritySystemCurrentState.DISARMED) {
                 return this.armedState;
             }

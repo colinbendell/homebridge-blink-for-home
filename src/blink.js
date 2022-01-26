@@ -250,22 +250,18 @@ class BlinkNetwork extends BlinkDevice {
 
     async getArmedState() {
         if (this.armed) {
-            if (this.armedState) {
-                this.armedState = Number.parseInt(this.armedState) || 0;
-                if (this.armedState >= 0 && this.armedState < Characteristic.SecuritySystemCurrentState.DISARMED) {
-                    return this.armedState;
-                }
+            this.armedState = Number.parseInt(this.armedState) || 0;
+
+            // Prevent from returning armedState bigger than DISARMED. In that case, TRIGGERED
+            if (this.armedState >= 0 && this.armedState < Characteristic.SecuritySystemCurrentState.DISARMED) {
+                return this.armedState;
             }
-            // else if (this.armedState < Characteristic.SecuritySystemCurrentState.DISARMED) {
-            //     return this.armedState;
-            // }
-            return Characteristic.SecuritySystemCurrentState.AWAY_ARM;
         }
         return Characteristic.SecuritySystemCurrentState.DISARMED;
     }
 
     async setTargetArmed(val) {
-        this.armedState = Math.maval;
+        this.armedState = val;
         const targetArmed = (val !== Characteristic.SecuritySystemTargetState.DISARM);
         if (targetArmed) {
             // only if we are going from disarmed to armed

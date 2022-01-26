@@ -22,19 +22,19 @@
     },
     "engines": {
         "node": ">=12.0.0",
-        "homebridge": ">=1.2.0"
+        "homebridge": ">=1.4.0"
     },
     "dependencies": {
-        "@adobe/helix-fetch": "^2.1.7",
-        "@homebridge/camera-utils": "^1.4.0",
-        "commander": "^6.2.0",
-        "ffmpeg-for-homebridge": "0.0.9"
+        "@adobe/helix-fetch": "^3.0.0",
+        "@homebridge/camera-utils": "^2.0.4",
+        "commander": "^8.3.0",
+        "ffmpeg-for-homebridge": "^0.0.9"
     },
     "devDependencies": {
-        "eslint": "^7.21.0",
+        "eslint": "^8.7.0",
         "eslint-config-google": "^0.14.0",
-        "homebridge": "^1.2.3",
-        "homebridge-config-ui-x": "^4.39.1"
+        "homebridge": "^1.4.0",
+        "homebridge-config-ui-x": "^4.42.0"
     },
     "scripts": {
         "lint": "eslint src/**.js --max-warnings=0",
@@ -56,12 +56,24 @@
             "node": true
         },
         "rules": {
-            "indent": ["error", 4],
-            "brace-style": ["error", "stroustrup"],
-            "max-len": ["error", 120],
+            "indent": [
+                "error",
+                4
+            ],
+            "brace-style": [
+                "error",
+                "stroustrup"
+            ],
+            "max-len": [
+                "error",
+                120
+            ],
             "require-jsdoc": "off",
             "valid-jsdoc": "off",
-            "arrow-parens": ["error", "as-needed"]
+            "arrow-parens": [
+                "error",
+                "as-needed"
+            ]
         }
     }
 }

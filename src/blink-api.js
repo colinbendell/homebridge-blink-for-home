@@ -105,8 +105,8 @@ class BlinkAPI {
         }
 
         const headers = {
-            'User-Agent': 'Blink/10048 CFNetwork/1233 Darwin/20.4.0',
-            'app-build': 'IOS_10048',
+            'User-Agent': 'Blink/12379 CFNetwork/1327.0.4 Darwin/21.2.0',
+            'app-build': 'IOS_12379',
             'Locale': 'en_US',
             'x-blink-time-zone': 'America/New York',
             'accept-language': 'en_US',

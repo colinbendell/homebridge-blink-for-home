@@ -362,8 +362,8 @@ class BlinkCamera extends BlinkDevice {
         return (this.data.battery !== undefined);
     }
 
-    isCameraMini(model) {
-        return model === 'owl';
+    isCameraMini() {
+        return this.model === 'owl';
     }
 
     getTemperature() {
@@ -424,6 +424,9 @@ class BlinkCamera extends BlinkDevice {
     }
 
     async setEnabled(target = true) {
+        if (this.isCameraMini()) {
+            return await this.blink.setOwlCameraMotionSensorState(this.networkID, this.cameraID, target);
+        }
         if (this.enabled !== Boolean(target)) {
             await this.blink.setCameraMotionSensorState(this.networkID, this.cameraID, target, this.model);
         }
@@ -511,7 +514,7 @@ class BlinkCamera extends BlinkDevice {
             this.bindCharacteristic(enabledSwitch, Characteristic.On, 'Enabled', this.getEnabled, this.setEnabled);
         }
 
-        if (!isCameraMini(this.model)) {
+        if (!this.isCameraMini()) {
             // Battery Levels are only available in non Minis
             const batteryService = this.accessory.addService(Service.BatteryService, `Battery`,
                 'battery-sensor.' + this.serial);
@@ -774,13 +777,17 @@ class Blink {
         await this.refreshData(true);
     }
 
-    async setCameraMotionSensorState(networkID, cameraID, enabled = true, model) {
+    async setCameraMotionSensorState(networkID, cameraID, enabled = true) {
         if (enabled) {
-            await this._command(async () => await (isCameraMini(model) ? this.blinkAPI.updateOwlSettings(networkID, cameraID, { enabled: true }) : this.blinkAPI.enableCameraMotion(networkID, cameraID)));
+            await this._command(async () => await this.blinkAPI.enableCameraMotion(networkID, cameraID));
         }
         else {
-            await this._command(async () => await (isCameraMini(model) ? this.blinkAPI.updateOwlSettings(networkID, cameraID, { enabled: false }) : this.blinkAPI.disableCameraMotion(networkID, cameraID)));
+            await this._command(async () => await this.blinkAPI.disableCameraMotion(networkID, cameraID));
         }
+        await this.refreshData(true);
+    }
+    async setOwlCameraMotionSensorState(networkID, cameraID, enabled = true) {
+        await this._command(async () => await this.blinkAPI.updateOwlSettings(networkID, cameraID, {enabled: enabled}));
         await this.refreshData(true);
     }
 
@@ -799,7 +806,7 @@ class Blink {
                     if (force || Date.now() >= camera.thumbnailCreatedAt + (ttl * 1000)) {
                         try {
                             this.log(`Refreshing snapshot for ${camera.name}`);
-                            if (isCameraMini(camera.model)) {
+                            if (camera.isCameraMini()) {
                                 await this._command(async () => await this.blinkAPI.updateOwlThumbnail(camera.networkID,
                                     camera.cameraID));
                             }
@@ -840,7 +847,7 @@ class Blink {
                     if (force || !lastMedia || Date.now() >= Date.parse(lastMedia.created_at) + (ttl * 1000)) {
                         try {
                             this.log(`Refreshing clip for ${camera.name}`);
-                            if (isCameraMini(camera.model)) {
+                            if (camera.isCameraMini()) {
                                 // no-op
                             }
                             else {
@@ -900,7 +907,7 @@ class Blink {
 
     async getCameraStatus(networkID, cameraID, maxTTL = BATTERY_TTL) {
         const camera = this.cameras.get(cameraID);
-        if (isCameraMini(camera.model)) {
+        if (camera.isCameraMini()) {
             return await this.blinkAPI.getOwlConfig(networkID, cameraID, maxTTL);
         }
         return await this.blinkAPI.getCameraStatus(networkID, cameraID, maxTTL);
@@ -948,7 +955,7 @@ class Blink {
     async getCameraLiveView(networkID, cameraID, timeout = 30) {
         const camera = this.cameras.get(cameraID);
         let res;
-        if (isCameraMini(camera.model)) {
+        if (camera.isCameraMini()) {
             res = await this.blinkAPI.getOwlLiveView(camera.networkID, camera.cameraID);
         }
         else {

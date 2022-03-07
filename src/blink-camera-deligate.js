@@ -1,5 +1,8 @@
 // import ip from "ip";
 const {spawn} = require('child_process');
+const {hap} = require('../hap');
+const {log} = require('../log');
+
 const {
     // doesFfmpegSupportCodec,
     // encodeSrtpOptions,
@@ -57,12 +60,10 @@ const {Http2TLSTunnel} = require('./proxy');
 let StreamRequestTypes;
 
 class BlinkCameraDelegate {
-    constructor(hap, blinkCamera, logger) {
-        this.hap = hap;
+    constructor(blinkCamera) {
         this.blinkCamera = blinkCamera;
-        this.log = logger || console.log;
 
-        StreamRequestTypes = this.hap.StreamRequestTypes;
+        StreamRequestTypes = hap.StreamRequestTypes;
         // keep track of sessions
         this.pendingSessions = new Map();
         this.proxySessions = new Map();
@@ -85,17 +86,17 @@ class BlinkCameraDelegate {
 
                     // NONE is not supported by iOS just there for testing with Wireshark for example
                     supportedCryptoSuites: [
-                        this.hap.SRTPCryptoSuites.NONE,
-                        this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80],
+                        hap.SRTPCryptoSuites.NONE,
+                        hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80],
                     video: {
                         codec: {
                             profiles: [
-                                // this.hap.H264Profile.BASELINE, this.hap.H264Profile.MAIN,
-                                this.hap.H264Profile.HIGH],
+                                // hap.H264Profile.BASELINE, hap.H264Profile.MAIN,
+                                hap.H264Profile.HIGH],
                             levels: [
-                                // this.hap.H264Level.LEVEL3_1,
-                                // this.hap.H264Level.LEVEL3_2,
-                                this.hap.H264Level.LEVEL4_0],
+                                // hap.H264Level.LEVEL3_1,
+                                // hap.H264Level.LEVEL3_2,
+                                hap.H264Level.LEVEL4_0],
                         },
                         resolutions: [
                             // [1920, 1080, 30], // width, height, framerate
@@ -122,7 +123,7 @@ class BlinkCameraDelegate {
                 },
             };
 
-            this._controller = new this.hap.CameraController(options);
+            this._controller = new hap.CameraController(options);
         }
         return this._controller;
     }
@@ -139,11 +140,11 @@ class BlinkCameraDelegate {
 
     // called when iOS request rtp setup
     async prepareStream(request, callback) {
-        this.log.debug('prepareStream()');
-        this.log.debug(request);
+        log.debug('prepareStream()');
+        log.debug(request);
 
         const {sessionID, video} = request;
-        const videoSSRC = this.hap.CameraController.generateSynchronisationSource();
+        const videoSSRC = hap.CameraController.generateSynchronisationSource();
         const sessionInfo = {
             address: request.targetAddress,
 
@@ -170,7 +171,7 @@ class BlinkCameraDelegate {
         // TODO: this is messy as hell - massive cleanup necessary
         const liveViewURL = await this.blinkCamera.getLiveViewURL();
 
-        this.log(`LiveView Stream: ${liveViewURL}`);
+        log(`LiveView Stream: ${liveViewURL}`);
         if (/^rtsp/.test(liveViewURL)) {
             const [, protocol, host, path] = /([a-z]+):\/\/([^:/]+)(?::[0-9]+)?(\/.*)/.exec(liveViewURL) || [];
             const ports = await reservePorts({count: 1});
@@ -191,8 +192,8 @@ class BlinkCameraDelegate {
 
     // called when iOS device asks stream to start/stop/reconfigure
     async handleStreamRequest(request, callback) {
-        this.log.debug('handleStreamRequest()');
-        this.log.debug(request);
+        log.debug('handleStreamRequest()');
+        log.debug(request);
         const sessionID = request.sessionID;
         const sessionInfo = this.pendingSessions.get(sessionID);
         const rtspProxy = this.proxySessions.get(sessionID);
@@ -212,10 +213,10 @@ class BlinkCameraDelegate {
             const videoSRTP = sessionInfo.videoSRTP.toString('base64');
 
             // eslint-disable-next-line max-len
-            this.log.info(`Starting video stream (${video.width}x${video.height}, ${video.fps} fps, ${maxBitrate} kbps, ${video.mtu} mtu)...`);
+            log.info(`Starting video stream (${video.width}x${video.height}, ${video.fps} fps, ${maxBitrate} kbps, ${video.mtu} mtu)...`);
             const videoffmpegCommand = [];
 
-            this.log.debug(rtspProxy);
+            log.debug(rtspProxy);
             if (rtspProxy.proxyServer) {
                 videoffmpegCommand.push(...[
                     `-hide_banner -loglevel warning`,
@@ -251,7 +252,7 @@ class BlinkCameraDelegate {
             ]);
 
             let targetProtocol = 'rtp';
-            if (sessionInfo.videoCryptoSuite === this.hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80) {
+            if (sessionInfo.videoCryptoSuite === hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80) {
                 // actually ffmpeg just supports AES_CM_128_HMAC_SHA1_80
 
                 // eslint-disable-next-line max-len
@@ -267,7 +268,7 @@ class BlinkCameraDelegate {
             ffmpegCommandClean.push(...videoffmpegCommand.flat().flatMap(c => c.split(' ')));
 
             if (this.ffmpegDebugOutput) {
-                this.log.debug('FFMPEG command: ffmpeg ' + ffmpegCommandClean.join(' '));
+                log.debug('FFMPEG command: ffmpeg ' + ffmpegCommandClean.join(' '));
             }
 
             const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
@@ -276,27 +277,27 @@ class BlinkCameraDelegate {
 
             ffmpegVideo.stdout.on('data', data => {
                 if (this.ffmpegDebugOutput) {
-                    this.log.debug('VIDEO: ' + String(data));
+                    log.debug('VIDEO: ' + String(data));
                 }
             });
             ffmpegVideo.on('error', error => {
-                this.log.error('[Video] Failed to start video stream: ' + error.message);
+                log.error('[Video] Failed to start video stream: ' + error.message);
             });
             ffmpegVideo.on('exit', (code, signal) => {
                 const message = '[Video] ffmpeg exited with code: ' + code + ' and signal: ' + signal;
 
                 if (code == null || code === 255) {
-                    this.log.debug(message + ' (Video stream stopped!)');
+                    log.debug(message + ' (Video stream stopped!)');
                 }
                 else {
-                    this.log.error(message + ' (error)');
+                    log.error(message + ' (error)');
                     if (this.controller) this.controller.forceStopStreamingSession(sessionID);
                 }
             });
         }
         else if (request.type === StreamRequestTypes.RECONFIGURE) {
             // not supported
-            this.log.debug('Received (unsupported) request to reconfigure to: ' + JSON.stringify(request.video));
+            log.debug('Received (unsupported) request to reconfigure to: ' + JSON.stringify(request.video));
         }
         else if (request.type === StreamRequestTypes.STOP) {
             const ffmpegProcess = this.ongoingSessions.get(sessionID);
@@ -304,7 +305,7 @@ class BlinkCameraDelegate {
                 if (rtspProxy.proxyServer) await rtspProxy.proxyServer.stop();
             }
             catch (e) {
-                this.log.error(e);
+                log.error(e);
             }
             try {
                 if (ffmpegProcess) {
@@ -312,14 +313,14 @@ class BlinkCameraDelegate {
                 }
             }
             catch (e) {
-                this.log.error('Error occurred terminating the video process!');
-                this.log.error(e);
+                log.error('Error occurred terminating the video process!');
+                log.error(e);
             }
 
             this.pendingSessions.delete(sessionID);
             this.ongoingSessions.delete(sessionID);
 
-            this.log.info('Stopped streaming session!');
+            log.info('Stopped streaming session!');
         }
         callback();
     }

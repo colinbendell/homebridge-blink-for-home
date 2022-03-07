@@ -25,15 +25,15 @@
         "homebridge": ">=1.4.0"
     },
     "dependencies": {
-        "@adobe/helix-fetch": "^3.0.0",
-        "@homebridge/camera-utils": "^2.0.4",
-        "commander": "^8.3.0",
+        "@adobe/helix-fetch": "^3.0.6",
+        "@homebridge/camera-utils": "^2.1.0",
+        "homebridge": "^1.4.0",
+        "commander": "^9.0.0",
         "ffmpeg-for-homebridge": "^0.0.9"
     },
     "devDependencies": {
-        "eslint": "^8.7.0",
+        "eslint": "^8.10.0",
         "eslint-config-google": "^0.14.0",
-        "homebridge": "^1.4.0",
         "homebridge-config-ui-x": "^4.42.0"
     },
     "scripts": {
@@ -56,24 +56,12 @@
             "node": true
         },
         "rules": {
-            "indent": [
-                "error",
-                4
-            ],
-            "brace-style": [
-                "error",
-                "stroustrup"
-            ],
-            "max-len": [
-                "error",
-                120
-            ],
+            "indent": ["error", 4],
+            "brace-style": ["error", "stroustrup"],
+            "max-len": ["error", 120],
             "require-jsdoc": "off",
             "valid-jsdoc": "off",
-            "arrow-parens": [
-                "error",
-                "as-needed"
-            ]
+            "arrow-parens": ["error", "as-needed"]
         }
     }
 }

@@ -1,26 +1,51 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const {spawn} = require('child_process');
-const tls = require('tls');
-
+const {Command} = require('commander');
 const pathToFfmpeg = require('ffmpeg-for-homebridge');
-const program = require('commander');
-const {Blink} = require('./blink');
-const {sleep} = require('./utils');
-const {Http2TLSTunnel} = require('./proxy');
 const {reservePorts} = require('@homebridge/camera-utils');
 
+const {spawn} = require('child_process');
+const fs = require('fs');
+const tls = require('tls');
 const Crypto = require('crypto');
 const {tmpdir} = require('os');
 const Path = require('path');
+
+const {Blink} = require('./blink');
+const {sleep} = require('./utils');
+const {Http2TLSTunnel} = require('./proxy');
+
+const program = new Command();
 
 function tmpFile(ext) {
     return Path.join(tmpdir(), `archive.${Crypto.randomBytes(6).readUIntLE(0, 6).toString(36)}.${ext}`);
 }
 
-process.on('SIGINT', function() {
-    process.exit(1);
-});
+// sometimes when running in the shell, SIGINT doesn't trip on ^C
+const TERMINATE_ACTIONS = [(sig = 0) => {
+    console.log('Done.');
+    process.exit(sig);
+}];
+async function terminate(...args) {
+    if (TERMINATE_ACTIONS.length === 0) return;
+
+    // poor person's debounce
+    const actions = [...TERMINATE_ACTIONS];
+    TERMINATE_ACTIONS.length = 0;
+
+    console.log();
+    const sig = args.unshift();
+    for (const action of actions) {
+        await action(sig);
+    }
+    // is this safe, even on beforeExit?
+    // process.exitCode = args.unshift() || 0;
+    // process.exit(args.unshift() || 0);
+}
+[
+    'SIGABRT', 'SIGBUS', 'SIGFPE', 'SIGUSR1',
+    'SIGSEGV', 'SIGHUP', 'SIGINT', 'SIGQUIT',
+    'SIGILL', 'SIGTRAP', 'SIGUSR2', 'SIGTERM',
+].forEach(sig => process.on(sig, terminate));
 
 program.version('1.0');
 
@@ -39,12 +64,26 @@ function prettyTree(name, value, indent = '', first = false) {
     }
 }
 
-function init() {
-    return new Blink();
+/**
+ * Convenient wrapper that creates a blink object, handles errors and closes the connections
+ * @param callback
+ * @returns {Promise<void>}
+ */
+async function withBlink(callback = () => {}) {
+    const blink = new Blink();
+    try {
+        await callback(blink);
+    }
+    catch (e) {
+        console.error('Fail.');
+        console.error(e.message);
+    }
+    finally {
+        await blink.blinkAPI.reset().catch(() => {});
+    }
 }
 
-async function getCamera(id) {
-    const blink = init();
+async function getCamera(blink, id) {
     await blink.refreshData();
     const camera = [...blink.cameras.values()]
         .filter(c => c.name === c._prefix + id || c.id === Number.parseInt(id))
@@ -52,24 +91,18 @@ async function getCamera(id) {
     if (!camera) {
         throw new Error(`No camera: ${id}`);
     }
-    return {blink, camera};
+    return camera;
 }
 
 async function login(options) {
-    const blink = await init();
-    try {
+    await withBlink(async blink => {
         await blink.authenticate();
         console.log('Success');
-    }
-    catch (e) {
-        console.error('Fail.');
-        console.error(e.message);
-    }
+    });
 }
 
 async function list(options) {
-    const blink = await init();
-    try {
+    await withBlink(async blink => {
         await blink.refreshData();
         const savedMedia = await blink.getSavedMedia();
 
@@ -128,29 +161,25 @@ async function list(options) {
             if (options.media) {
                 for (const media of savedMedia.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))) {
                     const [date, time] = media.created_at.replace(/.000Z|\+00:00/, 'Z').split('T');
+                    const mediaSummary = [
+                        media.thumbnail ? 'image' : null,
+                        media.media ? 'video' : null,
+                    ].filter(n => n).join(', ');
 
                     if (!cameras.get(media.device_id).has(date)) cameras.get(media.device_id).set(date, new Map());
-                    cameras.get(media.device_id).
-                        get(date).
-                        set(`${time} (${media.thumbnail ? 'img' : ''}${media.thumbnail && media.media ?
-                            ',' :
-                            ''}${media.media ? 'video' : ''})`, null);
+                    cameras.get(media.device_id).get(date).set(`${time} (${mediaSummary})`, null);
                 }
             }
             for (const [name, value] of results.entries()) {
                 prettyTree(name, value, '', true);
             }
         }
-        // console.log(JSON.stringify(Object.fromEntries(r.entries()), null, 2));
-    }
-    catch (e) {
-        console.error(e.message);
-    }
+    });
 }
 
 async function liveview(id, options) {
-    try {
-        const {blink, camera} = await getCamera(id);
+    await withBlink(async blink => {
+        const camera = await getCamera(blink, id);
         const res = await blink.getCameraLiveView(camera.networkID, camera.cameraID);
         if (res.server) {
             console.log(`Reading: ${res.server}`);
@@ -356,16 +385,12 @@ async function liveview(id, options) {
         else {
             console.log(res.message);
         }
-    }
-    catch (e) {
-        console.error(e);
-    }
+    });
 }
 
 async function get(id, options) {
-    try {
-        const {blink, camera} = await getCamera(id);
-
+    await withBlink(async blink => {
+        const camera = await getCamera(blink, id);
         const saveFile = async (url, suffix = '.jpg') => {
             if (!url) {
                 return console.error('ERROR: Cannot find camera media');
@@ -385,6 +410,7 @@ async function get(id, options) {
                 console.log(url);
             }
         };
+        console.log(options);
 
         const start = Date.now();
         if (options.video) {
@@ -410,10 +436,7 @@ async function get(id, options) {
                 await blink.deleteCameraMotion(camera.networkID, camera.cameraID, lastMedia.id);
             }
         }
-    }
-    catch (e) {
-        console.error(e);
-    }
+    });
 }
 
 program
@@ -451,7 +474,7 @@ program
         'Force new refresh even if the last thumbnail was < 10min ago (implied --refresh)', false)
     .option('--video',
         'retrieve the last video clip instead of the thumbnail (-o will force .jpg or .mp4 filename suffix)', false)
-    .option('--no-image', 'do not retrieve image from the camera ', false)
+    .option('--no-image', 'do not retrieve image from the camera ')
     .option('--delete', 'Auto delete clips if a video refresh was triggered', false)
     .option('-o, --output <file>', 'save the media to output')
     .option('-O, --remote-file', 'use the remote filename')
@@ -460,6 +483,6 @@ program
 if (process.argv.indexOf('--debug') === -1) console.debug = () => {};
 if (process.argv.indexOf('--verbose') === -1 && process.argv.indexOf('--debug') === -1) console.info = () => {};
 
-program.parse(process.argv); // end with parse to parse through the input
-
-if (process.argv.length <= 2) program.help();
+// program.parse(process.argv); // end with parse to parse through the input
+program.parseAsync();
+// if (process.argv.length <= 2) program.help();

@@ -1,9 +1,10 @@
 /* eslint-disable require-jsdoc */
 const crypto = require('crypto');
-// const fetch = require('node-fetch');
-const {fetch} = require('@adobe/helix-fetch');
+const {fetch, reset} = require('@adobe/helix-fetch');
+
 const {sleep} = require('./utils');
 const IniFile = require('./inifile');
+const {log} = require('./log');
 
 // crypto.randomBytes(16).toString("hex").toUpperCase().replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5")
 const DEFAULT_BLINK_CLIENT_UUID = '1EAF7C88-2AAB-BC51-038D-DB96D6EEE22F';
@@ -24,11 +25,6 @@ class BlinkAPI {
             notificationKey: process.env.BLINK_NOTIFICATION_KEY || ini.notification ||
                 crypto.randomBytes(32).toString('hex'),
         }, auth);
-
-        this._log = (...args) => console.log(...args);
-        this._log.info = console.info;
-        this._log.debug = console.debug;
-        this._log.error = console.error;
     }
 
     set region(val) {
@@ -70,12 +66,8 @@ class BlinkAPI {
         this.region = region;
     }
 
-    get log() {
-        return this._log;
-    }
-
-    set log(customLog) {
-        this._log = customLog;
+    async reset() {
+        return reset();
     }
 
     async get(path = '/', maxTTL = 1, autologin = true) {
@@ -120,34 +112,34 @@ class BlinkAPI {
             options.headers['Content-Type'] = 'application/json';
         }
 
-        this.log.info(`${method} ${targetPath}`);
-        this.log.debug(options);
+        log.info(`${method} ${targetPath}`);
+        log.debug(options);
         const urlPrefix = targetPath.startsWith('http') ?
             '' :
             `https://rest-${this.region || 'prod'}.${BLINK_API_HOST}`;
         const res = await fetch(`${urlPrefix}${targetPath}`, options).catch(async e => {
-            if (!/ECONNRESET|ETIMEDOUT|ESOCKETTIMEDOUT|disconnected/.test(e.message)) this.log.error(e);
+            if (!/ECONNRESET|ETIMEDOUT|ESOCKETTIMEDOUT|disconnected/.test(e.message)) log.error(e);
             // TODO: handle network errors more gracefully
             if (autologin) return null;
             return Promise.reject(e);
         });
         if (!res || res === {}) {
-            await this.login(true); // force a login on network connection loss
+            await login(true); // force a login on network connection loss
             return await this._request(method, path, body, maxTTL, false);
         }
-        this.log.debug(res.status + ' ' + res.statusText);
-        this.log.debug(Object.fromEntries(res.headers.entries()));
+        log.debug(res.status + ' ' + res.statusText);
+        log.debug(Object.fromEntries(res.headers.entries()));
         // TODO: deal with network failures
 
         if (/application\/json/.test(res.headers.get('content-type'))) {
             const json = await res.json();
             res._body = json; // stash it for the cache because .json() isn't re-callable
-            this.log.debug(JSON.stringify(json));
+            log.debug(JSON.stringify(json));
         }
         else if (/text/.test(res.headers.get('content-type'))) {
             const txt = await res.text();
             res._body = txt; // stash it for the cache because .json() isn't re-callable
-            this.log.debug(txt);
+            log.debug(txt);
         }
         else {
             // TODO: what happens if the buffer isn't fully consumed?
@@ -161,14 +153,14 @@ class BlinkAPI {
             }
             // fallback
             // TODO: handle error states more gracefully
-            this.log.error(
+            log.error(
                 `${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
-            this.log.error(Object.fromEntries(res.headers));
+            log.error(Object.fromEntries(res.headers));
             throw new Error(res.headers.get('status'));
         }
         else if (this.status >= 500) {
             // TODO: how do we get out of infinite retry?
-            this.log.error(
+            log.error(
                 `RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
             this.token = null; // force a re-login if 5xx errors
             await sleep(1000);
@@ -176,15 +168,15 @@ class BlinkAPI {
         }
         else if (this.status === 429) {
             // TODO: how do we get out of infinite retry?
-            this.log.error(
+            log.error(
                 `RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
             await sleep(500);
             return await this._request(method, path, body, maxTTL, false);
         }
         else if (this.status >= 400) {
-            this.log.error(
+            log.error(
                 `${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
-            this.log.error(Object.fromEntries(res.headers));
+            log.error(Object.fromEntries(res.headers));
             throw new Error(
                 `${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
         }

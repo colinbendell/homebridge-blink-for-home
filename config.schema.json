@@ -61,7 +61,7 @@
             "camera-thumbnail-refresh-seconds": {
                 "title": "Camera Thumbnail Refresh (seconds)",
                 "type": "integer",
-                "minimum": 1,
+                "minimum": 0,
                 "placeholder": "60",
                 "description": "Force Thumbnail refresh every N seconds. For battery operated camera's, disable 'Reduce battery drain for thumbnails' option"
             },

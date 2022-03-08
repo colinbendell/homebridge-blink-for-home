@@ -124,7 +124,7 @@ class BlinkAPI {
             return Promise.reject(e);
         });
         if (!res || res === {}) {
-            await login(true); // force a login on network connection loss
+            await this.login(true); // force a login on network connection loss
             return await this._request(method, path, body, maxTTL, false);
         }
         log.debug(res.status + ' ' + res.statusText);
@@ -174,11 +174,10 @@ class BlinkAPI {
             return await this._request(method, path, body, maxTTL, false);
         }
         else if (this.status >= 400) {
-            log.error(
-                `${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
+            const status = res.headers.get('status') || res.status + ' ' + res.statusText;
+            log.error(`${method} ${targetPath} (${status})`);
             log.error(Object.fromEntries(res.headers));
-            throw new Error(
-                `${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
+            throw new Error(`${method} ${targetPath} (${status})`);
         }
         // TODO: what about other 3xx?
         else if (res.status === 200) {

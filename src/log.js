@@ -14,16 +14,15 @@ function setLogger(logger, verbose = false, debug = false) {
         log.error = (...data) => logger.error(...data);
         log.info = () => undefined;
         log.debug = () => undefined;
-        if (verbose) {
+        if (verbose || debug) {
             log.info = (...data) => logger.info(...data);
         }
-        if (logger.debugEnabled) {
-            log.debug = (...data) => logger.debug(...data);
-        }
-        else if (debug) {
+
+        if (debug) {
             log.debug = (...data) => logger.info(...data);
         }
     }
+    module.exports.log = log;
 }
 
 module.exports = {log, setLogger};

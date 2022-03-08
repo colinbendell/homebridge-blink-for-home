@@ -3,7 +3,7 @@ const {setHap} = require('./hap');
 const {BlinkHAP} = require('./blink-hap');
 const BLINK_STATUS_EVENT_LOOP = 10; // internal poll interval
 
-class Blink {
+class HomebridgeBlink {
     static get PLUGIN_NAME() {
         return 'homebridge-blink-for-home';
     }
@@ -48,10 +48,10 @@ class Blink {
             const data = [...this.blink.networks.values(), ...this.blink.cameras.values()];
             this.accessoryLookup = data.map(entry => entry.createAccessory(this.cachedAccessories));
 
-            this.api.unregisterPlatformAccessories(Blink.PLUGIN_NAME, Blink.PLATFORM_NAME,
+            this.api.unregisterPlatformAccessories(HomebridgeBlink.PLUGIN_NAME, HomebridgeBlink.PLATFORM_NAME,
                 this.cachedAccessories);
             this.cachedAccessories = [];
-            this.api.registerPlatformAccessories(Blink.PLUGIN_NAME, Blink.PLATFORM_NAME,
+            this.api.registerPlatformAccessories(HomebridgeBlink.PLUGIN_NAME, HomebridgeBlink.PLATFORM_NAME,
                 this.accessoryLookup.map(blinkDevice => blinkDevice.accessory).filter(e => !!e));
 
             // TODO: add new device discovery & removal
@@ -121,4 +121,4 @@ class Blink {
     }
 }
 
-module.exports = {HomebridgeBlink: Blink};
+module.exports = {HomebridgeBlink};

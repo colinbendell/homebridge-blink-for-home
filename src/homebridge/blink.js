@@ -48,10 +48,14 @@ class HomebridgeBlink {
             const data = [...this.blink.networks.values(), ...this.blink.cameras.values()];
             this.accessoryLookup = data.map(entry => entry.createAccessory(this.cachedAccessories));
 
-            this.api.unregisterPlatformAccessories(HomebridgeBlink.PLUGIN_NAME, HomebridgeBlink.PLATFORM_NAME,
+            this.api.unregisterPlatformAccessories(
+                HomebridgeBlink.PLUGIN_NAME,
+                HomebridgeBlink.PLATFORM_NAME,
                 this.cachedAccessories);
             this.cachedAccessories = [];
-            this.api.registerPlatformAccessories(HomebridgeBlink.PLUGIN_NAME, HomebridgeBlink.PLATFORM_NAME,
+            this.api.registerPlatformAccessories(
+                HomebridgeBlink.PLUGIN_NAME,
+                HomebridgeBlink.PLATFORM_NAME,
                 this.accessoryLookup.map(blinkDevice => blinkDevice.accessory).filter(e => !!e));
 
             // TODO: add new device discovery & removal

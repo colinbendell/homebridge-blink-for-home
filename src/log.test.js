@@ -28,10 +28,10 @@ describe('log', () => {
     for (const t of tests) {
         let name = '';
         if (!t || !t.logger) name += ' null';
-        if (!t || !t.verbose) name += ' verbose';
-        if (!t || !t.debug) name += ' debug';
-        if (!t || !t.debugEnabled) name += ' debugEnabled';
-        if (!t || !t.debugAsInfo) name += ' debugAsInfo';
+        if (t?.verbose) name += ' verbose';
+        if (t?.debug) name += ' debug';
+        if (t?.debugEnabled) name += ' debugEnabled';
+        if (t?.debugAsInfo) name += ' debugAsInfo';
         test(`log${name}`, () => {
             let logOut;
             let infoOut;

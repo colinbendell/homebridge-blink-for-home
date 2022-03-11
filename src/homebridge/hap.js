@@ -23,6 +23,8 @@ function setHap(hapInstance) {
         Service = hap.Service;
         UUIDGen = hap.uuid;
     }
+
+    module.exports = {hap, setHap, Accessory, Categories, Characteristic, Service, UUIDGen};
 }
 
 module.exports = {hap, setHap, Accessory, Categories, Characteristic, Service, UUIDGen};

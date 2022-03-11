@@ -37,6 +37,7 @@ class BlinkDevice {
         this.blink = blink;
         this._data = data;
         this._prefix = 'Blink ';
+        this._context = {};
     }
 
     get networkID() {
@@ -71,7 +72,7 @@ class BlinkDevice {
     }
 
     get data() {
-        if (this.context) return this.context.data;
+        if (this.context && this.context.data) return this.context.data;
         return this._data;
     }
 
@@ -96,19 +97,19 @@ class BlinkNetwork extends BlinkDevice {
     }
 
     get serial() {
-        return (this.syncModule || {}).serial;
+        return this.syncModule?.serial;
     }
 
     get firmware() {
-        return (this.syncModule || {}).fw_version;
+        return this.syncModule?.fw_version;
     }
 
     get model() {
-        return (this.syncModule || {}).type;
+        return this.syncModule?.type;
     }
 
     get status() {
-        return (this.syncModule || {}).status;
+        return this.syncModule?.status;
     }
 
     get armed() {
@@ -185,9 +186,10 @@ class BlinkCamera extends BlinkDevice {
 
     get thumbnailCreatedAt() {
         if (this.data.thumbnail_created_at) return this.data.thumbnail_created_at;
-        const [, year, month, day, hour, minute] = /(\d{4})_(\d\d)_(\d\d)__(\d\d)_(\d\d)(am|pm)?$/i.exec(
-            this.thumbnail) || [];
-        this.data.thumbnail_created_at = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || 0;
+
+        const dateRegex = /(\d{4})_(\d\d)_(\d\d)__(\d\d)_(\d\d)(am|pm)?$/i;
+        const [, year, month, day, hour, minute] = dateRegex.exec(this.thumbnail) || [];
+        this.data.thumbnail_created_at = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || new Date();
         return this.data.thumbnail_created_at;
     }
 

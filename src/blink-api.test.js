@@ -1,4 +1,4 @@
-const {describe, expect, test, beforeAll, afterAll} = require('@jest/globals');
+const {describe, expect, test, afterAll} = require('@jest/globals');
 const {setLogger} = require('./log');
 const logger = {
     log: () => {},
@@ -17,7 +17,7 @@ const HOMESTREEN_KEYS = [
     'account', 'networks', 'sync_modules', 'cameras', 'sirens', 'chimes', 'video_stats', 'doorbell_buttons', 'owls',
     'doorbells', 'app_updates', 'device_limits', 'whats_new', 'subscriptions', 'entitlements', 'tiv_lock_enable',
     'tiv_lock_status', 'accessories',
-]
+];
 const ACCOUNT_OBJECT_KEYS = [
     'id', 'created_at', 'updated_at', 'email', 'verified', 'verification_required', 'phone_verified',
     'phone_verification_required', 'verification_channel', 'phone_verification_channel', 'force_password_reset',
@@ -35,8 +35,19 @@ const NOTIFICATION_KEYS = [
     'sync_module_offline', 'temperature', 'doorbell', 'wifi', 'lfr', 'bandwidth', 'battery_dead',
     'local_storage', 'accessory_connected', 'accessory_disconnected', 'accessory_low_battery', 'general',
 ];
-const CAMERA_SIGNALS_OBJ_KEYS = ['lfr', 'wifi', 'temp', 'battery', 'battery_state', 'updated_at'];
-
+const NETWORK_KEYS = [
+    'id', 'created_at', 'updated_at', 'name', 'network_key', 'description', 'network_origin', 'locale',
+    'time_zone', 'dst', 'ping_interval', 'encryption_key', 'armed', 'autoarm_geo_enable', 'autoarm_time_enable',
+    'lv_mode', 'lfr_channel', 'video_destination', 'storage_used', 'storage_total', 'video_count',
+    'video_history_count', 'sm_backup_enabled', 'arm_string', 'busy', 'camera_error', 'sync_module_error',
+    'feature_plan_id', 'location_id', 'account_id',
+];
+const NETWORK_SHORT_KEYS = ['id', 'created_at', 'updated_at', 'name', 'time_zone', 'dst', 'armed', 'lv_save'];
+const SYNC_MODULE_KEYS = [
+    'id', 'created_at', 'updated_at', 'onboarded', 'status', 'name', 'serial', 'fw_version', 'type', 'subtype',
+    'last_hb', 'wifi_strength', 'network_id', 'enable_temp_alerts', 'local_storage_enabled', 'local_storage_compatible',
+    'local_storage_status', 'revision',
+];
 const CAMERA_KEYS = [
     'id', 'serial', 'camera_key', 'fw_version', 'mac_address', 'ip_address', 'thumbnail', 'name',
     'liveview_enabled', 'siren_enable', 'siren_volume', 'onboarded', 'unit_number', 'motion_sensitivity', 'enabled',
@@ -65,19 +76,19 @@ const CAMERA_SHORT_KEYS = [
     'battery', 'usage_rate', 'network_id', 'issues', 'signals', 'local_storage_enabled', 'local_storage_compatible',
     'snooze', 'snooze_time_remaining', 'revision',
 ];
-const NETWORK_OBJ_KEYS = [
-    'id', 'created_at', 'updated_at', 'name', 'network_key', 'description', 'network_origin', 'locale',
-    'time_zone', 'dst', 'ping_interval', 'encryption_key', 'armed', 'autoarm_geo_enable', 'autoarm_time_enable',
-    'lv_mode', 'lfr_channel', 'video_destination', 'storage_used', 'storage_total', 'video_count',
-    'video_history_count', 'sm_backup_enabled', 'arm_string', 'busy', 'camera_error', 'sync_module_error',
-    'feature_plan_id', 'location_id', 'account_id',
+const CAMERA_SIGNALS_KEYS = ['lfr', 'wifi', 'temp', 'battery', 'battery_state', 'updated_at'];
+const CAMERA_USAGE_OBJECT_KEYS = ['range_days', 'reference', 'networks'];
+const CAMERA_USAGE_KEYS = ['id', 'name', 'usage', 'lv_seconds', 'clip_seconds'];
+const CAMERA_STATUS_KEYS = [
+    'camera_id', 'created_at', 'updated_at', 'wifi_strength', 'lfr_strength', 'battery_voltage', 'temperature',
+    'fw_version', 'fw_git_hash', 'mac', 'ipv', 'ip_address', 'error_codes', 'battery_alert_status', 'temp_alert_status',
+    'ac_power', 'light_sensor_ch0', 'light_sensor_ch1', 'light_sensor_data_valid', 'light_sensor_data_new',
+    'time_first_video', 'time_108_boot', 'time_wlan_connect', 'time_dhcp_lease', 'time_dns_resolve', 'lfr_108_wakeups',
+    'total_108_wakeups', 'lfr_tb_wakeups', 'total_tb_wakeups', 'wifi_connect_failure_count', 'dhcp_failure_count',
+    'socket_failure_count', 'dev_1', 'dev_2', 'dev_3', 'unit_number', 'serial', 'lifetime_count', 'lifetime_duration',
+    'pir_rejections', 'sync_module_id', 'network_id', 'account_id', 'id', 'thumbnail',
 ];
-const NETWORK_SHORT_KEYS = ['id', 'created_at', 'updated_at', 'name', 'time_zone', 'dst', 'armed', 'lv_save'];
-const SYNC_MODULE_KEYS = [
-    'id', 'created_at', 'updated_at', 'onboarded', 'status', 'name', 'serial', 'fw_version', 'type', 'subtype',
-    'last_hb', 'wifi_strength', 'network_id', 'enable_temp_alerts', 'local_storage_enabled', 'local_storage_compatible',
-    'local_storage_status', 'revision',
-];
+
 withAuth('blink-api', () => {
     afterAll(() => {
         blinkAPI.reset();
@@ -121,7 +132,7 @@ withAuth('blink-api', () => {
         }
         for (const camera of res.cameras) {
             expect(Object.keys(camera)).toEqual(expect.arrayContaining(CAMERA_SHORT_KEYS));
-            expect(CAMERA_SIGNALS_OBJ_KEYS).toEqual(expect.arrayContaining(Object.keys(camera.signals)));
+            expect(CAMERA_SIGNALS_KEYS).toEqual(expect.arrayContaining(Object.keys(camera.signals)));
         }
     });
     test('getAccount()', async () => {
@@ -160,12 +171,10 @@ withAuth('blink-api', () => {
             for (const camera of res.camera) {
                 expect(Object.keys(camera)).toEqual(expect.arrayContaining(CAMERA_KEYS));
             }
-            expect(Object.keys(res.signals)).toEqual(expect.arrayContaining(CAMERA_SIGNALS_OBJ_KEYS));
+            expect(Object.keys(res.signals)).toEqual(expect.arrayContaining(CAMERA_SIGNALS_KEYS));
         }
     });
     test('getCameraUsage()', async () => {
-        const CAMERA_USAGE_OBJECT_KEYS = ['range_days', 'reference', 'networks'];
-        const CAMERA_USAGE_KEYS = ['id', 'name', 'usage', 'lv_seconds', 'clip_seconds'];
         const res = await blinkAPI.getCameraUsage();
         expect(Object.keys(res)).toEqual(expect.arrayContaining(CAMERA_USAGE_OBJECT_KEYS));
 
@@ -181,7 +190,16 @@ withAuth('blink-api', () => {
             const networkID = camera.network_id;
             const cameraID = camera.id;
             const res = await blinkAPI.getCameraSignals(networkID, cameraID);
-            expect(CAMERA_SIGNALS_OBJ_KEYS).toEqual(expect.arrayContaining(Object.keys(res)));
+            expect(CAMERA_SIGNALS_KEYS).toEqual(expect.arrayContaining(Object.keys(res)));
+        }
+    });
+    test('getCameraStatus()', async () => {
+        const home = await blinkAPI.getAccountHomescreen();
+        for (const camera of home.cameras) {
+            const networkID = camera.network_id;
+            const cameraID = camera.id;
+            const res = await blinkAPI.getCameraStatus(networkID, cameraID);
+            expect(Object.keys(res.camera_status)).toEqual(expect.arrayContaining(CAMERA_STATUS_KEYS));
         }
     });
     test('getNetworks()', async () => {
@@ -189,7 +207,7 @@ withAuth('blink-api', () => {
         expect(res.summary).toBeInstanceOf(Object);
         expect(res.networks).toBeInstanceOf(Array);
         for (const network of res.networks) {
-            expect(Object.keys(network)).toEqual(expect.arrayContaining(NETWORK_OBJ_KEYS));
+            expect(Object.keys(network)).toEqual(expect.arrayContaining(NETWORK_KEYS));
         }
         expect(res.networks.length).toBeGreaterThanOrEqual(1);
     });

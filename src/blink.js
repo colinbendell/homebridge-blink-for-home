@@ -72,7 +72,7 @@ class BlinkDevice {
     }
 
     get data() {
-        if (this.context && this.context.data) return this.context.data;
+        if (this.context?.data) return this.context.data;
         return this._data;
     }
 
@@ -161,7 +161,7 @@ class BlinkCamera extends BlinkDevice {
     }
 
     get status() {
-        return this.data.status && this.data.status !== 'done' ? this.data.status : this.network.status;
+        return this.data?.status !== 'done' ? this.data.status : this.network.status;
     }
 
     get armed() {
@@ -310,7 +310,7 @@ class Blink {
     static normalizeConfig(config) {
         const newConfig = Object.assign({}, DEFAULT_OPTIONS, config || {});
         const checkValue = function(key, propName, cast = Boolean) {
-            if (key in newConfig && newConfig[key] !== '' && newConfig[key] !== null) {
+            if ((key in newConfig) && newConfig[key] !== '' && newConfig[key] !== null) {
                 const newValue = cast(newConfig[key]);
                 if (newValue !== null && (cast !== Number || !Number.isNaN(newValue))) {
                     newConfig[propName] = newValue;
@@ -499,7 +499,7 @@ class Blink {
             network.syncModule = homescreen.sync_modules.filter(sm => sm.network_id === network.id)[0];
         }
 
-        if (this.networks && this.networks.size > 0) {
+        if (this.networks?.size > 0) {
             for (const n of homescreen.networks) {
                 // TODO: new networks?
                 if (this.networks.has(n.id)) this.networks.get(n.id).data = n;
@@ -634,8 +634,7 @@ class Blink {
             }
 
             const latestMedia = await this.getCameraLastMotion(networkID, cameraID);
-            if (latestMedia && latestMedia.created_at && Date.parse(latestMedia.created_at) >
-                camera.thumbnailCreatedAt) {
+            if (latestMedia?.created_at && Date.parse(latestMedia.created_at) > camera.thumbnailCreatedAt) {
                 return latestMedia.thumbnail;
             }
             return camera.thumbnail;

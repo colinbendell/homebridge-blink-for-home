@@ -48,6 +48,11 @@ describe('Blink', () => {
             const networkDevice = blink.networks.get(cameraData.network_id);
             expect(cameraDevice.networkID).toBe(cameraData.network_id);
             expect(cameraDevice.network).toBe(networkDevice);
+            expect(cameraDevice.canonicalID).toBeDefined();
+            expect(cameraDevice.status).toBe('online');
+            expect(cameraDevice.model).toBe('white');
+            expect(cameraDevice.serial).toBe('120040563');
+            expect(cameraDevice.firmware).toBe('2.151');
             expect(cameraDevice.isCameraMini).toBe(false);
             expect(cameraDevice.thumbnailCreatedAt).toBe(Date.parse('2020-01-01T01:01:00.000Z'));
             expect(cameraDevice.thumbnailCreatedAt).toBe(Date.parse('2020-01-01T01:01:00.000Z'));
@@ -59,14 +64,15 @@ describe('Blink', () => {
             expect(cameraDevice.getTemperature()).toBe(16.7);
             expect(cameraDevice.armed).toBe(true);
             expect(cameraDevice.enabled).toBe(true);
+            expect(cameraDevice.getEnabled()).toBe(true);
             expect(cameraDevice.getMotionDetectActive()).toBe(true);
 
             expect(await cameraDevice.getMotionDetected()).toBe(false);
             MEDIA_CHANGE.media[0].created_at = new Date().toISOString();
             expect(await cameraDevice.getMotionDetected()).toBe(true);
 
-            cameraDevice.setPrivacyMode(true);
-            expect(cameraDevice.getPrivacyMode()).toBe(true);
+            cameraDevice.privacyMode = true;
+            expect(cameraDevice.privacyMode).toBe(true);
 
             const miniCameraData = HOMESCREEN.cameras[2];
             const miniCameraDevice = blink.cameras.get(miniCameraData.id);
@@ -78,6 +84,7 @@ describe('Blink', () => {
             expect(miniCameraDevice.getTemperature()).toBeNull();
             expect(miniCameraDevice.armed).toBe(false);
             expect(miniCameraDevice.enabled).toBe(true);
+            expect(miniCameraDevice.getEnabled()).toBe(true);
             expect(miniCameraDevice.getMotionDetectActive()).toBe(false);
             expect(await miniCameraDevice.getMotionDetected()).toBe(false);
         });

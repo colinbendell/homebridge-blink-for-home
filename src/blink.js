@@ -161,7 +161,7 @@ class BlinkCamera extends BlinkDevice {
     }
 
     get status() {
-        return this.data?.status !== 'done' ? this.data.status : this.network.status;
+        return this.data.status && this.data.status !== 'done' ? this.data.status : this.network.status;
     }
 
     get armed() {
@@ -181,7 +181,11 @@ class BlinkCamera extends BlinkDevice {
     }
 
     get privacyMode() {
-        return this.getPrivacyMode();
+        return this.context._privacy;
+    }
+
+    set privacyMode(val) {
+        this.context._privacy = val;
     }
 
     get thumbnailCreatedAt() {
@@ -209,16 +213,21 @@ class BlinkCamera extends BlinkDevice {
         return fahrenheitToCelsius(this.data?.signals?.temp) || null;
     }
 
+    async getFullStatus() {
+        if (!this.data.fullStatus) {
+            this.data.fullStatus = await this.blink.getCameraStatus(this.networkID, this.cameraID);
+        }
+        return this.data.fullStatus;
+    }
+
     async getBattery() {
         if (!this.data.battery) return null;
 
         // Low battery reports 10%
         if (this.lowBattery) return 10;
 
-        if (!this.data.fullStatus) {
-            this.data.fullStatus = await this.blink.getCameraStatus(this.networkID, this.cameraID);
-        }
-        const alkalineVolts = Math.max(this.data.fullStatus.camera_status.battery_voltage / 100, 0);
+        const fullStatus = await this.getFullStatus();
+        const alkalineVolts = Math.max(fullStatus.camera_status.battery_voltage / 100, 0);
 
         // AA and AAA Alkaline batteries are rated for 1.5V
         // assume battery voltage between 1.2V and 1.8V is acceptable and express it as a function of 20% to 100%
@@ -228,10 +237,8 @@ class BlinkCamera extends BlinkDevice {
     async getWifiSSR() {
         if (!this.data?.signals?.wifi) return null;
 
-        if (!this.data.fullStatus) {
-            this.data.fullStatus = await this.blink.getCameraStatus(this.networkID, this.cameraID);
-        }
-        return this.data.fullStatus.camera_status.wifi_strength;
+        const fullStatus = await this.getFullStatus();
+        return fullStatus.camera_status.wifi_strength;
     }
 
     async getMotionDetected() {
@@ -261,20 +268,9 @@ class BlinkCamera extends BlinkDevice {
     }
 
     async setEnabled(target = true) {
-        if (this.isCameraMini) {
-            return await this.blink.setOwlCameraMotionSensorState(this.networkID, this.cameraID, target);
-        }
         if (this.enabled !== Boolean(target)) {
-            await this.blink.setCameraMotionSensorState(this.networkID, this.cameraID, target, this.model);
+            await this.blink.setCameraMotionSensorState(this.networkID, this.cameraID, target);
         }
-    }
-
-    getPrivacyMode() {
-        return this.context._privacy;
-    }
-
-    setPrivacyMode(val) {
-        return this.context._privacy = val;
     }
 
     async refreshThumbnail() {
@@ -284,13 +280,10 @@ class BlinkCamera extends BlinkDevice {
     async getThumbnail() {
         // if we are in privacy mode, use a placeholder image
         if (!this.armed || !this.enabled) {
-            if (this.getPrivacyMode()) {
-                return PRIVACY_BYTES;
-            }
-            else if (this.armed && !this.enabled) {
-                // only show the "disabled" image when the system is armed but the camera is disabled
-                return DISABLED_BYTES;
-            }
+            if (this.privacyMode) return PRIVACY_BYTES;
+
+            // only show the "disabled" image when the system is armed but the camera is disabled
+            if (this.armed && !this.enabled) return DISABLED_BYTES;
         }
 
         const thumbnail = await this.blink.getCameraLastThumbnail(this.networkID, this.cameraID);
@@ -305,9 +298,7 @@ class BlinkCamera extends BlinkDevice {
 
     async getLiveViewURL() {
         if (!this.armed || !this.enabled) {
-            if (this.getPrivacyMode()) {
-                return `${__dirname}/privacy.png`;
-            }
+            if (this.privacyMode) return `${__dirname}/privacy.png`;
         }
         const data = await this.blink.getCameraLiveView(this.networkID, this.cameraID);
         return data.server;
@@ -389,7 +380,7 @@ class Blink {
     }
 
     async _command(fn) {
-        let cmd = await fn();
+        let cmd = await Promise.resolve(typeof(fn) === 'function' ? fn() : fn);
         while (cmd.message && /busy/i.test(cmd.message)) {
             log.info(`Sleeping 5s: ${cmd.message}`);
             await sleep(5000);
@@ -539,12 +530,12 @@ class Blink {
     }
 
     async setCameraMotionSensorState(networkID, cameraID, enabled = true) {
-        if (enabled) {
-            await this._command(async () => await this.blinkAPI.enableCameraMotion(networkID, cameraID));
-        }
-        else {
-            await this._command(async () => await this.blinkAPI.disableCameraMotion(networkID, cameraID));
-        }
+        const camera = this.cameras.get(cameraID);
+        let cmd = this.blinkAPI.enableCameraMotion;
+        if (!enabled) cmd = await this.blinkAPI.disableCameraMotion;
+        if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlSettings;
+        await this._command(cmd(networkID, cameraID, {enabled: enabled}));
+
         await this.refreshData(true);
     }
     async setOwlCameraMotionSensorState(networkID, cameraID, enabled = true) {
@@ -571,7 +562,7 @@ class Blink {
                             let cmd = this.blinkAPI.updateCameraThumbnail;
                             if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlThumbnail;
 
-                            await this._command(async () => await cmd(camera.networkID, camera.cameraID));
+                            await this._command(cmd(camera.networkID, camera.cameraID));
                             return true; // we updated a camera
                         }
                         catch (e) {

@@ -181,9 +181,17 @@ class BlinkCameraHAP extends BlinkCamera {
     }
 
     getLowBattery() {
-        return this.battery < 10 ?
+        return this.lowBattery ?
             Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW :
             Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
+    }
+
+    getPrivacyMode() {
+        return this.privacyMode;
+    }
+
+    setPrivacyMode(val) {
+        this.privacyMode = val;
     }
 
     createAccessory(cachedAccessories = []) {

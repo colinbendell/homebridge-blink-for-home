@@ -380,7 +380,7 @@ class Blink {
     }
 
     async _command(fn) {
-        let cmd = await Promise.resolve(typeof(fn) === 'function' ? fn() : fn);
+        let cmd = await fn();
         while (cmd.message && /busy/i.test(cmd.message)) {
             log.info(`Sleeping 5s: ${cmd.message}`);
             await sleep(5000);
@@ -521,10 +521,10 @@ class Blink {
 
     async setArmedState(networkID, arm = true) {
         if (arm) {
-            await this._command(async () => await this.blinkAPI.armNetwork(networkID));
+            await this._command(async () => this.blinkAPI.armNetwork(networkID));
         }
         else {
-            await this._command(async () => await this.blinkAPI.disarmNetwork(networkID));
+            await this._command(async () => this.blinkAPI.disarmNetwork(networkID));
         }
         await this.refreshData(true);
     }
@@ -534,18 +534,16 @@ class Blink {
         let cmd = this.blinkAPI.enableCameraMotion;
         if (!enabled) cmd = await this.blinkAPI.disableCameraMotion;
         if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlSettings;
-        await this._command(cmd(networkID, cameraID, {enabled: enabled}));
+        await this._command(async () => cmd(networkID, cameraID, {enabled: enabled}));
 
-        await this.refreshData(true);
-    }
-    async setOwlCameraMotionSensorState(networkID, cameraID, enabled = true) {
-        await this._command(async () => await this.blinkAPI.updateOwlSettings(networkID, cameraID, {enabled: enabled}));
         await this.refreshData(true);
     }
 
     async refreshCameraThumbnail(networkID, cameraID, force = false) {
         const cameras = [...this.cameras.values()]
+            // optional networkID
             .filter(camera => !networkID || camera.networkID === networkID)
+            // optional cameraID
             .filter(camera => !cameraID || camera.cameraID === cameraID);
 
         const status = await Promise.all(cameras.map(async camera => {
@@ -562,7 +560,7 @@ class Blink {
                             let cmd = this.blinkAPI.updateCameraThumbnail;
                             if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlThumbnail;
 
-                            await this._command(cmd(camera.networkID, camera.cameraID));
+                            await this._command(async () => cmd(camera.networkID, camera.cameraID));
                             return true; // we updated a camera
                         }
                         catch (e) {
@@ -581,7 +579,9 @@ class Blink {
 
     async refreshCameraVideo(networkID, cameraID, force = false) {
         const cameras = [...this.cameras.values()]
+            // optional networkID
             .filter(camera => !networkID || camera.networkID === networkID)
+            // optional cameraID
             .filter(camera => !cameraID || camera.cameraID === cameraID);
 
         const status = await Promise.all(cameras.map(async camera => {

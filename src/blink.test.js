@@ -88,14 +88,13 @@ describe('Blink', () => {
             expect(miniCameraDevice.getMotionDetectActive()).toBe(false);
             expect(await miniCameraDevice.getMotionDetected()).toBe(false);
         });
-        test('.refreshThumbnail', async () => {
+        test('BlinkCamera.refreshThumbnail()', async () => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(HOMESCREEN);
             blink.blinkAPI.getCameraStatus.mockResolvedValue(CAMERA_STATUS);
             blink.blinkAPI.getMediaChange.mockResolvedValue(MEDIA_CHANGE);
             blink.blinkAPI.getCommand.mockResolvedValue(COMMAND_COMPLETE);
             blink.blinkAPI.updateCameraThumbnail.mockResolvedValue(COMMAND_COMPLETE);
-            blink.blinkAPI.updateOwlThumbnail.mockResolvedValue(COMMAND_COMPLETE);
 
             await blink.refreshData();
 
@@ -105,11 +104,21 @@ describe('Blink', () => {
             expect(blink.blinkAPI.updateCameraThumbnail).toBeCalledTimes(1);
             expect(blink.blinkAPI.updateOwlThumbnail).toBeCalledTimes(0);
             expect(blink.blinkAPI.getCommand).toBeCalledTimes(0);
+        });
+        test('BlinkMiniCamera.refreshThumbnail()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(HOMESCREEN);
+            blink.blinkAPI.getCameraStatus.mockResolvedValue(CAMERA_STATUS);
+            blink.blinkAPI.getMediaChange.mockResolvedValue(MEDIA_CHANGE);
+            blink.blinkAPI.getCommand.mockResolvedValue(COMMAND_COMPLETE);
+            blink.blinkAPI.updateOwlThumbnail.mockResolvedValue(COMMAND_COMPLETE);
+
+            await blink.refreshData();
 
             const miniCameraData = HOMESCREEN.cameras[2];
             const miniCameraDevice = blink.cameras.get(miniCameraData.id);
             await miniCameraDevice.refreshThumbnail();
-            expect(blink.blinkAPI.updateCameraThumbnail).toBeCalledTimes(1);
+            expect(blink.blinkAPI.updateCameraThumbnail).toBeCalledTimes(0);
             expect(blink.blinkAPI.updateOwlThumbnail).toBeCalledTimes(1);
             expect(blink.blinkAPI.getCommand).toBeCalledTimes(0);
         });

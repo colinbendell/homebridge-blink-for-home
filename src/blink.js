@@ -4,7 +4,7 @@ const {sleep, fahrenheitToCelsius} = require('./utils');
 const fs = require('fs');
 
 const THUMBNAIL_TTL_MIN = 1 * 60; // 1min
-const THUMBNAIL_TTL_MAX = 10 * 60; // 10min
+const THUMBNAIL_TTL = 60 * 60; // 10min
 const BATTERY_TTL = 60 * 60; // 60min
 const MOTION_POLL = 20;
 const STATUS_POLL = 45;
@@ -20,7 +20,7 @@ const DEFAULT_OPTIONS = {
     privacySwitch: true,
     liveView: true,
     avoidThumbnailBatteryDrain: true,
-    cameraThumbnailRefreshSeconds: THUMBNAIL_TTL_MIN,
+    cameraThumbnailRefreshSeconds: THUMBNAIL_TTL,
     cameraStatusPollingSeconds: STATUS_POLL,
     cameraMotionPollingSeconds: MOTION_POLL,
     verbose: false,
@@ -273,8 +273,8 @@ class BlinkCamera extends BlinkDevice {
         }
     }
 
-    async refreshThumbnail() {
-        return await this.blink.refreshCameraThumbnail(this.networkID, this.cameraID);
+    async refreshThumbnail(force = true) {
+        return await this.blink.refreshCameraThumbnail(this.networkID, this.cameraID, force);
     }
 
     async getThumbnail() {
@@ -331,6 +331,9 @@ class Blink {
         checkValue('enable-debug-logging', 'debug');
         checkValue('enable-startup-diagnostic', 'startupDiagnostic');
 
+        if (newConfig.cameraThumbnailRefreshSeconds <= 0) {
+            newConfig.cameraThumbnailRefreshSeconds = Number.MAX_SAFE_INTEGER;
+        }
         return newConfig;
     }
     constructor(clientUUID, auth, config = {}) {
@@ -547,28 +550,21 @@ class Blink {
             .filter(camera => !cameraID || camera.cameraID === cameraID);
 
         const status = await Promise.all(cameras.map(async camera => {
-            if (force || camera.armed || !camera.privacyMode) {
-                if (force || camera.enabled) {
-                    let ttl = THUMBNAIL_TTL_MAX;
-                    if (!camera.isBatteryPower || !this.config.avoidThumbnailBatteryDrain) {
-                        ttl = this.config.cameraThumbnailRefreshSeconds;
-                    }
+            const lastSnapshot = camera.thumbnailCreatedAt + (this.config.cameraThumbnailRefreshSeconds * 1000);
 
-                    if (force || Date.now() >= camera.thumbnailCreatedAt + (ttl * 1000)) {
-                        try {
-                            log(`Refreshing snapshot for ${camera.name}`);
-                            let cmd = this.blinkAPI.updateCameraThumbnail;
-                            if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlThumbnail;
+            if (force || (camera.armed && camera.enabled && Date.now() >= lastSnapshot)) {
+                try {
+                    log(`Refreshing snapshot for ${camera.name}`);
+                    let cmd = this.blinkAPI.updateCameraThumbnail;
+                    if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlThumbnail;
 
-                            await this._command(async () => cmd(camera.networkID, camera.cameraID));
-                            return true; // we updated a camera
-                        }
-                        catch (e) {
-                            // network error? just eat it and retry later
-                            log.error(e);
-                            return false;
-                        }
-                    }
+                    await this._command(async () => cmd(camera.networkID, camera.cameraID));
+                    return true; // we updated a camera
+                }
+                catch (e) {
+                    // network error? just eat it and retry later
+                    log.error(e);
+                    return false;
                 }
             }
         }));

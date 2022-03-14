@@ -100,7 +100,7 @@ describe('Blink', () => {
 
             const cameraData = HOMESCREEN.cameras[0];
             const cameraDevice = blink.cameras.get(cameraData.id);
-            await cameraDevice.refreshThumbnail();
+            await cameraDevice.refreshThumbnail(true);
             expect(blink.blinkAPI.updateCameraThumbnail).toBeCalledTimes(1);
             expect(blink.blinkAPI.updateOwlThumbnail).toBeCalledTimes(0);
             expect(blink.blinkAPI.getCommand).toBeCalledTimes(0);
@@ -117,7 +117,7 @@ describe('Blink', () => {
 
             const miniCameraData = HOMESCREEN.cameras[2];
             const miniCameraDevice = blink.cameras.get(miniCameraData.id);
-            await miniCameraDevice.refreshThumbnail();
+            await miniCameraDevice.refreshThumbnail(true);
             expect(blink.blinkAPI.updateCameraThumbnail).toBeCalledTimes(0);
             expect(blink.blinkAPI.updateOwlThumbnail).toBeCalledTimes(1);
             expect(blink.blinkAPI.getCommand).toBeCalledTimes(0);

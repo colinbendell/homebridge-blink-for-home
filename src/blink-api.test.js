@@ -244,8 +244,7 @@ withAuth('blink-api', () => {
         expect(res).toBeInstanceOf(Buffer);
     });
     test('getAppStatus()', async () => {
-        const home = await blinkAPI.getAccountHomescreen();
-        const serial = home.sync_modules[0].serial;
+        const serial = 'IOS_8854';
         await blinkAPI.getAppStatus(serial);
     });
 

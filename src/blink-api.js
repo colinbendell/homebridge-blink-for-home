@@ -5,7 +5,8 @@ const {fetch, reset} = require('@adobe/helix-fetch');
 const {sleep} = require('./utils');
 const IniFile = require('./inifile');
 const {log} = require('./log');
-
+// const {stringify} = require("./stringify");
+const stringify = JSON.stringify;
 // crypto.randomBytes(16).toString("hex").toUpperCase().replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5")
 const DEFAULT_BLINK_CLIENT_UUID = '1EAF7C88-2AAB-BC51-038D-DB96D6EEE22F';
 const BLINK_API_HOST = 'immedia-semi.com';
@@ -134,7 +135,7 @@ class BlinkAPI {
         if (/application\/json/.test(res.headers.get('content-type'))) {
             const json = await res.json();
             res._body = json; // stash it for the cache because .json() isn't re-callable
-            log.debug(JSON.stringify(json));
+            log.debug(stringify(json));
         }
         else if (/text/.test(res.headers.get('content-type'))) {
             const txt = await res.text();
@@ -244,7 +245,7 @@ class BlinkAPI {
      *
      * {
      *     "account": {
-     *        "account_id": 22156,
+     *        "account_id": 1000001,
      *        "account_verification_required": false,
      *        "client_id": 2360401,
      *        "client_verification_required": true,
@@ -314,7 +315,7 @@ class BlinkAPI {
     }
 
     /**
-     * POST https://rest-prod.immedia-semi.com/api/v4/account/22156/client/2360401/pin/verify
+     * POST https://rest-prod.immedia-semi.com/api/v4/account/1000001/client/2360401/pin/verify
      * :authority:       rest-prod.immedia-semi.com
      * locale:           en_CA
      * content-type:     application/json
@@ -363,14 +364,14 @@ class BlinkAPI {
     }
 
     /**
-     * GET https: *rest-prod.immedia-semi.com/api/v1/accounts/22156/clients/2360401/options
+     * GET https: *rest-prod.immedia-semi.com/api/v1/accounts/1000001/clients/2360401/options
      * {
      *     "options": "eyJuZXR3b3JrX29yZGVyIjpbMTIwOTJd...hbWVyYV9vcmRlciI6eyIxMjA5MiI6WzM2Nzk5LDM2ODE3XX19"
      * }
      *
      * base64 decode:
      * {
-     *     "network_order":    [22022],
+     *     "network_order":    [2000001],
      *     "keys":    [
      *         ["client.options.show_homescreen_tutorial_state", "N1"],
      *         ["homescreen.whats_new_last_showed_at", "N20200902"],
@@ -378,7 +379,7 @@ class BlinkAPI {
      *     ],
      *     "schema": 1,
      *     "camera_order": {
-     *         "22022" : [136989, 13812]
+     *         "2000001" : [4000001, 4000002]
      *     }
      * }
      **/
@@ -398,13 +399,13 @@ class BlinkAPI {
      *
      * {
      *   "account": {
-     *     "id": 22156,
+     *     "id": 1000001,
      *     "email_verified": true,
      *     "email_verification_required": true
      *   },
      *   "networks": [
      *     {
-     *       "id": 22022,
+     *       "id": 2000001,
      *       "created_at": "2016-02-13T19:15:54+00:00",
      *       "updated_at": "2020-10-02T00:29:30+00:00",
      *       "name": "82 Downing",
@@ -416,7 +417,7 @@ class BlinkAPI {
      *   ],
      *   "sync_modules": [
      *     {
-     *       "id": 10192,
+     *       "id": 3000001,
      *       "created_at": "2016-02-13T19:17:57+00:00",
      *       "updated_at": "2020-10-03T04:35:46+00:00",
      *       "onboarded": true,
@@ -427,7 +428,7 @@ class BlinkAPI {
      *       "type": "sm1",
      *       "last_hb": "2020-10-03T15:44:36+00:00",
      *       "wifi_strength": 1,
-     *       "network_id": 22022,
+     *       "network_id": 2000001,
      *       "enable_temp_alerts": true,
      *       "local_storage_enabled": false,
      *       "local_storage_compatible": false,
@@ -436,7 +437,7 @@ class BlinkAPI {
      *   ],
      *   "cameras": [
      *     {
-     *       "id": 136989,
+     *       "id": 4000001,
      *       "created_at": "2016-02-13T19:21:09+00:00",
      *       "updated_at": "2020-10-03T14:50:36+00:00",
      *       "name": "Alpha",
@@ -444,11 +445,11 @@ class BlinkAPI {
      *       "fw_version": "2.151",
      *       "type": "white",
      *       "enabled": true,
-     *       "thumbnail": "/media/production/account/22156/network/22022/camera/136989/clip_HIwo6g_2020_10_02__00_28AM",
+     *       "thumbnail": "/media/production/account/101/network/2001/camera/4001/clip_HIwo6g_2020_10_02__00_28AM",
      *       "status": "done",
      *       "battery": "ok",
      *       "usage_rate": false,
-     *       "network_id": 22022,
+     *       "network_id": 2000001,
      *       "issues": [],
      *       "signals": {
      *         "lfr": 5,
@@ -468,11 +469,11 @@ class BlinkAPI {
      *       "fw_version": "2.151",
      *       "type": "white",
      *       "enabled": true,
-     *       "thumbnail": "/media/production/account/22156/network/22022/camera/13812/clip_rHLLGqU_2020_10_02__00_17AM",
+     *       "thumbnail": "/media/production/account/1001/network/2001/camera/13812/clip_rHLLGqU_2020_10_02__00_17AM",
      *       "status": "done",
      *       "battery": "ok",
      *       "usage_rate": false,
-     *       "network_id": 22022,
+     *       "network_id": 2000001,
      *       "issues": [],
      *       "signals": {
      *         "lfr": 5,
@@ -535,7 +536,7 @@ class BlinkAPI {
         'type': 'regular',
         'pin_created_at': null,
         'pin_failures': 0,
-        'account_id': 22156,
+        'account_id': 1000001,
     }
     */
     async getAccount() {
@@ -543,7 +544,7 @@ class BlinkAPI {
     }
 
     /**
-     *  {"account":{"id":22156,"verification_required":false},"client":{"id":3267394,"verification_required":false}}
+     *  {"account":{"id":1000001,"verification_required":false},"client":{"id":9000001,"verification_required":false}}
      */
     async getAccountStatus() {
         return await this.get(`/api/v3/account/{accountID}/status`);
@@ -639,14 +640,14 @@ class BlinkAPI {
      *       "device": "camera",
      *       "device_id": 13812,
      *       "device_name": "Beta",
-     *       "network_id": 22022,
+     *       "network_id": 2000001,
      *       "network_name": "82 Downing",
      *       "type": "video",
      *       "source": "pir",
      *       "watched": false,
      *       "partial": false,
-     *       "thumbnail": "/api/v2/accounts/22156/media/thumb/2139143346",
-     *       "media": "/api/v2/accounts/22156/media/clip/2139143346.mp4",
+     *       "thumbnail": "/api/v2/accounts/1000001/media/thumb/2139143346",
+     *       "media": "/api/v2/accounts/1000001/media/clip/2139143346.mp4",
      *       "additional_devices": [],
      *       "time_zone": "America/Tortola"
      *     }
@@ -744,7 +745,7 @@ class BlinkAPI {
      * {
      *   "camera": [
      *     {
-     *       "id": 136989,
+     *       "id": 4000001,
      *       "created_at": "2016-02-13T19:21:09+00:00",
      *       "updated_at": "2020-10-03T14:50:36+00:00",
      *       "deleted_at": null,
@@ -753,7 +754,7 @@ class BlinkAPI {
      *       "fw_version": "2.151",
      *       "mac_address": null,
      *       "ip_address": null,
-     *       "thumbnail": "/media/production/account/22156/network/22022/camera/136989/clip_HIwR6g_2020_10_02__00_28AM",
+     *       "thumbnail": "/media/production/account/1001/network/2001/camera/4000001/clip_HIwR6g_2020_10_02__00_28AM",
      *       "name": "Alpha",
      *       "liveview_enabled": "off",
      *       "siren_enable": false,
@@ -817,14 +818,14 @@ class BlinkAPI {
      *       "mfg_mez_type": "",
      *       "mfg_mez_range": 0,
      *       "type": "white",
-     *       "account_id": 22156,
-     *       "network_id": 22022,
-     *       "sync_module_id": 10192,
-     *       "account": 22156,
-     *       "network": 22022,
+     *       "account_id": 1000001,
+     *       "network_id": 2000001,
+     *       "sync_module_id": 3000001,
+     *       "account": 1000001,
+     *       "network": 2000001,
      *       "camera_seq": 1,
      *       "last_connect": {
-     *         "camera_id": 136989,
+     *         "camera_id": 4000001,
      *         "created_at": "2017-10-31T22:12:59+00:00",
      *         "updated_at": "2020-10-03T04:36:23+00:00",
      *         "wifi_strength": -55,
@@ -864,9 +865,9 @@ class BlinkAPI {
      *         "lifetime_count": 0,
      *         "lifetime_duration": 0,
      *         "pir_rejections": 0,
-     *         "sync_module_id": 10192,
-     *         "network_id": 22022,
-     *         "account_id": 22156
+     *         "sync_module_id": 3000001,
+     *         "network_id": 2000001,
+     *         "account_id": 1000001
      *       },
      *       "motion_alert": true,
      *       "record_audio": true,
@@ -922,10 +923,10 @@ class BlinkAPI {
      *     "range_days": 7,
      *     "reference": {"usage": 400},
      *     "networks": [{
-     *         "network_id": 22022,
+     *         "network_id": 2000001,
      *         "name": "82 Downing",
      *         "cameras": [{
-     *             "id": 136989,
+     *             "id": 4000001,
      *             "name": "Alpha",
      *             "usage": 13,
      *             "lv_seconds": 9,
@@ -941,7 +942,7 @@ class BlinkAPI {
     /**
      * {
      *     "camera_status": {
-     *         "camera_id": 136989,
+     *         "camera_id": 4000001,
      *         "created_at": "2017-10-31T22:12:59+00:00",
      *         "updated_at": "2020-10-03T04:36:23+00:00",
      *         "wifi_strength": -55,
@@ -981,11 +982,11 @@ class BlinkAPI {
      *         "lifetime_count": 0,
      *         "lifetime_duration": 0,
      *         "pir_rejections": 0,
-     *         "sync_module_id": 10192,
-     *         "network_id": 22022,
-     *         "account_id": 22156,
+     *         "sync_module_id": 3000001,
+     *         "network_id": 2000001,
+     *         "account_id": 1000001,
      *         "id": 1,
-     *         "thumbnail": "/media/production/account/22156/network/22022/camera/136989/clip_HIo6g_2020_10_02__00_28AM"
+     *         "thumbnail": "/media/production/account/1001/network/2001/camera/4001/clip_HIo6g_2020_10_02__00_28AM"
      *     }
      * }
      **/
@@ -1001,8 +1002,8 @@ class BlinkAPI {
      *   "lfr_ack":null,"sequence":null,"attempts":0,"transaction":"z5fN9ToawFki9Ah_",
      *   "player_transaction":"iY64wPA2-MUmLct1","server":null,"duration":null,
      *   "by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,"debug":"","opts_1":0,"target":"camera",
-     *   "target_id":136989,"parent_command_id":null,"camera_id":136989,"siren_id":null,"firmware_id":null,
-     *   "network_id":22022,"account_id":22156,"sync_module_id":10192
+     *   "target_id":4000001,"parent_command_id":null,"camera_id":4000001,"siren_id":null,"firmware_id":null,
+     *   "network_id":2000001,"account_id":1000001,"sync_module_id":3000001
      * }
      * {"complete":false,"status":0,"status_msg":"Command succeeded","status_code":908,
      *   "commands":[{"id":750082005,"created_at":"2020-10-02T00:27:33+00:00","updated_at":"2020-10-02T00:27:33+00:00",
@@ -1012,8 +1013,8 @@ class BlinkAPI {
      *     "stage_is":null,"stage_lv":null,"stage_vs":null,"state_condition":"running","sm_ack":1,"lfr_ack":null,
      *     "sequence":363,"attempts":0,"transaction":"z5fN9ToawFki9Ah_","player_transaction":"iY64wPA2-MUmLct1",
      *     "server":null,"duration":null,"by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,"debug":"",
-     *     "opts_1":0,"target":"camera","target_id":136989,"parent_command_id":null,"camera_id":136989,"siren_id":null,
-     *     "firmware_id":null,"network_id":22022,"account_id":22156,"sync_module_id":10192
+     *    "opts_1":0,"target":"camera","target_id":4000001,"parent_command_id":null,"camera_id":4000001,"siren_id":null,
+     *     "firmware_id":null,"network_id":2000001,"account_id":1000001,"sync_module_id":3000001
      *   }],"media_id":null
      * }
      * {"complete":true,"status":0,"status_msg":"Command succeeded","status_code":908,
@@ -1025,9 +1026,9 @@ class BlinkAPI {
      *     "stage_vs":"2020-10-02T00:27:35+00:00","state_condition":"done","sm_ack":1,"lfr_ack":0,
      *     "sequence":363,"attempts":0,"transaction":"z5fN9ToawFki9Ah_","player_transaction":"iY64wPA2-MUmLct1",
      *     "server":null,"duration":null,"by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,
-     *     "debug":"{\"lfr_ok\":[22022,1,363,205,151,159,165,0]}","opts_1":0,"target":"camera","target_id":136989,
-     *     "parent_command_id":null,"camera_id":136989,"siren_id":null,"firmware_id":null,"network_id":22022,
-     *     "account_id":22156,"sync_module_id":10192
+     *     "debug":"{\"lfr_ok\":[2000001,1,363,205,151,159,165,0]}","opts_1":0,"target":"camera","target_id":4000001,
+     *     "parent_command_id":null,"camera_id":4000001,"siren_id":null,"firmware_id":null,"network_id":2000001,
+     *     "account_id":1000001,"sync_module_id":3000001
      *   }],"media_id":null
      * }
      **/
@@ -1079,9 +1080,9 @@ class BlinkAPI {
      *       "transaction":"NIE5Fm36YSJGOOOn","player_transaction":"mrkXahUbYjfbUgHg",
      *      "server":"rtsps://lv2-prod.immedia-semi.com:443/NIE5Fm36YSJGOOOn","duration":300,
      *      "by_whom":"unknown - 6.1.1 (8854) #e06341d7f - liveview","diagnostic":false,
-     *      "debug":"{\"lfr_ok\":[22022,1,365,205,151,159,167,0]}","opts_1":0,"target":"camera",
-     *      "target_id":136989,"parent_command_id":null,"camera_id":136989,"siren_id":null,"firmware_id":null,
-     *      "network_id":22022,"account_id":22156,"sync_module_id":10192
+     *      "debug":"{\"lfr_ok\":[2000001,1,365,205,151,159,167,0]}","opts_1":0,"target":"camera",
+     *      "target_id":4000001,"parent_command_id":null,"camera_id":4000001,"siren_id":null,"firmware_id":null,
+     *      "network_id":2000001,"account_id":1000001,"sync_module_id":3000001
      *   }],
      *   "media_id":null
      * }
@@ -1096,9 +1097,9 @@ class BlinkAPI {
      *      "transaction":"NIE5Fm36YSJGOOOn","player_transaction":"mrkXahUbYjfbUgHg",
      *      "server":"rtsps://lv2-prod.immedia-semi.com:443/NIE5Fm36YSJGOOOn","duration":9,
      *      "by_whom":"unknown - 6.1.1 (8854) #e06341d7f - liveview","diagnostic":false,
-     *      "debug":"{\"lfr_ok\":[22022,1,365,205,151,159,167,0]},LV907","opts_1":0,"target":"camera",
-     *      "target_id":136989,"parent_command_id":null,"camera_id":136989,"siren_id":null,"firmware_id":null,
-     *      "network_id":22022,"account_id":22156,"sync_module_id":10192}],"media_id":null}
+     *      "debug":"{\"lfr_ok\":[2000001,1,365,205,151,159,167,0]},LV907","opts_1":0,"target":"camera",
+     *      "target_id":4000001,"parent_command_id":null,"camera_id":4000001,"siren_id":null,"firmware_id":null,
+     *      "network_id":2000001,"account_id":1000001,"sync_module_id":3000001}],"media_id":null}
      **/
     async getCameraLiveViewV5(networkID, cameraID) {
         const data = {
@@ -1115,8 +1116,8 @@ class BlinkAPI {
      *  "stage_dev":null,"stage_is":null,"stage_lv":null,"stage_vs":null,"state_condition":"new","sm_ack":null,
      *  "lfr_ack":null,"sequence":null,"attempts":0,"transaction":"zAvml-R6Q785g6oD","player_transaction":"l7ikC9-cDoE",
      *  "server":null,"duration":null,"by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,"debug":"",
-     *  "opts_1":0,"target":null,"target_id":null,"parent_command_id":null,"camera_id":136989,"siren_id":null,
-     *  "firmware_id":null,"network_id":22022,"account_id":22156,"sync_module_id":10192}
+     *  "opts_1":0,"target":null,"target_id":null,"parent_command_id":null,"camera_id":4000001,"siren_id":null,
+     *  "firmware_id":null,"network_id":2000001,"account_id":1000001,"sync_module_id":3000001}
      * {"complete":true,"status":0,"status_msg":"Command succeeded","status_code":908,"commands":[{"id":750082050,
      *   "created_at":"2020-10-02T00:27:46+00:00","updated_at":"2020-10-02T00:27:49+00:00",
      *   "execute_time":"2020-10-02T00:27:46+00:00","command":"status","state_stage":"is",
@@ -1126,16 +1127,16 @@ class BlinkAPI {
      *   "stage_vs":null,"state_condition":"done","sm_ack":1,"lfr_ack":0,"sequence":364,"attempts":0,
      *   "transaction":"zAvml-R6Q785g6oD","player_transaction":"l7idMspqkC9-cDoE","server":null,"duration":null,
      *   "by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,
-     *   "debug":"{\"lfr_ok\":[22022,1,364,206,151,158,167,0]}","opts_1":0,"target":null,"target_id":null,
-     *   "parent_command_id":null,"camera_id":136989,"siren_id":null,"firmware_id":null,"network_id":22022,
-     *   "account_id":22156,"sync_module_id":10192}],"media_id":null}
+     *   "debug":"{\"lfr_ok\":[2000001,1,364,206,151,158,167,0]}","opts_1":0,"target":null,"target_id":null,
+     *   "parent_command_id":null,"camera_id":4000001,"siren_id":null,"firmware_id":null,"network_id":2000001,
+     *   "account_id":1000001,"sync_module_id":3000001}],"media_id":null}
      **/
     async updateCameraStatus(networkID, cameraID) {
         return await this.post(`/network/${networkID}/camera/${cameraID}/status`);
     }
 
     /**
-     * POST {"temp_max":88,"id":136989,"current_temp":73,"temp_min":50,"network":22022}
+     * POST {"temp_max":88,"id":4000001,"current_temp":73,"temp_min":50,"network":2000001}
      * {"complete":true,"status":0,"status_msg":"Command succeeded","status_code":908,
      *  "commands":[{"id":750081889,"created_at":"2020-10-02T00:27:08+00:00","updated_at":"2020-10-02T00:27:11+00:00",
      *      "execute_time":"2020-10-02T00:27:08+00:00","command":"temp_calibrate","state_stage":"dev",
@@ -1145,9 +1146,9 @@ class BlinkAPI {
      *      "state_condition":"done","sm_ack":1,"lfr_ack":0,"sequence":360,"attempts":0,"transaction":"sf61Hj9V8tVDNU",
      *      "player_transaction":"vwL7YY0xf9-d3Vpq","server":null,"duration":73,
      *      "by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,
-     *      "debug":"{\"lfr_ok\":[22022,1,360,205,147,159,165,0]}","opts_1":0,"target":"camera",
-     *      "target_id":136989,"parent_command_id":null,"camera_id":136989,"siren_id":null,"firmware_id":null,
-     *      "network_id":22022,"account_id":22156,"sync_module_id":10192
+     *      "debug":"{\"lfr_ok\":[2000001,1,360,205,147,159,165,0]}","opts_1":0,"target":"camera",
+     *      "target_id":4000001,"parent_command_id":null,"camera_id":4000001,"siren_id":null,"firmware_id":null,
+     *      "network_id":2000001,"account_id":1000001,"sync_module_id":3000001
      *   }],
      *   "media_id":null}
      * {"id":750081889,"created_at":"2020-10-02T00:27:08+00:00","updated_at":"2020-10-02T00:27:08+00:00",
@@ -1157,11 +1158,11 @@ class BlinkAPI {
      *      "lfr_ack":null,"sequence":null,"attempts":0,"transaction":"sf61Hj9V8FstVDNU",
      *      "player_transaction":"vwL7YY0xf9-d3Vpq","server":null,"duration":73,
      *      "by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,"debug":"","opts_1":0,"target":"camera",
-     *      "target_id":136989,"parent_command_id":null,"camera_id":136989,"siren_id":null,"firmware_id":null,
-     *      "network_id":22022,"account_id":22156,"sync_module_id":10192}
+     *      "target_id":4000001,"parent_command_id":null,"camera_id":4000001,"siren_id":null,"firmware_id":null,
+     *      "network_id":2000001,"account_id":1000001,"sync_module_id":3000001}
      */
     async updateCameraTemperature(networkID, cameraID, currentTempF, minTempF, maxTempF) {
-        // {"temp_max":88,"id":136989,"current_temp":73,"temp_min":50,"network":22022}
+        // {"temp_max":88,"id":4000001,"current_temp":73,"temp_min":50,"network":2000001}
         const body = {
             'temp_max': maxTempF,
             'id': cameraID,
@@ -1182,8 +1183,8 @@ class BlinkAPI {
      *    "stage_dev":null,"stage_is":null,"stage_lv":null,"stage_vs":null,"state_condition":"new","sm_ack":null,
      *    "lfr_ack":null,"sequence":null,"attempts":0,"transaction":"iPYvI_VT4Dovb","player_transaction":"s0OXguCLB74",
      *    "server":null,"duration":null,"by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,"debug":"",
-     *    "opts_1":0,"target":"camera","target_id":136989,"parent_command_id":null,"camera_id":136989,"siren_id":null,
-     *    "firmware_id":null,"network_id":22022,"account_id":22156,"sync_module_id":10192}
+     *    "opts_1":0,"target":"camera","target_id":4000001,"parent_command_id":null,"camera_id":4000001,"siren_id":null,
+     *    "firmware_id":null,"network_id":2000001,"account_id":1000001,"sync_module_id":3000001}
      **/
     async updateCameraSettings(networkID, cameraID, updateCameraBody) {
         return await this.post(`/network/${networkID}/camera/${cameraID}/update`, updateCameraBody);
@@ -1343,33 +1344,33 @@ class BlinkAPI {
      */
 
     /**
-     * {"summary":{"22022":{"name":"82 Downing","onboarded":true}},
-     *   "networks":[{"id":22022,
+     * {"summary":{"2000001":{"name":"82 Downing","onboarded":true}},
+     *   "networks":[{"id":2000001,
      *     "created_at":"2016-02-13T19:15:54+00:00","updated_at":"2020-10-02T00:29:30+00:00",
      *     "name":"82 Downing","network_key":"hifSnlicp+k4bLA=","description":"","network_origin":"normal",
      *     "locale":"","time_zone":"America/Toronto","dst":true,"ping_interval":60,"encryption_key":null,
      *     "armed":false,"autoarm_geo_enable":false,"autoarm_time_enable":false,"lv_mode":"relay",
      *     "lfr_channel":0,"video_destination":"server","storage_used":0,"storage_total":0,"video_count":0,
      *     "video_history_count":4000,"sm_backup_enabled":false,"arm_string":"Disarmed","busy":false,
-     *     "camera_error":false,"sync_module_error":false,"feature_plan_id":null,"account_id":22156}]}
+     *     "camera_error":false,"sync_module_error":false,"feature_plan_id":null,"account_id":1000001}]}
      **/
     async getNetworks() {
         return await this.get(`/networks`);
     }
 
     /**
-     * {"id":750082190,"network_id":22022,"command":"arm","state":"new",
-     * "commands":[{"id":750082191,"network_id":22022, "command":"config_lfr","state":"running"},
-     * {"id":750082192,"network_id":22022,"command":"config_lfr","state":"running"}]}
+     * {"id":750082190,"network_id":2000001,"command":"arm","state":"new",
+     * "commands":[{"id":750082191,"network_id":2000001, "command":"config_lfr","state":"running"},
+     * {"id":750082192,"network_id":2000001,"command":"config_lfr","state":"running"}]}
      **/
     async armNetwork(networkID) {
         return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/state/arm`);
     }
 
     /**
-     * {"id":750082372,"network_id":22022,"command":"disarm","state":"new",
-     *   "commands":[{"id":750082373,"network_id":22022,"command":"config_lfr","state":"running"},
-     *     {"id":750082374,"network_id":22022,"command":"config_lfr","state":"running"}]}
+     * {"id":750082372,"network_id":2000001,"command":"disarm","state":"new",
+     *   "commands":[{"id":750082373,"network_id":2000001,"command":"config_lfr","state":"running"},
+     *     {"id":750082374,"network_id":2000001,"command":"config_lfr","state":"running"}]}
      * {"complete":true,"status":0,"status_msg":"Command succeeded","status_code":908,
      *   "commands":[{"id":750082372,"created_at":"2020-10-02T00:28:42+00:00",
      *     "updated_at":"2020-10-02T00:28:42+00:00","execute_time":"2020-10-02T00:28:42+00:00","command":"disarm",
@@ -1379,7 +1380,7 @@ class BlinkAPI {
      *     "sequence":368,"attempts":0,"transaction":"9YCMRT02qHTVq2zI","player_transaction":"EzfAxyTe_d2fOBjK",
      *     "server":null,"duration":null,"by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,"debug":"",
      *     "opts_1":0,"target":null,"target_id":null,"parent_command_id":null,"camera_id":null,"siren_id":null,
-     *     "firmware_id":null,"network_id":22022,"account_id":22156,"sync_module_id":10192},{"id":750082373,
+     *     "firmware_id":null,"network_id":2000001,"account_id":1000001,"sync_module_id":3000001},{"id":750082373,
      *     "created_at":"2020-10-02T00:28:42+00:00","updated_at":"2020-10-02T00:28:44+00:00",
      *     "execute_time":"2020-10-02T00:28:42+00:00","command":"config_lfr","state_stage":"dev",
      *     "stage_rest":"2020-10-02T00:28:42+00:00","stage_cs_db":null,"stage_cs_sent":null,"stage_sm":null,
@@ -1387,18 +1388,18 @@ class BlinkAPI {
      *     "state_condition":"done","sm_ack":null,"lfr_ack":0,"sequence":null,"attempts":0,
      *     "transaction":"gIGTT5DqPQFAVi2-","player_transaction":"2clJK8w8ylh4EOvP","server":null,"duration":null,
      *     "by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,
-     *     "debug":"{\"lfr_ok\":[22022,1,368,206,153,157,167,0]}","opts_1":0,"target":"camera","target_id":136989,
-     *     "parent_command_id":750082372,"camera_id":136989,"siren_id":null,"firmware_id":null,"network_id":22022,
-     *     "account_id":22156,"sync_module_id":10192},{"id":750082374,"created_at":"2020-10-02T00:28:42+00:00",
+     *     "debug":"{\"lfr_ok\":[2000001,1,368,206,153,157,167,0]}","opts_1":0,"target":"camera","target_id":4000001,
+     *     "parent_command_id":750082372,"camera_id":4000001,"siren_id":null,"firmware_id":null,"network_id":2000001,
+     *     "account_id":1000001,"sync_module_id":3000001},{"id":750082374,"created_at":"2020-10-02T00:28:42+00:00",
      *     "updated_at":"2020-10-02T00:28:44+00:00","execute_time":"2020-10-02T00:28:42+00:00","command":"config_lfr",
      *     "state_stage":"dev","stage_rest":"2020-10-02T00:28:42+00:00","stage_cs_db":null,"stage_cs_sent":null,
      *     "stage_sm":null,"stage_dev":"2020-10-02T00:28:44+00:00","stage_is":null,"stage_lv":null,"stage_vs":null,
      *     "state_condition":"done","sm_ack":null,"lfr_ack":0,"sequence":null,"attempts":0,"transaction":"PoVq-TaTajuR",
      *     "player_transaction":"TSJ1eLMJawm5zp5a","server":null,"duration":null,
      *     "by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,
-     *     "debug":"{\"lfr_ok\":[22022,2,368,215,144,149,171,0]}","opts_1":0,"target":"camera","target_id":13812,
-     *     "parent_command_id":750082372,"camera_id":13812,"siren_id":null,"firmware_id":null,"network_id":22022,
-     *     "account_id":22156,"sync_module_id":10192}],"media_id":null}
+     *     "debug":"{\"lfr_ok\":[2000001,2,368,215,144,149,171,0]}","opts_1":0,"target":"camera","target_id":13812,
+     *     "parent_command_id":750082372,"camera_id":13812,"siren_id":null,"firmware_id":null,"network_id":2000001,
+     *     "account_id":1000001,"sync_module_id":3000001}],"media_id":null}
      **/
     async disarmNetwork(networkID) {
         return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/state/disarm`);
@@ -1415,13 +1416,13 @@ class BlinkAPI {
     /**
      * POST {"dst":true,"lv_mode":"relay","time_zone":"America\/Toronto"}
      * {"dst":true,"lv_mode":"relay","time_zone":"America\/Toronto"}
-     * {"network":{"id":22022,"created_at":"2016-02-13T19:15:54+00:00","updated_at":"2020-10-02T00:29:30+00:00",
+     * {"network":{"id":2000001,"created_at":"2016-02-13T19:15:54+00:00","updated_at":"2020-10-02T00:29:30+00:00",
      *   "deleted_at":null,"name":"82 Downing","network_key":"hifSnlicp+k4bLA=","description":"",
      *   "network_origin":"normal","locale":"","time_zone":"America/Toronto","dst":true,"ping_interval":60,
      *   "encryption_key":null,"armed":false,"autoarm_geo_enable":false,"autoarm_time_enable":false,"lv_mode":"relay",
      *   "lfr_channel":0,"video_destination":"server","storage_used":0,"storage_total":0,"video_count":0,
      *   "video_history_count":4000,"sm_backup_enabled":false,"arm_string":"Disarmed","busy":false,"camera_error":false,
-     *   "sync_module_error":false,"feature_plan_id":null,"account_id":22156,"lv_save":false}}
+     *   "sync_module_error":false,"feature_plan_id":null,"account_id":1000001,"lv_save":false}}
      **/
     async updateNetwork(networkID, updateNetworkSaveAllLiveViews) {
         return await this.post(`/network/${networkID}/update`, updateNetworkSaveAllLiveViews);

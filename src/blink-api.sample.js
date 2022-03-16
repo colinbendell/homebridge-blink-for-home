@@ -1,13 +1,13 @@
 const HOMESCREEN = {
     account: {
-        id: 22156,
+        id: 1000001,
         email_verified: true,
         email_verification_required: true,
         amazon_account_linked: false,
     },
     networks: [
         {
-            id: 22022,
+            id: 2000001,
             created_at: '2016-02-13T19:15:54+00:00',
             updated_at: '2022-03-06T18:05:40+00:00',
             name: '82 Downing',
@@ -17,7 +17,7 @@ const HOMESCREEN = {
             lv_save: false,
         },
         {
-            id: 22023,
+            id: 2000002,
             created_at: '2016-02-13T19:15:54+00:00',
             updated_at: '2022-03-06T18:05:40+00:00',
             name: '82b Downing',
@@ -27,7 +27,7 @@ const HOMESCREEN = {
             lv_save: false,
         },
         {
-            id: 22024,
+            id: 2000003,
             created_at: '2017-05-05T23:23:49+00:00',
             updated_at: '2020-11-10T15:12:01+00:00',
             name: '82b Downing',
@@ -39,7 +39,7 @@ const HOMESCREEN = {
     ],
     sync_modules: [
         {
-            id: 10192,
+            id: 3000001,
             created_at: '2016-02-13T19:17:57+00:00',
             updated_at: '2022-03-13T15:26:12+00:00',
             onboarded: true,
@@ -51,7 +51,7 @@ const HOMESCREEN = {
             subtype: 'none',
             last_hb: '2022-03-13T20:09:20+00:00',
             wifi_strength: 3,
-            network_id: 22022,
+            network_id: 2000001,
             enable_temp_alerts: true,
             local_storage_enabled: false,
             local_storage_compatible: true,
@@ -59,7 +59,7 @@ const HOMESCREEN = {
             revision: '00',
         },
         {
-            id: 10193,
+            id: 3000002,
             created_at: '2022-02-16T00:08:56+00:00',
             updated_at: '2022-03-13T20:03:20+00:00',
             onboarded: true,
@@ -81,7 +81,7 @@ const HOMESCREEN = {
     ],
     cameras: [
         {
-            id: 136989,
+            id: 4000001,
             created_at: '2016-02-13T19:21:09+00:00',
             updated_at: '2022-03-13T19:57:49+00:00',
             name: 'Alpha',
@@ -89,11 +89,11 @@ const HOMESCREEN = {
             fw_version: '2.151',
             type: 'white',
             enabled: true,
-            thumbnail: '/media/production/account/22156/network/22022/camera/136989/clip_8mpxqvts_2020_01_01__01_01AM',
+            thumbnail: '/media/production/account/1000001/network/2000001/camera/4000001/clip_8mpxqvts_2020_01_01__01_01AM',
             status: 'done',
             battery: 'low',
             usage_rate: false,
-            network_id: 22022,
+            network_id: 2000001,
             issues: [],
             signals: {lfr: 5, wifi: 1, temp: 62, battery: 2},
             local_storage_enabled: false,
@@ -103,7 +103,7 @@ const HOMESCREEN = {
             revision: null,
         },
         {
-            id: 1448994,
+            id: 4000002,
             created_at: '2022-02-16T00:13:43+00:00',
             updated_at: '2022-03-13T18:57:49+00:00',
             name: 'Beta',
@@ -111,11 +111,11 @@ const HOMESCREEN = {
             fw_version: '10.53',
             type: 'catalina',
             enabled: true,
-            thumbnail: '/media/production/account/22156/network/22022/catalina/1448994/thumbnail/fw_10.53__FY_9_3HS_2020_01_01__01_01AM',
+            thumbnail: '/media/production/account/1000001/network/2000001/catalina/4000002/thumbnail/fw_10.53__FY_9_3HS_2020_01_01__01_01AM',
             status: 'done',
             battery: 'ok',
             usage_rate: false,
-            network_id: 22023,
+            network_id: 2000002,
             issues: [],
             signals: {lfr: 5, wifi: 5, temp: 23, battery: 3},
             local_storage_enabled: false,
@@ -135,7 +135,7 @@ const HOMESCREEN = {
     doorbell_buttons: [],
     owls: [
         {
-            id: 1061,
+            id: 5000001,
             created_at: '2020-04-17T21:42:56+00:00',
             updated_at: '2020-11-02T19:50:09+00:00',
             name: 'Gamma',
@@ -144,9 +144,9 @@ const HOMESCREEN = {
             serial: 'FGHIJKL1234',
             fw_version: '9.63',
             enabled: true,
-            thumbnail: '/media/production/account/116756/network/22024/owl/1061/thumbnail/fw_9.63__IokPTqZ2_2020_10_28__11_43AM',
+            thumbnail: '/media/production/account/116756/network/2000003/owl/5000001/thumbnail/fw_9.63__IokPTqZ2_2020_10_28__11_43AM',
             status: 'online',
-            network_id: 22024,
+            network_id: 2000003,
             local_storage_enabled: false,
             local_storage_compatible: false,
         },
@@ -175,9 +175,13 @@ const HOMESCREEN = {
     accessories: {storm: [], rosie: []},
 };
 
+HOMESCREEN.CAMERA_OG = HOMESCREEN.cameras[0];
+HOMESCREEN.CAMERA_G2 = HOMESCREEN.cameras[1];
+HOMESCREEN.MINI = HOMESCREEN.owls[0];
+
 const CAMERA_STATUS = {
     camera_status: {
-        camera_id: 136989,
+        camera_id: 4000001,
         created_at: '2021-02-16T00:13:59+00:00',
         updated_at: '2022-03-14T00:39:42+00:00',
         wifi_strength: -52,
@@ -217,11 +221,11 @@ const CAMERA_STATUS = {
         lifetime_count: 0,
         lifetime_duration: 0,
         pir_rejections: 0,
-        sync_module_id: 10192,
-        network_id: 22022,
-        account_id: 22156,
+        sync_module_id: 3000001,
+        network_id: 2000001,
+        account_id: 1000001,
         id: 1,
-        thumbnail: '/media/production/account/22156/network/22022/catalina/1448994/thumbnail/fw_10.53__FY_9_3HS_2020_01_01__01_01AM',
+        thumbnail: '/media/production/account/1000001/network/2000001/catalina/4000002/thumbnail/fw_10.53__FY_9_3HS_2020_01_01__01_01AM',
     },
 };
 
@@ -231,21 +235,21 @@ const MEDIA_CHANGE = {
     refresh_count: 0,
     media: [
         {
-            id: 136989,
+            id: 4000001,
             created_at: '2022-03-12T17:20:01+00:00',
             updated_at: '2022-03-12T21:51:35+00:00',
             deleted: false,
             device: 'catalina',
-            device_id: 136989,
+            device_id: 4000001,
             device_name: 'Alpha',
-            network_id: 22022,
+            network_id: 2000001,
             network_name: '82 Downing',
             type: 'video',
             source: 'snapshot',
             partial: false,
             watched: false,
-            thumbnail: '/api/v3/media/accounts/22156/networks/22022/catalina/136989/snapshot/3032353907.jpg?ext=',
-            media: '/api/v3/media/accounts/22156/networks/22022/catalina/136989/snapshot/3032353907.mp4',
+            thumbnail: '/api/v3/media/accounts/1000001/networks/2000001/catalina/4000001/snapshot/3032353907.jpg?ext=',
+            media: '/api/v3/media/accounts/1000001/networks/2000001/catalina/4000001/snapshot/3032353907.mp4',
             metadata: null,
             additional_devices: [],
             time_zone: 'America/Toronto',
@@ -253,62 +257,125 @@ const MEDIA_CHANGE = {
     ],
 };
 
+const UPDATE_THUMBNAIL = {
+    account_id: 1000001, attempts: 0,
+    by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', camera_id: 4000002,
+    command: 'thumbnail', created_at: '2022-03-16T01:16:38+00:00', debug: '',
+    diagnostic: false, duration: null,
+    execute_time: '2022-03-16T01:16:38+00:00', firmware_id: null,
+    id: 1019725998, lfr_ack: null, network_id: 2000001, opts_1: 0,
+    parent_command_id: null, player_transaction: 'z2C8o4mH14kALHF9',
+    sequence: null, server: null, siren_id: null, sm_ack: null,
+    stage_cs_db: null, stage_cs_sent: null, stage_dev: null, stage_is: null,
+    stage_lv: null, stage_rest: '2022-03-16T01:16:38+00:00', stage_sm: null,
+    stage_vs: null, state_condition: 'new', state_stage: 'rest',
+    sync_module_id: 3000001, target: 'camera', target_id: 4000002,
+    transaction: '3eq8L6s57pDfTFtz', updated_at: '2022-03-16T01:16:38+00:00',
+};
+
+const COMMAND_SENT = {
+    commands: [
+        {
+            account_id: 1000001, attempts: 0,
+            by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', camera_id: 4000002,
+            command: 'thumbnail', created_at: '2022-03-16T01:16:38+00:00',
+            debug: '', diagnostic: false, duration: null,
+            execute_time: '2022-03-16T01:16:38+00:00', firmware_id: null,
+            id: 1019725998, lfr_ack: null, network_id: 2000001, opts_1: 0,
+            parent_command_id: null, player_transaction: 'z2C8o4mH14kALHF9',
+            sequence: 1634, server: null, siren_id: null, sm_ack: null,
+            stage_cs_db: '2022-03-16T01:16:38+00:00',
+            stage_cs_sent: '2022-03-16T01:16:38+00:00', stage_dev: null,
+            stage_is: null, stage_lv: null,
+            stage_rest: '2022-03-16T01:16:38+00:00', stage_sm: null,
+            stage_vs: null, state_condition: 'running', state_stage: 'cs_sent',
+            sync_module_id: 3000001, target: 'camera', target_id: 4000002,
+            transaction: '3eq8L6s57pDfTFtz',
+            updated_at: '2022-03-16T01:16:38+00:00',
+        },
+    ],
+    complete: false,
+    media_id: null,
+    status: 0,
+    status_code: 908,
+    status_msg: 'Command succeeded',
+};
+
+const COMMAND_RUNNING = {
+    commands: [
+        {
+            account_id: 1000001, attempts: 0,
+            by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', camera_id: 4000002,
+            command: 'thumbnail', created_at: '2022-03-16T01:16:38+00:00',
+            debug: '', diagnostic: false, duration: null,
+            execute_time: '2022-03-16T01:16:38+00:00', firmware_id: null,
+            id: 1019725998, lfr_ack: null, network_id: 2000001, opts_1: 0,
+            parent_command_id: null, player_transaction: 'z2C8o4mH14kALHF9',
+            sequence: 1634, server: null, siren_id: null, sm_ack: 1,
+            stage_cs_db: '2022-03-16T01:16:38+00:00',
+            stage_cs_sent: '2022-03-16T01:16:38+00:00', stage_dev: null,
+            stage_is: null, stage_lv: null,
+            stage_rest: '2022-03-16T01:16:38+00:00',
+            stage_sm: '2022-03-16T01:16:38+00:00', stage_vs: null,
+            state_condition: 'running', state_stage: 'sm', sync_module_id: 3000001,
+            target: 'camera', target_id: 4000002, transaction: '3eq8L6s57pDfTFtz',
+            updated_at: '2022-03-16T01:16:38+00:00',
+        },
+    ],
+    complete: false,
+    media_id: null,
+    status: 0,
+    status_code: 908,
+    status_msg: 'Command succeeded',
+};
+
 const COMMAND_PENDING = {
     id: 750082372,
-    network_id: 22022,
+    network_id: 2000001,
     command: 'disarm',
     state: 'new',
     commands: [
-        {id: 750082373, network_id: 22022, command: 'config_lfr', state: 'running'},
-        {id: 750082374, network_id: 22022, command: 'config_lfr', state: 'running'},
+        {id: 750082373, network_id: 2000001, command: 'config_lfr', state: 'running'},
+        {id: 750082374, network_id: 2000001, command: 'config_lfr', state: 'running'},
     ],
 };
 
 const COMMAND_COMPLETE = {
+    commands: [
+        {
+            account_id: 1000001, attempts: 0,
+            by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', camera_id: 4000002,
+            command: 'thumbnail', created_at: '2022-03-16T01:16:38+00:00',
+            debug: '{"lfr_ok":[2000001,3,1634,197,146,164,133,0]}',
+            diagnostic: false, duration: 0,
+            execute_time: '2022-03-16T01:16:38+00:00', firmware_id: null,
+            id: 1019725998, lfr_ack: 0, network_id: 2000001, opts_1: 0,
+            parent_command_id: null, player_transaction: 'z2C8o4mH14kALHF9',
+            sequence: 1634, server: 'immis://44.195.129.67:443', siren_id: null,
+            sm_ack: 1, stage_cs_db: '2022-03-16T01:16:38+00:00',
+            stage_cs_sent: '2022-03-16T01:16:38+00:00',
+            stage_dev: '2022-03-16T01:16:40+00:00', stage_is: null,
+            stage_lv: null, stage_rest: '2022-03-16T01:16:38+00:00',
+            stage_sm: '2022-03-16T01:16:38+00:00',
+            stage_vs: '2022-03-16T01:16:41+00:00', state_condition: 'done',
+            state_stage: 'vs', sync_module_id: 3000001, target: 'camera',
+            target_id: 4000002, transaction: '3eq8L6s57pDfTFtz',
+            updated_at: '2022-03-16T01:16:41+00:00',
+        },
+    ],
     complete: true,
-    status: 0,
-    status_msg: 'Command succeeded',
-    status_code: 908,
-    commands: [{
-        id: 750082372,
-        created_at: '2020-10-02T00:28:42+00:00', updated_at: '2020-10-02T00:28:42+00:00',
-        execute_time: '2020-10-02T00:28:42+00:00', command: 'disarm', state_stage: 'sm',
-        stage_rest: '2020-10-02T00:28:42+00:00', stage_cs_db: '2020-10-02T00:28:42+00:00',
-        stage_cs_sent: '2020-10-02T00:28:42+00:00', stage_sm: '2020-10-02T00:28:42+00:00',
-        stage_dev: null, stage_is: null, stage_lv: null, stage_vs: null, state_condition: 'done', sm_ack: 1,
-        lfr_ack: null, sequence: 368, attempts: 0, transaction: '9YCMRT02qHTVq2zI',
-        player_transaction: 'EzfAxyTe_d2fOBjK', server: null, duration: null,
-        by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', diagnostic: false,
-        debug: '', opts_1: 0, target: null, target_id: null, parent_command_id: null, camera_id: null, siren_id: null,
-        firmware_id: null, network_id: 22022, account_id: 22156, sync_module_id: 10192,
-    },
-    {
-        id: 750082373,
-        created_at: '2020-10-02T00:28:42+00:00', updated_at: '2020-10-02T00:28:44+00:00',
-        execute_time: '2020-10-02T00:28:42+00:00', command: 'config_lfr', state_stage: 'dev',
-        stage_rest: '2020-10-02T00:28:42+00:00', stage_cs_db: null, stage_cs_sent: null, stage_sm: null,
-        stage_dev: '2020-10-02T00:28:44+00:00', stage_is: null, stage_lv: null, stage_vs: null,
-        state_condition: 'done', sm_ack: null, lfr_ack: 0, sequence: null, attempts: 0,
-        transaction: 'gIGTT5DqPQFAVi2-', player_transaction: '2clJK8w8ylh4EOvP', server: null, duration: null,
-        by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', diagnostic: false,
-        debug: '{"lfr_ok":[22022,1,368,206,153,157,167,0]}', opts_1: 0, target: 'camera', target_id: 136989,
-        parent_command_id: 750082372, camera_id: 136989, siren_id: null, firmware_id: null, network_id: 22022,
-        account_id: 22156, sync_module_id: 10192
-    },
-    {
-        id: 750082374,
-        created_at: '2020-10-02T00:28:42+00:00', updated_at: '2020-10-02T00:28:44+00:00',
-        execute_time: '2020-10-02T00:28:42+00:00', command: 'config_lfr', state_stage: 'dev',
-        stage_rest: '2020-10-02T00:28:42+00:00', stage_cs_db: null, stage_cs_sent: null, stage_sm: null,
-        stage_dev: '2020-10-02T00:28:44+00:00', stage_is: null, stage_lv: null, stage_vs: null,
-        state_condition: 'done', sm_ack: null, lfr_ack: 0, sequence: null, attempts: 0,
-        transaction: 'PoVq-TaTajuR', player_transaction: 'TSJ1eLMJawm5zp5a', server: null, duration: null,
-        by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', diagnostic: false,
-        debug: '{"lfr_ok":[22022,2,368,215,144,149,171,0]}', opts_1: 0, target: 'camera', target_id: 13812,
-        parent_command_id: 750082372, camera_id: 13812, siren_id: null, firmware_id: null, network_id: 22022,
-        account_id: 22156, sync_module_id: 10192,
-    }],
     media_id: null,
+    status: 0,
+    status_code: 908,
+    status_msg: 'Command succeeded',
 };
 
-module.exports = {HOMESCREEN, CAMERA_STATUS, MEDIA_CHANGE, COMMAND_PENDING, COMMAND_COMPLETE};
+module.exports = {
+    HOMESCREEN,
+    CAMERA_STATUS,
+    MEDIA_CHANGE,
+    COMMAND_SENT,
+    COMMAND_RUNNING,
+    COMMAND_COMPLETE,
+    UPDATE_THUMBNAIL,
+};

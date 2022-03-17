@@ -319,4 +319,78 @@ describe('Blink', () => {
             expect(blink.blinkAPI.disarmNetwork).toBeCalledTimes(!target ? expected : 0);
         });
     });
+    describe('Blink', () => {
+        test.concurrent('Blink.diagnosticDebug()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.login.mockResolvedValue({});
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            blink.blinkAPI.getMediaChange.mockResolvedValue(SAMPLE.MEDIA_CHANGE);
+            blink.blinkAPI.getAccount.mockResolvedValue({});
+            blink.blinkAPI.getAccountNotifications.mockResolvedValue({});
+            blink.blinkAPI.getAccountOptions.mockResolvedValue({});
+            blink.blinkAPI.getAccountStatus.mockResolvedValue({});
+            blink.blinkAPI.getAppStatus.mockResolvedValue({});
+            blink.blinkAPI.getBlinkAppVersion.mockResolvedValue({});
+            blink.blinkAPI.getBlinkRegions.mockResolvedValue({});
+            blink.blinkAPI.getBlinkStatus.mockResolvedValue({});
+            blink.blinkAPI.getBlinkSupport.mockResolvedValue({});
+            blink.blinkAPI.getClientOptions.mockResolvedValue({});
+            blink.blinkAPI.getNetworks.mockResolvedValue({});
+            blink.blinkAPI.getSirens.mockResolvedValue({});
+            blink.blinkAPI.getCameraUsage.mockResolvedValue({});
+            blink.blinkAPI.getNetworkSirens.mockResolvedValue({});
+            blink.blinkAPI.getPrograms.mockResolvedValue({});
+            blink.blinkAPI.getSyncModuleFirmware.mockResolvedValue({});
+            blink.blinkAPI.getDevice.mockResolvedValue({});
+            blink.blinkAPI.getCameraConfig.mockResolvedValue({});
+            blink.blinkAPI.getCameraMotionRegions.mockResolvedValue({});
+            blink.blinkAPI.getCameraStatus.mockResolvedValue({});
+            blink.blinkAPI.getDevice.mockResolvedValue({});
+            blink.blinkAPI.getOwlConfig.mockResolvedValue({});
+            blink.blinkAPI.getCameraMotionRegions.mockResolvedValue({});
+            blink.blinkAPI.getCameraSignals.mockResolvedValue({});
+            blink.blinkAPI.getCameraStatus.mockResolvedValue({});
+            blink.blinkAPI.getOwlFirmware.mockResolvedValue({});
+            blink.blinkAPI.getDevice.mockResolvedValue({});
+            await blink.refreshData();
+            await blink.diagnosticDebug();
+            // TODO
+        });
+        test.concurrent('Blink._command()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            // TODO
+        });
+        test.concurrent('Blink.getCameraLastThumbnail()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            // TODO
+        });
+        test.concurrent('Blink.getCameraLastVideo()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            // TODO
+        });
+        test.concurrent('Blink.deleteCameraMotion()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            // TODO
+        });
+        test.concurrent('Blink.getCameraLiveView()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            // TODO
+        });
+        test.concurrent('Blink.stopCameraLiveView()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            // TODO
+        });
+    });
 });

@@ -207,6 +207,9 @@ async function list(options) {
                 prettyTree(name, value, '', true);
             }
         }
+        if (options.diagnostic) {
+            await blink.diagnosticDebug();
+        }
     });
 }
 
@@ -488,6 +491,7 @@ program
     .option('--no-media')
     .option('--csv')
     .option('--detail')
+    .option('--diagnostic')
     .action(list);
 
 program

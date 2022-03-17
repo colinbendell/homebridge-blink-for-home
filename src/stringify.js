@@ -36,14 +36,17 @@ function addPadding(string, padBlocks) {
 
 const DEFAULT_OPTIONS = {
     sortKeys: true,
-    forceKeyOrder: ['name', 'value', 'date', 'errors'],
+    forceKeyOrder: [
+        'id', 'name', 'network_id', 'camera_id', 'sync_module_id', 'device_id', 'command_id', 'account_id',
+        'updated_at', 'created_at', 'deleted_at', 'value', 'date', 'errors',
+    ],
     wrapSimpleArray: true,
     padMajorBlocks: true,
 };
-function stringify(obj, indentSpaces = 2, maxLineLength = 80, options = DEFAULT_OPTIONS) {
-    const indent = ' '.repeat(indentSpaces ?? 2);
+function stringify(obj, indentSpaces = 4, maxLineLength = 120, options = DEFAULT_OPTIONS) {
+    const indent = ' '.repeat(indentSpaces ?? 4);
     const padBlocks = options.padMajorBlocks || false;
-    const maxLength = (indent === '' ? Infinity : maxLineLength || 80);
+    const maxLength = (indent === '' ? Infinity : maxLineLength || 120);
     const wrapSimpleArray = options?.wrapSimpleArray || true;
     const sortObjectKeyFunction = priorityKeySorter(options?.forceKeyOrder || []);
     const sortKeys = Boolean(options?.sortKeys);

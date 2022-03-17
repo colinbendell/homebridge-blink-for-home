@@ -32,7 +32,7 @@ const HOMESCREEN = {
             created_at: '2016-02-13T19:17:57+00:00', updated_at: '2022-03-13T15:26:12+00:00',
             onboarded: true,
             status: 'online',
-            serial: '240007287',
+            serial: 'A0000001',
             fw_version: '4.4.8',
             last_hb: '2022-03-13T20:09:20+00:00',
             wifi_strength: 3,
@@ -48,7 +48,7 @@ const HOMESCREEN = {
             created_at: '2022-02-16T00:08:56+00:00', updated_at: '2022-03-13T20:03:20+00:00',
             onboarded: true,
             status: 'online',
-            serial: 'G8T1LN0013069CJ6',
+            serial: 'A0000002',
             fw_version: '4.4.8',
             last_hb: '2022-03-13T20:09:25+00:00',
             wifi_strength: 1,
@@ -64,7 +64,7 @@ const HOMESCREEN = {
             id: 4000001, name: 'Alpha', type: 'white',
             network_id: 2000001,
             created_at: '2016-02-13T19:21:09+00:00', updated_at: '2022-03-13T19:57:49+00:00',
-            serial: '120040563',
+            serial: 'B0000001',
             fw_version: '2.151',
             enabled: true,
             // eslint-disable-next-line max-len
@@ -84,7 +84,7 @@ const HOMESCREEN = {
             id: 4000002, name: 'Beta', type: 'catalina',
             network_id: 2000002,
             created_at: '2022-02-16T00:13:43+00:00', updated_at: '2022-03-13T18:57:49+00:00',
-            serial: 'ABCDEFG1234',
+            serial: 'B0000002',
             fw_version: '10.53',
             enabled: true,
             // eslint-disable-next-line max-len
@@ -115,7 +115,7 @@ const HOMESCREEN = {
             network_id: 2000003,
             created_at: '2020-04-17T21:42:56+00:00', updated_at: '2020-11-02T19:50:09+00:00',
             onboarded: true,
-            serial: 'FGHIJKL1234',
+            serial: 'B0000003',
             fw_version: '9.63',
             enabled: true,
             // eslint-disable-next-line max-len
@@ -136,6 +136,8 @@ const HOMESCREEN = {
     accessories: {storm: [], rosie: []},
 };
 
+HOMESCREEN.NETWORK_OG = HOMESCREEN.networks[0];
+HOMESCREEN.SYNCMODULE_OG = HOMESCREEN.sync_modules[0];
 HOMESCREEN.CAMERA_OG = HOMESCREEN.cameras[0];
 HOMESCREEN.CAMERA_G2 = HOMESCREEN.cameras[1];
 HOMESCREEN.MINI = HOMESCREEN.owls[0];
@@ -178,7 +180,7 @@ const CAMERA_STATUS = {
         dev_2: 8,
         dev_3: 655393,
         unit_number: 3,
-        serial: 'ABCDEFG1234',
+        serial: 'B0000002',
         lifetime_count: 0,
         lifetime_duration: 0,
         pir_rejections: 0,
@@ -369,6 +371,32 @@ const COMMAND_COMPLETE = {
     status_msg: 'Command succeeded',
 };
 
+const ARM_NETWORK = {
+    command: 'arm',
+    commands: [
+        // one per camera running
+        {command: 'config_lfr', id: 9999999990, network_id: 2000001, state: 'running'},
+        {command: 'config_lfr', id: 9999999992, network_id: 2000001, state: 'running'},
+        {command: 'config_lfr', id: 9999999995, network_id: 2000001, state: 'running'},
+    ],
+    id: 999999999,
+    network_id: 2000001,
+    state: 'new',
+};
+
+const DISARM_NETWORK = {
+    command: 'disarm',
+    commands: [
+        // one per camera running
+        {command: 'config_lfr', id: 9999999990, network_id: 2000001, state: 'running'},
+        {command: 'config_lfr', id: 9999999992, network_id: 2000001, state: 'running'},
+        {command: 'config_lfr', id: 9999999995, network_id: 2000001, state: 'running'},
+    ],
+    id: 999999999,
+    network_id: 2000001,
+    state: 'new',
+};
+
 module.exports = {
     HOMESCREEN,
     CAMERA_STATUS,
@@ -380,4 +408,6 @@ module.exports = {
     UPDATE_CLIP,
     DISABLE_CAMERA,
     ENABLE_CAMERA,
+    ARM_NETWORK,
+    DISARM_NETWORK,
 };

@@ -135,12 +135,14 @@ class BlinkNetwork extends BlinkDevice {
         return this._commandID;
     }
 
-    async getCommandBusy() {
-        if (this.commandID) {
-            const res = await this.blink.getCommand(this.networkID, this.commandID).catch(() => {});
-            return Boolean(res.completed);
+    async setArmedState(target) {
+        if (this.armed !== target) {
+            if (target) {
+                // only if we are going from disarmed to armed
+                this.armedAt = Date.now();
+            }
+            await this.blink.setArmedState(this.networkID, target);
         }
-        return false;
     }
 }
 

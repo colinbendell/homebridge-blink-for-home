@@ -111,11 +111,28 @@ async function enable(id, options) {
 async function disable(id, options) {
     await withBlink(async blink => {
         const camera = await getCamera(blink, id);
-        if (!camera.enabled) return;
+        if (!camera.armed) return;
         await camera.setEnabled(false);
         console.log('Success');
     });
 }
+
+async function arm(id, options) {
+    await withBlink(async blink => {
+        const camera = await getCamera(blink, id);
+        await camera.network.setArmedState(true);
+        console.log('Success');
+    });
+}
+
+async function disarm(id, options) {
+    await withBlink(async blink => {
+        const camera = await getCamera(blink, id);
+        await camera.network.setArmedState(false);
+        console.log('Success');
+    });
+}
+
 
 async function list(options) {
     await withBlink(async blink => {
@@ -503,6 +520,14 @@ program
 program
     .command('disable <camera>')
     .action(disable);
+
+program
+    .command('arm <camera>')
+    .action(arm);
+
+program
+    .command('disarm <camera>')
+    .action(disarm);
 
 if (process.argv.indexOf('--debug') === -1) console.debug = () => {};
 if (process.argv.indexOf('--verbose') === -1 && process.argv.indexOf('--debug') === -1) console.info = () => {};

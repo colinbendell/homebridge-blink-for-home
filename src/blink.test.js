@@ -7,6 +7,7 @@ setLogger(logger, false, false);
 const {Blink, BlinkCamera} = require('./blink');
 const SAMPLE = require('./blink-api.sample');
 
+// eslint-disable-next-line no-undef
 jest.mock('./blink-api');
 
 const DEFAULT_BLINK_CLIENT_UUID = 'A5BF5C52-56F3-4ADB-A7C2-A70619552084';
@@ -26,7 +27,7 @@ describe('Blink', () => {
         expect(blink.networks.size).toBe(3);
         expect(blink.cameras.size).toBe(3);
     });
-    test.concurrent('_commandWait()', async() => {
+    test.concurrent('_commandWait()', async () => {
         const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
         blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
         await blink.refreshData();
@@ -68,7 +69,7 @@ describe('Blink', () => {
             expect(cameraDevice.canonicalID).toBeDefined();
             expect(cameraDevice.status).toBe('online');
             expect(cameraDevice.model).toBe('white');
-            expect(cameraDevice.serial).toBe('120040563');
+            expect(cameraDevice.serial).toBe('B0000001');
             expect(cameraDevice.firmware).toBe('2.151');
             expect(cameraDevice.isCameraMini).toBe(false);
             expect(cameraDevice.thumbnailCreatedAt).toBe(Date.parse('2020-01-01T01:01:00.000Z'));
@@ -190,7 +191,7 @@ describe('Blink', () => {
             const cameraDevice = blink.cameras.get(cameraData.id);
             cameraDevice.network.data.armed = armed;
             cameraDevice.data.enabled = enabled;
-            cameraDevice.armedAt = armedAt;
+            cameraDevice.network.armedAt = armedAt;
             const newMediaChange = JSON.parse(JSON.stringify(SAMPLE.MEDIA_CHANGE));
             if (mediaAt < 0) {
                 newMediaChange.media = [];
@@ -265,6 +266,57 @@ describe('Blink', () => {
             expect(blink.blinkAPI.getUrl).toBeCalledTimes(expected);
             expect(data1).toBe(data2);
             expect(data1).toStrictEqual(bytes);
+        });
+    });
+
+    describe('BlinkNetwork', () => {
+        test.concurrent('.props', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+            const smData = SAMPLE.HOMESCREEN.SYNCMODULE_OG;
+            const cameraDevice = blink.cameras.get(cameraData.id);
+            const networkDevice = cameraDevice.network;
+            expect(networkDevice.networkID).toBe(cameraData.network_id);
+            expect(networkDevice.canonicalID).toBeDefined();
+            expect(networkDevice.serial).toBe('A0000001');
+            expect(networkDevice.firmware).toBe('4.4.8');
+            expect(networkDevice.model).toBe('sm1');
+            expect(networkDevice.status).toBe('online');
+            expect(networkDevice.armed).toBe(true);
+            expect(networkDevice.syncModule).toBe(smData);
+            expect(networkDevice.cameras).toStrictEqual([cameraDevice]);
+
+            const armedAt = Date.parse('2020-01-01T01:01:00.000Z');
+            networkDevice.armedAt = armedAt;
+            expect(networkDevice.armedAt).toBe(armedAt);
+        });
+
+        test.concurrent.each([
+            [false, false, false, 0],
+            [false, true, true, 0],
+            [false, true, false, 1],
+            [false, false, true, 1],
+            [true, true, false, 1],
+            [true, false, true, 1],
+        ])('BlinkNetwork.setArmedState()', async (mini, current, target, expected) => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            blink.blinkAPI.armNetwork.mockResolvedValue(SAMPLE.ARM_NETWORK);
+            blink.blinkAPI.disarmNetwork.mockResolvedValue(SAMPLE.DISARM_NETWORK);
+            blink.blinkAPI.getCommand.mockResolvedValue(SAMPLE.COMMAND_COMPLETE);
+            await blink.refreshData();
+
+            const cameraData = mini ? SAMPLE.HOMESCREEN.MINI : SAMPLE.HOMESCREEN.CAMERA_OG;
+            const networkDevice = blink.networks.get(cameraData.network_id);
+            networkDevice.data.armed = current;
+            await networkDevice.setArmedState(target);
+            // expect(cameraDevice.enabled).toBe(target);
+            expect(blink.blinkAPI.getAccountHomescreen).toBeCalledTimes(expected + 1);
+            expect(blink.blinkAPI.armNetwork).toBeCalledTimes(target ? expected : 0);
+            expect(blink.blinkAPI.disarmNetwork).toBeCalledTimes(!target ? expected : 0);
         });
     });
 });

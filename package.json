@@ -33,7 +33,7 @@
     },
     "devDependencies": {
         "@jest/globals": "^27.5.1",
-        "eslint": "^8.10.0",
+        "eslint": "^8.11.0",
         "eslint-config-google": "^0.14.0",
         "homebridge-config-ui-x": "^4.42.0",
         "jest": "^27.5.1"
@@ -43,7 +43,7 @@
         "watch": "npm run build && npm link",
         "build": "",
         "prepublishOnly": "npm run build",
-        "test": "jest"
+        "test": "jest && eslint"
     },
     "eslintConfig": {
         "extends": [

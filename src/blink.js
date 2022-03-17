@@ -3,7 +3,7 @@ const BlinkAPI = require('./blink-api');
 const {sleep, fahrenheitToCelsius} = require('./utils');
 const fs = require('fs');
 // const {stringify} = require('./stringify');
-const stringify = stringify;
+const stringify = JSON.stringify;
 
 const THUMBNAIL_TTL = 60 * 60; // 60min
 const BATTERY_TTL = 60 * 60; // 60min

@@ -2,8 +2,8 @@ const {log} = require('./log');
 const BlinkAPI = require('./blink-api');
 const {sleep, fahrenheitToCelsius} = require('./utils');
 const fs = require('fs');
-// const {stringify} = require('./stringify');
-const stringify = JSON.stringify;
+const {stringify} = require('./stringify');
+// const stringify = JSON.stringify;
 
 const THUMBNAIL_TTL = 60 * 60; // 60min
 const BATTERY_TTL = 60 * 60; // 60min
@@ -411,95 +411,144 @@ class Blink {
     }
 
     async diagnosticDebug() {
+        const anonMap = new Map();
         log('====== START BLINK DEBUG ======');
 
-        log('getAccountHomescreen()');
-        log(stringify(await this.blinkAPI.login(true).catch(e => log.error(e))));
+        // TODO: clean this up
+        // brute force tokenization
+        const login = await this.blinkAPI.login(true).catch(e => log.error(e));
+        const account = await this.blinkAPI.getAccount().catch(e => log.error(e));
         const homescreen = await this.blinkAPI.getAccountHomescreen(0).catch(e => log.error(e));
-        log(stringify(homescreen));
+        anonMap.set(login?.account?.account_id, 1000001);
+        anonMap.set(login?.account?.client_id, 1000002);
+        anonMap.set(login?.account?.user_id, 1000003);
+        anonMap.set(login?.auth?.token, 'XXXX9999');
+        anonMap.set(login?.phone?.last_4_digits, '5555');
+        anonMap.set(account?.phone_number, '5555555555');
+        anonMap.set(account?.email, 'user@example.com');
+        let curr = 1;
+        const NETWORK_NAMES=['BatCave', 'Fortress of Solitude', 'Ice Mountain'];
+        for (const network of homescreen?.networks || []) {
+            anonMap.set(network?.id, 2000000 + curr);
+            anonMap.set(network?.name, NETWORK_NAMES[curr - 1]);
+            curr++;
+        }
+        curr = 1;
+        for (const camera of homescreen.cameras || []) {
+            anonMap.set(camera?.id, 3000000 + curr);
+            anonMap.set(camera?.name, 'Camera ' + curr);
+            anonMap.set(camera?.serial, 'B000000' + curr);
+            curr++;
+        }
+        curr = 1;
+        for (const owl of homescreen.owls || []) {
+            anonMap.set(owl?.id, 4000000 + curr);
+            anonMap.set(owl?.name, 'Mini Blink ' + curr);
+            anonMap.set(owl?.serial, 'C000000' + curr);
+            curr++;
+        }
+        curr = 1;
+        for (const sm of homescreen.sync_modules || []) {
+            anonMap.set(sm?.id, 5000000 + curr);
+            anonMap.set(sm?.name, 'Sync Module ' + curr);
+            anonMap.set(sm?.serial, 'D000000' + curr);
+            curr++;
+        }
 
+        const anonRegexMap = new Map();
+        for (const [key, value] of anonMap.entries()) {
+            anonRegexMap.set(value, new RegExp(`\\b${key}\\b`, 'g'));
+        }
+
+        function anonymize(obj) {
+            let output = stringify(Buffer.isBuffer(obj) ? [] : obj);
+            for (const [replaceValue, anonRegex] of anonRegexMap.entries()) {
+                output = output.replaceAll(anonRegex, replaceValue);
+            }
+            log(output);
+        }
+        log('login()');
+        anonymize(login);
+        log('getAccountHomescreen()');
+        anonymize(homescreen);
         if (homescreen) {
             log('getMediaChange()');
-            log(stringify(await this.blinkAPI.getMediaChange().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getMediaChange().catch(e => log.error(e)));
             log('getAccount()');
-            log(stringify(await this.blinkAPI.getAccount().catch(e => log.error(e))));
+            anonymize(account);
             log('getAccountNotifications()');
-            log(stringify(await this.blinkAPI.getAccountNotifications().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getAccountNotifications().catch(e => log.error(e)));
             log('getAccountOptions()');
-            log(stringify(await this.blinkAPI.getAccountOptions().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getAccountOptions().catch(e => log.error(e)));
             log('getAccountStatus()');
-            log(stringify(await this.blinkAPI.getAccountStatus().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getAccountStatus().catch(e => log.error(e)));
             log('getAppStatus()');
-            log(stringify(await this.blinkAPI.getAppStatus('IOS_8854').catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getAppStatus('IOS_8854').catch(e => log.error(e)));
             log('getBlinkAppVersion()');
-            log(stringify(await this.blinkAPI.getBlinkAppVersion().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getBlinkAppVersion().catch(e => log.error(e)));
             log('getBlinkRegions()');
-            log(stringify(await this.blinkAPI.getBlinkRegions().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getBlinkRegions().catch(e => log.error(e)));
             log('getBlinkStatus()');
-            log(stringify(await this.blinkAPI.getBlinkStatus().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getBlinkStatus().catch(e => log.error(e)));
             log('getBlinkSupport()');
-            log(stringify(await this.blinkAPI.getBlinkSupport().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getBlinkSupport().catch(e => log.error(e)));
             log('getClientOptions()');
-            log(stringify(await this.blinkAPI.getClientOptions().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getClientOptions().catch(e => log.error(e)));
             log('getNetworks()');
-            log(stringify(await this.blinkAPI.getNetworks().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getNetworks().catch(e => log.error(e)));
             log('getSirens()');
-            log(stringify(await this.blinkAPI.getSirens().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getSirens().catch(e => log.error(e)));
             log('getCameraUsage()');
-            log(stringify(await this.blinkAPI.getCameraUsage().catch(e => log.error(e))));
+            anonymize(await this.blinkAPI.getCameraUsage().catch(e => log.error(e)));
 
             for (const network of homescreen.networks) {
                 log('getNetworkSirens()');
-                log(stringify(await this.blinkAPI.getNetworkSirens(network.id).catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getNetworkSirens(network.id).catch(e => log.error(e)));
                 log('getPrograms()');
-                log(stringify(await this.blinkAPI.getPrograms(network.id).catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getPrograms(network.id).catch(e => log.error(e)));
             }
             for (const sm of homescreen.sync_modules) {
-                // log('getSyncModuleFirmware()');
-                // log(JSON.stringify(await this.blinkAPI.getSyncModuleFirmware(sm.serial).catch(e => log.error(e))));
+                log('getSyncModuleFirmware()');
+                anonymize(await this.blinkAPI.getSyncModuleFirmware(sm.serial).catch(e => log.error(e)));
                 log('getDevice()');
-                log(stringify(await this.blinkAPI.getDevice(sm.serial).catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getDevice(sm.serial).catch(e => log.error(e)));
             }
 
             for (const camera of homescreen.cameras) {
                 log('getCameraConfig()');
-                log(stringify(
-                    await this.blinkAPI.getCameraConfig(camera.network_id, camera.id).catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getCameraConfig(camera.network_id, camera.id).catch(e => log.error(e)));
 
                 log('getCameraMotionRegions()');
-                log(stringify(await this.blinkAPI.getCameraMotionRegions(camera.network_id, camera.id)
-                    .catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getCameraMotionRegions(camera.network_id, camera.id)
+                    .catch(e => log.error(e)));
                 log('getCameraSignals()');
-                log(stringify(
-                    await this.blinkAPI.getCameraSignals(camera.network_id, camera.id).catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getCameraSignals(camera.network_id, camera.id).catch(e => log.error(e)));
                 log('getCameraStatus()');
-                log(stringify(await this.blinkAPI.getCameraStatus(camera.network_id, camera.id, 0)
-                    .catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getCameraStatus(camera.network_id, camera.id, 0)
+                    .catch(e => log.error(e)));
                 // log('getCameraLiveViewV5()');
-                // log(stringify(await this.blinkAPI.getCameraLiveViewV5(camera.network_id, camera.id)
+                // anonymize(await this.blinkAPI.getCameraLiveViewV5(camera.network_id, camera.id)
                 //     .catch(e => log.error(e))));
                 log('getDevice()');
-                log(stringify(await this.blinkAPI.getDevice(camera.serial).catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getDevice(camera.serial).catch(e => log.error(e)));
             }
 
             for (const owl of homescreen.owls) {
                 log('getOwlConfig()');
-                log(stringify(await this.blinkAPI.getOwlConfig(owl.network_id, owl.id).catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getOwlConfig(owl.network_id, owl.id).catch(e => log.error(e)));
                 log('getOwlMotionRegions()');
-                log(stringify(
-                    await this.blinkAPI.getCameraMotionRegions(owl.network_id, owl.id).catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getCameraMotionRegions(owl.network_id, owl.id).catch(e => log.error(e)));
                 log('getOwlSignals()');
-                log(stringify(
-                    await this.blinkAPI.getCameraSignals(owl.network_id, owl.id).catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getCameraSignals(owl.network_id, owl.id).catch(e => log.error(e)));
                 log('getOwlStatus()');
-                log(stringify(
-                    await this.blinkAPI.getCameraStatus(owl.network_id, owl.id, 0).catch(e => log.error(e))));
-                // log('getOwlFirmware()');
-                // log(JSON.stringify(await this.blinkAPI.getOwlFirmware(owl.serial).catch(e => log.error(e))));
+                anonymize(
+                    await this.blinkAPI.getCameraStatus(owl.network_id, owl.id, 0).catch(e => log.error(e)));
+                log('getOwlFirmware()');
+                anonymize(await this.blinkAPI.getOwlFirmware(owl.serial).catch(e => log.error(e)));
                 log('getDevice()');
-                log(stringify(await this.blinkAPI.getDevice(owl.serial).catch(e => log.error(e))));
+                anonymize(await this.blinkAPI.getDevice(owl.serial).catch(e => log.error(e)));
                 // log('getOwlLiveView()');
-                // log(stringify(await this.blinkAPI.getOwlLiveView().catch(e => log.error(e))));
+                // anonymize(await this.blinkAPI.getOwlLiveView().catch(e => log.error(e))));
             }
         }
 

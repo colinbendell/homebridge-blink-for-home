@@ -5,7 +5,7 @@ const {fetch, reset} = require('@adobe/helix-fetch');
 const {sleep} = require('./utils');
 const IniFile = require('./inifile');
 const {log} = require('./log');
-// const {stringify} = require("./stringify");
+// const {stringify} = require('./stringify');
 const stringify = JSON.stringify;
 // crypto.randomBytes(16).toString("hex").toUpperCase().replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, "$1-$2-$3-$4-$5")
 const DEFAULT_BLINK_CLIENT_UUID = '1EAF7C88-2AAB-BC51-038D-DB96D6EEE22F';

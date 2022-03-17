@@ -247,18 +247,16 @@ class BlinkCamera extends BlinkDevice {
     async getMotionDetected() {
         if (!this.armed) return false;
 
-        // TODO: make it easier to access the network accessory - this is painful
-
-        // use the last time we armed or the current updated_at field to determine if the motion was recent
-        const network = this.network;
-        const triggerStart = (network.armedAt || network.updatedAt || 0) - ARMED_DELAY * 1000;
-        const lastDeviceUpdate = Math.max(this.updatedAt, network.updatedAt, 0) + MOTION_TRIGGER_DECAY * 1000;
+        const lastDeviceUpdate = Math.max(this.updatedAt, this.network.updatedAt, 0) + MOTION_TRIGGER_DECAY * 1000;
         if (Date.now() > lastDeviceUpdate) return false;
 
         const lastMotion = await this.blink.getCameraLastMotion(this.networkID, this.cameraID);
         if (!lastMotion) return false;
 
-        const triggerEnd = (Date.parse((lastMotion || {}).created_at) || 0) + MOTION_TRIGGER_DECAY * 1000;
+        const triggerEnd = (Date.parse(lastMotion?.created_at) || 0) + MOTION_TRIGGER_DECAY * 1000;
+        // use the last time we armed or the current updated_at field to determine if the motion was recent
+        const triggerStart = (this.network.armedAt || this.network.updatedAt || 0) - ARMED_DELAY * 1000;
+
         return Date.now() >= triggerStart && Date.now() <= triggerEnd;
     }
 
@@ -280,13 +278,17 @@ class BlinkCamera extends BlinkDevice {
         return await this.blink.refreshCameraThumbnail(this.networkID, this.cameraID, force);
     }
 
+    async refreshClip(force = false) {
+        return await this.blink.refreshCameraClip(this.networkID, this.cameraID, force);
+    }
+
     async getThumbnail() {
         // if we are in privacy mode, use a placeholder image
         if (!this.armed || !this.enabled) {
-            if (this.privacyMode) return PRIVACY_BYTES;
+            if (this.privacyMode) return BlinkCamera.PRIVACY_BYTES;
 
             // only show the "disabled" image when the system is armed but the camera is disabled
-            if (this.armed && !this.enabled) return DISABLED_BYTES;
+            if (this.armed && !this.enabled) return BlinkCamera.DISABLED_BYTES;
         }
 
         const thumbnail = await this.blink.getCameraLastThumbnail(this.networkID, this.cameraID);
@@ -307,6 +309,8 @@ class BlinkCamera extends BlinkDevice {
         return data.server;
     }
 }
+BlinkCamera.PRIVACY_BYTES = PRIVACY_BYTES;
+BlinkCamera.DISABLED_BYTES = DISABLED_BYTES;
 
 class Blink {
     static normalizeConfig(config) {
@@ -540,7 +544,7 @@ class Blink {
         let cmd = enabled ? this.blinkAPI.enableCameraMotion : await this.blinkAPI.disableCameraMotion;
         if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlSettings;
 
-        await this._command(async () => cmd(this.blinkAPI, networkID, cameraID, {enabled: enabled}));
+        await this._command(async () => cmd.call(this.blinkAPI, networkID, cameraID, {enabled: enabled}));
         await this.refreshData(true);
     }
 
@@ -573,7 +577,7 @@ class Blink {
         if (status.includes(true)) await this.refreshData(true);
     }
 
-    async refreshCameraVideo(networkID, cameraID, force = false) {
+    async refreshCameraClip(networkID, cameraID, force = false) {
         const cameras = [...this.cameras.values()]
             // optional networkID
             .filter(camera => !networkID || camera.networkID === networkID)
@@ -647,10 +651,10 @@ class Blink {
     }
 
     async getCameraLastMotion(networkID, cameraID = null) {
-        const motionConfig = this.config.cameraMotionPollingSeconds;
-        const motionPoll = Number.isInteger(motionConfig) ? motionConfig : MOTION_POLL;
+        const motionPoll = this.config.cameraMotionPollingSeconds;
         const res = await this.blinkAPI.getMediaChange(motionPoll);
-        const media = (res.media || []).filter(m => !networkID || m.network_id === networkID)
+        const media = (res.media || [])
+            .filter(m => !networkID || m.network_id === networkID)
             .filter(m => !cameraID || m.device_id === cameraID)
             .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
         return media[0];

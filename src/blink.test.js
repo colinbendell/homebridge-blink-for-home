@@ -4,7 +4,7 @@ const logger = () => {};
 logger.log = () => {};
 logger.error = console.error;
 setLogger(logger, false, false);
-const {Blink} = require('./blink');
+const {Blink, BlinkCamera} = require('./blink');
 const SAMPLE = require('./blink-api.sample');
 
 jest.mock('./blink-api');
@@ -82,15 +82,6 @@ describe('Blink', () => {
             expect(cameraDevice.armed).toBe(true);
             expect(cameraDevice.enabled).toBe(true);
             expect(cameraDevice.getEnabled()).toBe(true);
-            expect(cameraDevice.getMotionDetectActive()).toBe(true);
-
-            expect(await cameraDevice.getMotionDetected()).toBe(false);
-
-            // update timestamp
-            const newMediaChange = JSON.parse(JSON.stringify(SAMPLE.MEDIA_CHANGE));
-            newMediaChange.media[0].created_at = new Date().toISOString();
-            blink.blinkAPI.getMediaChange.mockResolvedValue(newMediaChange);
-            expect(await cameraDevice.getMotionDetected()).toBe(true);
 
             cameraDevice.privacyMode = true;
             expect(cameraDevice.privacyMode).toBe(true);
@@ -106,8 +97,50 @@ describe('Blink', () => {
             expect(miniCameraDevice.armed).toBe(false);
             expect(miniCameraDevice.enabled).toBe(true);
             expect(miniCameraDevice.getEnabled()).toBe(true);
-            expect(miniCameraDevice.getMotionDetectActive()).toBe(false);
-            expect(await miniCameraDevice.getMotionDetected()).toBe(false);
+        });
+
+        test.concurrent.each([
+            [false, false, false],
+            [false, true, false],
+            [true, false, false],
+            [true, true, true],
+        ])('BlinkCamera.getMotionDetectActive()', async (armed, enabled, expected) => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+            const cameraDevice = blink.cameras.get(cameraData.id);
+            cameraDevice.network.data.armed = armed;
+            cameraDevice.data.enabled = enabled;
+            expect(cameraDevice.getMotionDetectActive()).toBe(expected);
+        });
+
+        test.concurrent.each([
+            [false, false, false, 0],
+            [false, true, true, 0],
+            [false, true, false, 1],
+            [false, false, true, 1],
+            [true, true, false, 1],
+            [true, false, true, 1],
+        ])('BlinkCamera.setEnabled()', async (mini, current, target, expected) => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            blink.blinkAPI.enableCameraMotion.mockResolvedValue(SAMPLE.ENABLE_CAMERA);
+            blink.blinkAPI.disableCameraMotion.mockResolvedValue(SAMPLE.DISABLE_CAMERA);
+            blink.blinkAPI.updateOwlSettings.mockResolvedValue(SAMPLE.ENABLE_CAMERA);
+            blink.blinkAPI.getCommand.mockResolvedValue(SAMPLE.COMMAND_COMPLETE);
+            await blink.refreshData();
+
+            const cameraData = mini ? SAMPLE.HOMESCREEN.MINI : SAMPLE.HOMESCREEN.CAMERA_OG;
+            const cameraDevice = blink.cameras.get(cameraData.id);
+            cameraDevice.data.enabled = current;
+            await cameraDevice.setEnabled(target);
+            // expect(cameraDevice.enabled).toBe(target);
+            expect(blink.blinkAPI.getAccountHomescreen).toBeCalledTimes(expected + 1);
+            expect(blink.blinkAPI.enableCameraMotion).toBeCalledTimes(!mini && target ? expected : 0);
+            expect(blink.blinkAPI.disableCameraMotion).toBeCalledTimes(!mini && !target ? expected : 0);
+            expect(blink.blinkAPI.updateOwlSettings).toBeCalledTimes(mini ? expected: 0);
         });
 
         test.concurrent.each([
@@ -137,6 +170,101 @@ describe('Blink', () => {
             expect(blink.blinkAPI.updateOwlThumbnail).toBeCalledTimes(mini ? expected : 0);
             expect(blink.blinkAPI.getCommand).toBeCalledTimes(expected);
             expect(blink.blinkAPI.getAccountHomescreen).toBeCalledTimes(expected + 1);
+        });
+
+        test.concurrent.each([
+            [false, false, 0, 0, 0, 0, false],
+            [false, true, 0, 0, 0, 0, false],
+            [true, true, 0, 0, 1, 0, false],
+            [true, true, Date.now(), 0, -1, 0, false],
+            [true, true, 0, Date.now(), -1, 0, false],
+            [true, true, 0, Date.now(), 1, Date.now(), false],
+            [true, true, 0, Date.now(), 1, Date.now() - 24*60*60*1000, false],
+            [true, true, 0, Date.now(), Date.now(), Date.now() - 24*60*60*1000, true],
+        ])('BlinkCamera.getMotionDetected()', async (armed, enabled, cameraAt, networkAt, mediaAt, armedAt, motion) => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+            const cameraDevice = blink.cameras.get(cameraData.id);
+            cameraDevice.network.data.armed = armed;
+            cameraDevice.data.enabled = enabled;
+            cameraDevice.armedAt = armedAt;
+            const newMediaChange = JSON.parse(JSON.stringify(SAMPLE.MEDIA_CHANGE));
+            if (mediaAt < 0) {
+                newMediaChange.media = [];
+            }
+            else {
+                newMediaChange.media[0].created_at = new Date(mediaAt).toISOString();
+            }
+            blink.blinkAPI.getMediaChange.mockResolvedValue(newMediaChange);
+
+            const res = await cameraDevice.getMotionDetected();
+            expect(blink.blinkAPI.getAccountHomescreen).toBeCalledTimes(1);
+            expect(blink.blinkAPI.getMediaChange).toBeCalledTimes(mediaAt !== 0 ? 1 : 0);
+            expect(res).toBe(motion);
+        });
+
+        test.concurrent.each([
+            [false, false, false, false, 0, 0],
+            [false, false, true, false, 0, 0],
+            [false, false, false, true, 0, 0],
+            [false, false, true, true, Date.now(), 0],
+            [false, true, true, true, 0, 1],
+            [true, true, true, true, 0, 0],
+        ])('BlinkCamera.refreshClip()', async (mini, force, armed, enabled, thumbnailDate, expected) => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            blink.blinkAPI.updateCameraClip.mockResolvedValue(SAMPLE.UPDATE_CLIP);
+            blink.blinkAPI.getCommand.mockResolvedValue(SAMPLE.COMMAND_COMPLETE);
+            await blink.refreshData();
+
+            const cameraData = mini ? SAMPLE.HOMESCREEN.MINI : SAMPLE.HOMESCREEN.CAMERA_OG;
+            const cameraDevice = blink.cameras.get(cameraData.id);
+            cameraDevice.network.data.armed = armed;
+            cameraDevice.data.enabled = enabled;
+            const newMediaChange = JSON.parse(JSON.stringify(SAMPLE.MEDIA_CHANGE));
+            if (thumbnailDate) {
+                newMediaChange.media[0].created_at = new Date(thumbnailDate).toISOString();
+            }
+            blink.blinkAPI.getMediaChange.mockResolvedValue(newMediaChange);
+
+            await cameraDevice.refreshClip(force);
+
+            expect(blink.blinkAPI.getMediaChange).toBeCalledTimes(mini ? 0 : 1);
+            expect(blink.blinkAPI.updateCameraClip).toBeCalledTimes(expected);
+            expect(blink.blinkAPI.getCommand).toBeCalledTimes(expected);
+            expect(blink.blinkAPI.getAccountHomescreen).toBeCalledTimes(expected + 1);
+        });
+
+        test.concurrent.each([
+            [false, false, true, 0, BlinkCamera.PRIVACY_BYTES],
+            [false, true, true, 0, BlinkCamera.PRIVACY_BYTES],
+            [true, false, true, 0, BlinkCamera.PRIVACY_BYTES],
+            [true, false, false, 0, BlinkCamera.DISABLED_BYTES],
+            [true, true, true, 1, Buffer.from([])],
+            [true, true, false, 1, Buffer.from([])],
+        ])('BlinkCamera.getThumbnail()', async (armed, enabled, privacy, expected, bytes) => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            blink.blinkAPI.getUrl.mockResolvedValue(Buffer.from([]));
+            await blink.refreshData();
+
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+            const cameraDevice = blink.cameras.get(cameraData.id);
+            cameraDevice.network.data.armed = armed;
+            cameraDevice.data.enabled = enabled;
+            cameraDevice.privacyMode = privacy;
+            cameraDevice.thumbnailCreatedAt = Date.now();
+
+            const data1 = await cameraDevice.getThumbnail();
+            const data2 = await cameraDevice.getThumbnail();
+
+            expect(blink.blinkAPI.getAccountHomescreen).toBeCalledTimes(1);
+            expect(blink.blinkAPI.getUrl).toBeCalledTimes(expected);
+            expect(data1).toBe(data2);
+            expect(data1).toStrictEqual(bytes);
         });
     });
 });

@@ -100,6 +100,22 @@ async function login(options) {
         console.log('Success');
     });
 }
+async function enable(id, options) {
+    await withBlink(async blink => {
+        const camera = await getCamera(blink, id);
+        if (camera.enabled) return;
+        await camera.setEnabled(true);
+        console.log('Success');
+    });
+}
+async function disable(id, options) {
+    await withBlink(async blink => {
+        const camera = await getCamera(blink, id);
+        if (!camera.enabled) return;
+        await camera.setEnabled(false);
+        console.log('Success');
+    });
+}
 
 async function list(options) {
     await withBlink(async blink => {
@@ -415,7 +431,7 @@ async function get(id, options) {
         const start = Date.now();
         if (options.video) {
             if (options.refresh || options.force) {
-                await blink.refreshCameraVideo(camera.networkID, camera.cameraID, options.force);
+                await blink.refreshCameraClip(camera.networkID, camera.cameraID, options.force);
             }
             const videoUrl = await blink.getCameraLastVideo(camera.networkID, camera.cameraID);
             await saveFile(videoUrl, '.mp4');
@@ -479,6 +495,14 @@ program
     .option('-o, --output <file>', 'save the media to output')
     .option('-O, --remote-file', 'use the remote filename')
     .action(get);
+
+program
+    .command('enable <camera>')
+    .action(enable);
+
+program
+    .command('disable <camera>')
+    .action(disable);
 
 if (process.argv.indexOf('--debug') === -1) console.debug = () => {};
 if (process.argv.indexOf('--verbose') === -1 && process.argv.indexOf('--debug') === -1) console.info = () => {};

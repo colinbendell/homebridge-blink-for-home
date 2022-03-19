@@ -467,6 +467,8 @@ async function get(id, options) {
 
         if (options.delete) {
             const lastMedia = await blink.getCameraLastMotion(camera.networkID, camera.cameraID);
+
+            // only delete media we created
             if (lastMedia && lastMedia.id && Date.parse(lastMedia.created_at) > start) {
                 console.log(`Deleting: ${lastMedia.media}`);
                 await blink.deleteCameraMotion(camera.networkID, camera.cameraID, lastMedia.id);

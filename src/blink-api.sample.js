@@ -522,7 +522,7 @@ const MEDIA_CHANGE = {
     refresh_count: 0,
     media: [
         {
-            id: 4000001,
+            id: 7000001,
             created_at: '2022-03-12T17:20:01+00:00',
             updated_at: '2022-03-12T21:51:35+00:00',
             deleted: false,
@@ -575,6 +575,8 @@ const UPDATE_CLIP = {
     sync_module_id: 3000001, target: null, target_id: null,
     transaction: 'l4hfGumGEi8AboSN', updated_at: '2022-03-16T20:57:22+00:00',
 };
+
+const DELETE_CLIP = {code: 711, message: 'Successfully deleted media'};
 
 const OWL_CONFIG = {
     name: 'Gamma',
@@ -722,6 +724,14 @@ const DISARM_NETWORK = {
     network_id: 2000001,
     state: 'new',
 };
+const CAMERA_LIVE_VIEW = {
+    command: 'lv_relay',
+    commands: [
+    ],
+    id: 999999999,
+    network_id: 2000001,
+    state: 'new',
+};
 
 module.exports = {
     LOGIN,
@@ -740,6 +750,7 @@ module.exports = {
     CAMERA_MOTION_REGIONS,
     CAMERA_SIGNALS,
     CAMERA_STATUS,
+    CAMERA_LIVE_VIEW,
     DEVICE,
     MEDIA_CHANGE,
     COMMAND_SENT,
@@ -747,6 +758,7 @@ module.exports = {
     COMMAND_COMPLETE,
     UPDATE_THUMBNAIL,
     UPDATE_CLIP,
+    DELETE_CLIP,
     DISABLE_CAMERA,
     ENABLE_CAMERA,
     ARM_NETWORK,

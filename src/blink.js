@@ -238,7 +238,7 @@ class BlinkCamera extends BlinkDevice {
     async getMotionDetected() {
         if (!this.armed) return false;
 
-        const lastDeviceUpdate = Math.max(this.updatedAt, this.network.updatedAt, 0) + Blink.MOTION_TRIGGER_DECAY * 1000;
+        const lastDeviceUpdate = Math.max(this.updatedAt, this.network.updatedAt) + Blink.MOTION_TRIGGER_DECAY * 1000;
         if (Date.now() > lastDeviceUpdate) return false;
 
         const lastMotion = await this.blink.getCameraLastMotion(this.networkID, this.cameraID);
@@ -296,7 +296,7 @@ class BlinkCamera extends BlinkDevice {
         if (!this.armed || !this.enabled) {
             if (this.privacyMode) return `${__dirname}/privacy.png`;
         }
-        const data = await this.blink.getCameraLiveView(this.networkID, this.cameraID);
+        const [data] = await this.blink.getCameraLiveView(this.networkID, this.cameraID);
         return data.server;
     }
 }
@@ -351,18 +351,19 @@ class Blink {
         return cmd;
     }
 
-    async _commandWaitAll(commands = []) {
-        return await Promise.all([commands].flatMap(c => this._commandWait(c.network_id, c.id || c.command_id)));
+    async _commandWaitAll(commands = [], timeout = null) {
+        return await Promise.all([commands].flatMap(c =>
+            this._commandWait(c.network_id, c.id || c.command_id, timeout)));
     }
 
-    async _command(fn) {
+    async _command(fn, busyWait = 5, timeout = null) {
         let cmd = await fn();
         while (cmd.message && /busy/i.test(cmd.message)) {
-            log.info(`Sleeping 5s: ${cmd.message}`);
-            await sleep(5000);
+            log.info(`Sleeping ${busyWait}s: ${cmd.message}`);
+            await sleep(busyWait * 1000);
             cmd = await fn();
         }
-        await this._commandWaitAll(cmd);
+        return await this._commandWaitAll(cmd, timeout);
     }
 
     async getUrl(url) {
@@ -378,9 +379,9 @@ class Blink {
         const login = await this.blinkAPI.login(true).catch(e => log.error(e));
         const account = await this.blinkAPI.getAccount().catch(e => log.error(e));
         const homescreen = await this.blinkAPI.getAccountHomescreen(0).catch(e => log.error(e));
-        anonMap.set(login?.account?.account_id, 1000001);
-        anonMap.set(login?.account?.client_id, 1000002);
-        anonMap.set(login?.account?.user_id, 1000003);
+        anonMap.set(login?.account?.account_id, 1001);
+        anonMap.set(login?.account?.client_id, 1002);
+        anonMap.set(login?.account?.user_id, 1003);
         anonMap.set(login?.auth?.token, 'XXXX9999');
         anonMap.set(login?.phone?.last_4_digits, '5555');
         anonMap.set(account?.phone_number, '5555555555');
@@ -388,27 +389,27 @@ class Blink {
         let curr = 1;
         const NETWORK_NAMES=['BatCave', 'Fortress of Solitude', 'Ice Mountain'];
         for (const network of homescreen?.networks || []) {
-            anonMap.set(network?.id, 2000000 + curr);
+            anonMap.set(network?.id, 2000 + curr);
             anonMap.set(network?.name, NETWORK_NAMES[curr - 1]);
             curr++;
         }
         curr = 1;
         for (const camera of homescreen.cameras || []) {
-            anonMap.set(camera?.id, 3000000 + curr);
+            anonMap.set(camera?.id, 3000 + curr);
             anonMap.set(camera?.name, 'Camera ' + curr);
             anonMap.set(camera?.serial, 'B000000' + curr);
             curr++;
         }
         curr = 1;
         for (const owl of homescreen.owls || []) {
-            anonMap.set(owl?.id, 4000000 + curr);
+            anonMap.set(owl?.id, 4000 + curr);
             anonMap.set(owl?.name, 'Mini Blink ' + curr);
             anonMap.set(owl?.serial, 'C000000' + curr);
             curr++;
         }
         curr = 1;
         for (const sm of homescreen.sync_modules || []) {
-            anonMap.set(sm?.id, 5000000 + curr);
+            anonMap.set(sm?.id, 5000 + curr);
             anonMap.set(sm?.name, 'Sync Module ' + curr);
             anonMap.set(sm?.serial, 'D000000' + curr);
             curr++;
@@ -671,10 +672,12 @@ class Blink {
 
     async deleteCameraMotion(networkID, cameraID, motionID = null) {
         if (motionID == null) {
-            const lastMedia = this.getCameraLastMotion(networkID, cameraID);
-            motionID = lastMedia.id;
+            const lastMedia = await this.getCameraLastMotion(networkID, cameraID);
+            motionID = lastMedia?.id;
         }
-        return await this.blinkAPI.deleteMedia(motionID);
+        if (!motionID) return false;
+        const res = await this.blinkAPI.deleteMedia(motionID);
+        return /Success/i.test(res?.message);
     }
 
     async getSavedMedia(networkID, cameraID) {
@@ -702,18 +705,11 @@ class Blink {
 
     async getCameraLiveView(networkID, cameraID, timeout = 30) {
         const camera = this.cameras.get(cameraID);
-        let res;
-        if (camera.isCameraMini) {
-            res = await this.blinkAPI.getOwlLiveView(camera.networkID, camera.cameraID);
-        }
-        else {
-            res = await this.blinkAPI.getCameraLiveViewV5(camera.networkID, camera.cameraID);
-        }
 
-        // TODO: we should stash and keep track of this
-        await this._commandWait(camera.networkID, res.command_id, timeout * 1000);
+        let cmd = this.blinkAPI.getCameraLiveViewV5;
+        if (camera.isCameraMini) cmd = this.blinkAPI.getOwlLiveView;
 
-        return res;
+        return await this._command(() => cmd.call(this.blinkAPI, networkID, cameraID, 5, timeout));
     }
 
     async stopCameraLiveView(networkID) {

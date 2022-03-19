@@ -35,6 +35,7 @@
         "@jest/globals": "^27.5.1",
         "eslint": "^8.11.0",
         "eslint-config-google": "^0.14.0",
+        "eslint-plugin-jest": "^26.1.1",
         "homebridge-config-ui-x": "^4.42.0",
         "jest": "^27.5.1"
     },
@@ -43,7 +44,7 @@
         "watch": "npm run build && npm link",
         "build": "",
         "prepublishOnly": "npm run build",
-        "test": "jest && eslint"
+        "test": "jest && npm run lint"
     },
     "eslintConfig": {
         "extends": [
@@ -55,27 +56,24 @@
         },
         "env": {
             "es6": true,
-            "node": true
+            "node": true,
+            "jest/globals": true
         },
         "rules": {
-            "indent": [
-                "error",
-                4
-            ],
-            "brace-style": [
-                "error",
-                "stroustrup"
-            ],
-            "max-len": [
-                "error",
-                120
-            ],
+            "indent": ["error", 4],
+            "brace-style": ["error", "stroustrup"],
+            "max-len": ["error", 120],
             "require-jsdoc": "off",
             "valid-jsdoc": "off",
-            "arrow-parens": [
-                "error",
-                "as-needed"
-            ]
-        }
+            "arrow-parens": ["error", "as-needed"],
+            "jest/no-disabled-tests": "warn",
+            "jest/no-focused-tests": "error",
+            "jest/no-identical-title": "error",
+            "jest/prefer-to-have-length": "warn",
+            "jest/valid-expect": "error"
+        },
+        "plugins": [
+            "jest"
+        ]
     }
 }

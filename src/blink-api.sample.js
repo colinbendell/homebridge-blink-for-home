@@ -265,73 +265,6 @@ HOMESCREEN.CAMERA_OG = HOMESCREEN.cameras[0];
 HOMESCREEN.CAMERA_G2 = HOMESCREEN.cameras[1];
 HOMESCREEN.MINI = HOMESCREEN.owls[0];
 
-const CAMERA_STATUS = {
-    camera_status: {
-        camera_id: 4000001,
-        created_at: '2021-02-16T00:13:59+00:00',
-        updated_at: '2022-03-14T00:39:42+00:00',
-        wifi_strength: -52,
-        lfr_strength: -55,
-        battery_voltage: 160,
-        temperature: 23,
-        fw_version: '10.53',
-        fw_git_hash: 'release:612df6c0',
-        mac: '34:af:af:af:af:af',
-        ipv: 'ipv4',
-        ip_address: '172.0.0.1',
-        error_codes: 0,
-        battery_alert_status: true,
-        temp_alert_status: false,
-        ac_power: false,
-        light_sensor_ch0: 170,
-        light_sensor_ch1: 61660,
-        light_sensor_data_valid: true,
-        light_sensor_data_new: true,
-        time_first_video: 143541,
-        time_108_boot: 89923,
-        time_wlan_connect: 1000254,
-        time_dhcp_lease: 1038858,
-        time_dns_resolve: 543,
-        lfr_108_wakeups: 0,
-        total_108_wakeups: 64,
-        lfr_tb_wakeups: 83,
-        total_tb_wakeups: 0,
-        wifi_connect_failure_count: 0,
-        dhcp_failure_count: 0,
-        socket_failure_count: 9153,
-        dev_1: 8648672,
-        dev_2: 8,
-        dev_3: 655393,
-        unit_number: 3,
-        serial: 'B0000002',
-        lifetime_count: 0,
-        lifetime_duration: 0,
-        pir_rejections: 0,
-        sync_module_id: 3000001,
-        network_id: 2000001,
-        account_id: 1000001,
-        id: 1,
-        // eslint-disable-next-line max-len
-        thumbnail: '/media/production/account/1000001/network/2000001/catalina/4000002/thumbnail/fw_10.53__FY_9_3HS_2020_01_01__01_01AM',
-    },
-};
-
-const CAMERA_USAGE = {
-    networks: [
-        {
-            name: 'BatCave',
-            network_id: 2000001,
-            cameras: [
-                {id: 3000001, name: 'Camera 1', clip_seconds: 0, lv_seconds: 0, usage: 0},
-                {id: 3000002, name: 'Camera 2', clip_seconds: 0, lv_seconds: 0, usage: 0},
-                {id: 3000003, name: 'Camera 3', clip_seconds: 39, lv_seconds: 0, usage: 39},
-            ],
-        },
-        {name: 'Fortress of Solitude', network_id: 2000002, cameras: []},
-    ],
-    range_days: 7,
-    reference: {usage: 400},
-};
 const DEVICE = {fw_target: 'sync_module', region: 'north_america', subtype: 'sm1', type: 'sync_module'};
 
 const CAMERA_CONFIG = {
@@ -483,6 +416,106 @@ const CAMERA_MOTION_REGIONS = {
 
 const CAMERA_SIGNALS = {updated_at: '2022-03-17T21:06:33+00:00', battery: 3, lfr: 5, temp: 63, wifi: 5};
 
+const CAMERA_STATUS = {
+    camera_status: {
+        camera_id: 4000001,
+        created_at: '2021-02-16T00:13:59+00:00',
+        updated_at: '2022-03-14T00:39:42+00:00',
+        wifi_strength: -52,
+        lfr_strength: -55,
+        battery_voltage: 160,
+        temperature: 23,
+        fw_version: '10.53',
+        fw_git_hash: 'release:612df6c0',
+        mac: '34:af:af:af:af:af',
+        ipv: 'ipv4',
+        ip_address: '172.0.0.1',
+        error_codes: 0,
+        battery_alert_status: true,
+        temp_alert_status: false,
+        ac_power: false,
+        light_sensor_ch0: 170,
+        light_sensor_ch1: 61660,
+        light_sensor_data_valid: true,
+        light_sensor_data_new: true,
+        time_first_video: 143541,
+        time_108_boot: 89923,
+        time_wlan_connect: 1000254,
+        time_dhcp_lease: 1038858,
+        time_dns_resolve: 543,
+        lfr_108_wakeups: 0,
+        total_108_wakeups: 64,
+        lfr_tb_wakeups: 83,
+        total_tb_wakeups: 0,
+        wifi_connect_failure_count: 0,
+        dhcp_failure_count: 0,
+        socket_failure_count: 9153,
+        dev_1: 8648672,
+        dev_2: 8,
+        dev_3: 655393,
+        unit_number: 3,
+        serial: 'B0000002',
+        lifetime_count: 0,
+        lifetime_duration: 0,
+        pir_rejections: 0,
+        sync_module_id: 3000001,
+        network_id: 2000001,
+        account_id: 1000001,
+        id: 1,
+        // eslint-disable-next-line max-len
+        thumbnail: '/media/production/account/1000001/network/2000001/catalina/4000002/thumbnail/fw_10.53__FY_9_3HS_2020_01_01__01_01AM',
+    },
+};
+
+const CAMERA_USAGE = {
+    networks: [
+        {
+            name: 'BatCave',
+            network_id: 2000001,
+            cameras: [
+                {id: 3000001, name: 'Camera 1', clip_seconds: 0, lv_seconds: 0, usage: 0},
+                {id: 3000002, name: 'Camera 2', clip_seconds: 0, lv_seconds: 0, usage: 0},
+                {id: 3000003, name: 'Camera 3', clip_seconds: 39, lv_seconds: 0, usage: 39},
+            ],
+        },
+        {name: 'Fortress of Solitude', network_id: 2000002, cameras: []},
+    ],
+    range_days: 7,
+    reference: {usage: 400},
+};
+
+const ENABLE_CAMERA = {
+    account_id: 1000001, attempts: 0,
+    by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', camera_id: 4000002,
+    command: 'device_motion_enable', created_at: '2022-03-17T02:34:29+00:00',
+    debug: '', diagnostic: false, duration: null,
+    execute_time: '2022-03-17T02:34:29+00:00', firmware_id: null,
+    id: 999999999, lfr_ack: null, network_id: 2000001, opts_1: 0,
+    parent_command_id: null, player_transaction: 'obK_cEz0utEaoLvp',
+    sequence: null, server: null, siren_id: null, sm_ack: null,
+    stage_cs_db: null, stage_cs_sent: null, stage_dev: null, stage_is: null,
+    stage_lv: null, stage_rest: '2022-03-17T02:34:29+00:00', stage_sm: null,
+    stage_vs: null, state_condition: 'new', state_stage: 'rest',
+    sync_module_id: 3000001, target: 'camera', target_id: 4000002,
+    transaction: 'i6UEwXGLlFEVY1l-', updated_at: '2022-03-17T02:34:29+00:00',
+};
+
+const DISABLE_CAMERA = {
+    account_id: 1000001, attempts: 0,
+    by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', camera_id: 4000002,
+    command: 'device_motion_disable', created_at: '2022-03-17T02:34:29+00:00',
+    debug: '', diagnostic: false, duration: null,
+    execute_time: '2022-03-17T02:34:29+00:00', firmware_id: null,
+    id: 999999999, lfr_ack: null, network_id: 2000001, opts_1: 0,
+    parent_command_id: null, player_transaction: 'obK_cEz0utEaoLvp',
+    sequence: null, server: null, siren_id: null, sm_ack: null,
+    stage_cs_db: null, stage_cs_sent: null, stage_dev: null, stage_is: null,
+    stage_lv: null, stage_rest: '2022-03-17T02:34:29+00:00', stage_sm: null,
+    stage_vs: null, state_condition: 'new', state_stage: 'rest',
+    sync_module_id: 3000001, target: 'camera', target_id: 4000002,
+    transaction: 'i6UEwXGLlFEVY1l-', updated_at: '2022-03-17T02:34:29+00:00',
+};
+
 const MEDIA_CHANGE = {
     limit: 500,
     purge_id: 2989164295,
@@ -543,36 +576,39 @@ const UPDATE_CLIP = {
     transaction: 'l4hfGumGEi8AboSN', updated_at: '2022-03-16T20:57:22+00:00',
 };
 
-const ENABLE_CAMERA = {
-    account_id: 1000001, attempts: 0,
-    by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', camera_id: 4000002,
-    command: 'device_motion_enable', created_at: '2022-03-17T02:34:29+00:00',
-    debug: '', diagnostic: false, duration: null,
-    execute_time: '2022-03-17T02:34:29+00:00', firmware_id: null,
-    id: 999999999, lfr_ack: null, network_id: 2000001, opts_1: 0,
-    parent_command_id: null, player_transaction: 'obK_cEz0utEaoLvp',
-    sequence: null, server: null, siren_id: null, sm_ack: null,
-    stage_cs_db: null, stage_cs_sent: null, stage_dev: null, stage_is: null,
-    stage_lv: null, stage_rest: '2022-03-17T02:34:29+00:00', stage_sm: null,
-    stage_vs: null, state_condition: 'new', state_stage: 'rest',
-    sync_module_id: 3000001, target: 'camera', target_id: 4000002,
-    transaction: 'i6UEwXGLlFEVY1l-', updated_at: '2022-03-17T02:34:29+00:00',
-};
-
-const DISABLE_CAMERA = {
-    account_id: 1000001, attempts: 0,
-    by_whom: 'unknown - 6.1.1 (8854) #e06341d7f', camera_id: 4000002,
-    command: 'device_motion_disable', created_at: '2022-03-17T02:34:29+00:00',
-    debug: '', diagnostic: false, duration: null,
-    execute_time: '2022-03-17T02:34:29+00:00', firmware_id: null,
-    id: 999999999, lfr_ack: null, network_id: 2000001, opts_1: 0,
-    parent_command_id: null, player_transaction: 'obK_cEz0utEaoLvp',
-    sequence: null, server: null, siren_id: null, sm_ack: null,
-    stage_cs_db: null, stage_cs_sent: null, stage_dev: null, stage_is: null,
-    stage_lv: null, stage_rest: '2022-03-17T02:34:29+00:00', stage_sm: null,
-    stage_vs: null, state_condition: 'new', state_stage: 'rest',
-    sync_module_id: 3000001, target: 'camera', target_id: 4000002,
-    transaction: 'i6UEwXGLlFEVY1l-', updated_at: '2022-03-17T02:34:29+00:00',
+const OWL_CONFIG = {
+    name: 'Gamma',
+    updated_at: '2020-10-25T18:42:55+00:00',
+    fw_version: 9.63,
+    enabled: false,
+    led_enabled: true,
+    led_state: 'off',
+    status: 'online',
+    video_quality: 'best',
+    clip_length_max: 30,
+    clip_length: 30,
+    retrigger_time: 10,
+    motion_sensitivity: 5,
+    motion_regions: 33554431,
+    advanced_motion_regions: [4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095],
+    early_termination: false,
+    night_vision_control: 'normal',
+    early_notification: false,
+    early_notification_compatible: true,
+    early_termination_supported: true,
+    illuminator_enable: 'auto',
+    illuminator_enable_v2: 'auto',
+    illuminator_duration: 1,
+    illuminator_intensity: 4,
+    record_audio_enable: false,
+    volume_control: 7,
+    wifi: 5,
+    video_recording_enable: false,
+    video_recording_optional: true,
+    flip_video: false,
+    flip_video_compatible: true,
+    local_storage_enabled: false,
+    local_storage_compatible: false,
 };
 
 const COMMAND_SENT = {
@@ -715,4 +751,5 @@ module.exports = {
     ENABLE_CAMERA,
     ARM_NETWORK,
     DISARM_NETWORK,
+    OWL_CONFIG,
 };

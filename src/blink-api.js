@@ -887,300 +887,36 @@ class BlinkAPI {
      */
 
     /**
-     * {
-     *   "camera": [
-     *     {
-     *       "id": 4000001,
-     *       "created_at": "2016-02-13T19:21:09+00:00",
-     *       "updated_at": "2020-10-03T14:50:36+00:00",
-     *       "deleted_at": null,
-     *       "serial": "B0000001",
-     *       "camera_key": "",
-     *       "fw_version": "2.151",
-     *       "mac_address": null,
-     *       "ip_address": null,
-     *       "thumbnail": "/media/production/account/1001/network/2001/camera/4000001/clip_HIwR6g_2020_10_02__00_28AM",
-     *       "name": "Alpha",
-     *       "liveview_enabled": "off",
-     *       "siren_enable": false,
-     *       "siren_volume": null,
-     *       "onboarded": true,
-     *       "unit_number": 1,
-     *       "motion_sensitivity": 5,
-     *       "enabled": true,
-     *       "alert_tone_enable": true,
-     *       "alert_tone_volume": 0,
-     *       "alert_repeat": "off",
-     *       "alert_interval": 10,
-     *       "video_length": 30,
-     *       "temp_alarm_enable": true,
-     *       "temp_interval": 1,
-     *       "temp_adjust": 8,
-     *       "temp_min": 50,
-     *       "temp_max": 88,
-     *       "temp_hysteresis": null,
-     *       "illuminator_enable": 0,
-     *       "illuminator_duration": 1,
-     *       "illuminator_intensity": 7,
-     *       "battery_alarm_enable": false,
-     *       "battery_voltage_interval": 0,
-     *       "battery_voltage_threshold": 512,
-     *       "battery_voltage_hysteresis": 512,
-     *       "last_battery_alert": null,
-     *       "battery_alert_count": 0,
-     *       "lfr_sync_interval": 8,
-     *       "video_50_60hz": "freq_60hz",
-     *       "invert_image": false,
-     *       "flip_image": false,
-     *       "record_audio_enable": true,
-     *       "clip_rate": 4,
-     *       "liveview_rate": 9,
-     *       "max_resolution": "r720",
-     *       "auto_test": false,
-     *       "wifi_timeout": 30,
-     *       "retry_count": 0,
-     *       "status": "done",
-     *       "wifi_strength": -50,
-     *       "lfr_strength": -63,
-     *       "temperature": 70,
-     *       "battery_voltage": 159,
-     *       "a1": false,
-     *       "last_temp_alert": null,
-     *       "temp_alert_count": 0,
-     *       "last_wifi_alert": null,
-     *       "wifi_alert_count": 0,
-     *       "last_lfr_alert": null,
-     *       "lfr_alert_count": 0,
-     *       "last_offline_alert": "2020-09-17T04:41:44+00:00",
-     *       "offline_alert_count": 3,
-     *       "temp_alert_state": "in_range",
-     *       "battery_state": "ok",
-     *       "battery_check_time": "2020-10-03T14:50:36+00:00",
-     *       "last_snapshot_event": null,
-     *       "motion_regions": 33554431,
-     *       "mfg_main_type": "MA",
-     *       "mfg_main_range": 1601016399,
-     *       "mfg_mez_type": "",
-     *       "mfg_mez_range": 0,
-     *       "type": "white",
-     *       "account_id": 1000001,
-     *       "network_id": 2000001,
-     *       "sync_module_id": 3000001,
-     *       "account": 1000001,
-     *       "network": 2000001,
-     *       "camera_seq": 1,
-     *       "last_connect": {
-     *         "camera_id": 4000001,
-     *         "created_at": "2017-10-31T22:12:59+00:00",
-     *         "updated_at": "2020-10-03T04:36:23+00:00",
-     *         "wifi_strength": -55,
-     *         "lfr_strength": -58,
-     *         "battery_voltage": 159,
-     *         "temperature": 73,
-     *         "fw_version": "2.151",
-     *         "fw_git_hash": null,
-     *         "mac": "f4:b8:5e:8a:54:b1",
-     *         "ipv": "ipv4",
-     *         "ip_address": "10.0.0.144",
-     *         "error_codes": 0,
-     *         "battery_alert_status": false,
-     *         "temp_alert_status": false,
-     *         "ac_power": false,
-     *         "light_sensor_ch0": 0,
-     *         "light_sensor_ch1": 159,
-     *         "light_sensor_data_valid": false,
-     *         "light_sensor_data_new": false,
-     *         "time_first_video": 0,
-     *         "time_108_boot": 89281,
-     *         "time_wlan_connect": 1187793,
-     *         "time_dhcp_lease": 4495321,
-     *         "time_dns_resolve": 0,
-     *         "lfr_108_wakeups": 1,
-     *         "total_108_wakeups": 2,
-     *         "lfr_tb_wakeups": 1,
-     *         "total_tb_wakeups": 4354,
-     *         "wifi_connect_failure_count": 0,
-     *         "dhcp_failure_count": 0,
-     *         "socket_failure_count": 0,
-     *         "dev_1": 4498846,
-     *         "dev_2": 27136,
-     *         "dev_3": B0000001,
-     *         "unit_number": 1,
-     *         "serial": "B0000001",
-     *         "lifetime_count": 0,
-     *         "lifetime_duration": 0,
-     *         "pir_rejections": 0,
-     *         "sync_module_id": 3000001,
-     *         "network_id": 2000001,
-     *         "account_id": 1000001
-     *       },
-     *       "motion_alert": true,
-     *       "record_audio": true,
-     *       "buzzer_on": true,
-     *       "early_termination": true,
-     *       "clip_bitrate": 4,
-     *       "liveview_bitrate": 9,
-     *       "motion_regions_compatible": true,
-     *       "early_pir_compatible": false,
-     *       "early_notification_compatible": false,
-     *       "night_vision_exposure_compatible": false,
-     *       "privacy_zones_compatible": false,
-     *       "video_quality_support": [
-     *         "saver",
-     *         "standard"
-     *       ],
-     *       "video_quality": "standard",
-     *       "early_notification": false,
-     *       "night_vision_exposure": 1,
-     *       "local_storage_enabled": false,
-     *       "local_storage_compatible": false,
-     *       "clip_max_length": 60,
-     *       "early_termination_supported": true,
-     *       "clip_warning_threshold": 15,
-     *       "flip_video_compatible": false,
-     *       "flip_video": false,
-     *       "video_recording_enable": true,
-     *       "video_recording_optional": false,
-     *       "snapshot_compatible": false,
-     *       "snapshot_enabled": false,
-     *       "snapshot_period_minutes_options": [
-     *         60
-     *       ],
-     *       "snapshot_period_minutes": 60
-     *     }
-     *   ],
-     *   "signals": {
-     *     "lfr": 5,
-     *     "wifi": 4,
-     *     "updated_at": "2020-10-03T04:36:23+00:00",
-     *     "temp": 78,
-     *     "battery": 3,
-     *     "battery_state": "ok"
-     *   }
-     * }
-     **/
+     * see: SAMPLE.CAMERA_CONFIG
+     */
     async getCameraConfig(networkID, cameraID) {
         return await this.get(`/network/${networkID}/camera/${cameraID}/config`);
     }
 
     /**
-     * {
-     *     "range_days": 7,
-     *     "reference": {"usage": 400},
-     *     "networks": [{
-     *         "network_id": 2000001,
-     *         "name": "82 Downing",
-     *         "cameras": [{
-     *             "id": 4000001,
-     *             "name": "Alpha",
-     *             "usage": 13,
-     *             "lv_seconds": 9,
-     *             "clip_seconds": 4
-     *         }, {"id": 13812, "name": "Beta", "usage": 54, "lv_seconds": 10, "clip_seconds": 44}]
-     *     }]
-     * }
-     **/
+     * see: SAMPLE.CAMERA_USAGE
+     */
     async getCameraUsage() {
         return await this.get(`/api/v1/camera/usage`);
     }
 
     /**
-     * {
-     *     "camera_status": {
-     *         "camera_id": 4000001,
-     *         "created_at": "2017-10-31T22:12:59+00:00",
-     *         "updated_at": "2020-10-03T04:36:23+00:00",
-     *         "wifi_strength": -55,
-     *         "lfr_strength": -58,
-     *         "battery_voltage": 159,
-     *         "temperature": 73,
-     *         "fw_version": "2.151",
-     *         "fw_git_hash": null,
-     *         "mac": "f4:b8:5e:8a:54:b1",
-     *         "ipv": "ipv4",
-     *         "ip_address": "10.0.0.144",
-     *         "error_codes": 0,
-     *         "battery_alert_status": false,
-     *         "temp_alert_status": false,
-     *         "ac_power": false,
-     *         "light_sensor_ch0": 0,
-     *         "light_sensor_ch1": 159,
-     *         "light_sensor_data_valid": false,
-     *         "light_sensor_data_new": false,
-     *         "time_first_video": 0,
-     *         "time_108_boot": 89281,
-     *         "time_wlan_connect": 1187793,
-     *         "time_dhcp_lease": 4495321,
-     *         "time_dns_resolve": 0,
-     *         "lfr_108_wakeups": 1,
-     *         "total_108_wakeups": 2,
-     *         "lfr_tb_wakeups": 1,
-     *         "total_tb_wakeups": 4354,
-     *         "wifi_connect_failure_count": 0,
-     *         "dhcp_failure_count": 0,
-     *         "socket_failure_count": 0,
-     *         "dev_1": 4498846,
-     *         "dev_2": 27136,
-     *         "dev_3": B0000001,
-     *         "unit_number": 1,
-     *         "serial": "B0000001",
-     *         "lifetime_count": 0,
-     *         "lifetime_duration": 0,
-     *         "pir_rejections": 0,
-     *         "sync_module_id": 3000001,
-     *         "network_id": 2000001,
-     *         "account_id": 1000001,
-     *         "id": 1,
-     *         "thumbnail": "/media/production/account/1001/network/2001/camera/4001/clip_HIo6g_2020_10_02__00_28AM"
-     *     }
-     * }
-     **/
+     * see: SAMPLE.CAMERA_STATUS
+     */
     async getCameraStatus(networkID, cameraID, maxTTL = 60 * 60) {
         return await this.get(`/network/${networkID}/camera/${cameraID}`, maxTTL);
     }
 
     /**
-     * {"id":750082005,"created_at":"2020-10-02T00:27:33+00:00","updated_at":"2020-10-02T00:27:33+00:00",
-     *   "execute_time":"2020-10-02T00:27:33+00:00","command":"thumbnail","state_stage":"rest",
-     *   "stage_rest":"2020-10-02T00:27:33+00:00","stage_cs_db":null,"stage_cs_sent":null,"stage_sm":null,
-     *   "stage_dev":null,"stage_is":null,"stage_lv":null,"stage_vs":null,"state_condition":"new","sm_ack":null,
-     *   "lfr_ack":null,"sequence":null,"attempts":0,"transaction":"z5fN9ToawFki9Ah_",
-     *   "player_transaction":"iY64wPA2-MUmLct1","server":null,"duration":null,
-     *   "by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,"debug":"","opts_1":0,"target":"camera",
-     *   "target_id":4000001,"parent_command_id":null,"camera_id":4000001,"siren_id":null,"firmware_id":null,
-     *   "network_id":2000001,"account_id":1000001,"sync_module_id":3000001
-     * }
-     * {"complete":false,"status":0,"status_msg":"Command succeeded","status_code":908,
-     *   "commands":[{"id":750082005,"created_at":"2020-10-02T00:27:33+00:00","updated_at":"2020-10-02T00:27:33+00:00",
-     *     "execute_time":"2020-10-02T00:27:33+00:00","command":"thumbnail","state_stage":"sm",
-     *     "stage_rest":"2020-10-02T00:27:33+00:00","stage_cs_db":"2020-10-02T00:27:33+00:00",
-     *     "stage_cs_sent":"2020-10-02T00:27:33+00:00","stage_sm":"2020-10-02T00:27:33+00:00","stage_dev":null,
-     *     "stage_is":null,"stage_lv":null,"stage_vs":null,"state_condition":"running","sm_ack":1,"lfr_ack":null,
-     *     "sequence":363,"attempts":0,"transaction":"z5fN9ToawFki9Ah_","player_transaction":"iY64wPA2-MUmLct1",
-     *     "server":null,"duration":null,"by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,"debug":"",
-     *    "opts_1":0,"target":"camera","target_id":4000001,"parent_command_id":null,"camera_id":4000001,"siren_id":null,
-     *     "firmware_id":null,"network_id":2000001,"account_id":1000001,"sync_module_id":3000001
-     *   }],"media_id":null
-     * }
-     * {"complete":true,"status":0,"status_msg":"Command succeeded","status_code":908,
-     *   "commands":[{"id":750082005,"created_at":"2020-10-02T00:27:33+00:00","updated_at":"2020-10-02T00:27:36+00:00",
-     *     "execute_time":"2020-10-02T00:27:33+00:00","command":"thumbnail","state_stage":"vs",
-     *     "stage_rest":"2020-10-02T00:27:33+00:00", "stage_cs_db":"2020-10-02T00:27:33+00:00",
-     *     "stage_cs_sent":"2020-10-02T00:27:33+00:00", "stage_sm":"2020-10-02T00:27:33+00:00",
-     *     "stage_dev":"2020-10-02T00:27:35+00:00","stage_is":null, "stage_lv":null,
-     *     "stage_vs":"2020-10-02T00:27:35+00:00","state_condition":"done","sm_ack":1,"lfr_ack":0,
-     *     "sequence":363,"attempts":0,"transaction":"z5fN9ToawFki9Ah_","player_transaction":"iY64wPA2-MUmLct1",
-     *     "server":null,"duration":null,"by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,
-     *     "debug":"{\"lfr_ok\":[2000001,1,363,205,151,159,165,0]}","opts_1":0,"target":"camera","target_id":4000001,
-     *     "parent_command_id":null,"camera_id":4000001,"siren_id":null,"firmware_id":null,"network_id":2000001,
-     *     "account_id":1000001,"sync_module_id":3000001
-     *   }],"media_id":null
-     * }
-     **/
+     * see: SAMPLE.UPDATE_THUMBNAIL
+     */
     async updateCameraThumbnail(networkID, cameraID) {
         return await this.post(`/network/${networkID}/camera/${cameraID}/thumbnail`);
     }
 
+    /**
+     * see: SAMPLE.UPDATE_CLIP
+     */
     async updateCameraClip(networkID, cameraID) {
         return await this.post(`/network/${networkID}/camera/${cameraID}/clip`);
     }
@@ -1189,21 +925,27 @@ class BlinkAPI {
         return await this.deleteMedia(clipID);
     }
 
+    /**
+     * see: SAMPLE.ENABLE_CAMERA
+     */
     async enableCameraMotion(networkID, cameraID) {
         return await this.post(`/network/${networkID}/camera/${cameraID}/enable`);
     }
 
+    /**
+     * see: SAMPLE.DISABLE_CAMERA
+     */
     async disableCameraMotion(networkID, cameraID) {
         return await this.post(`/network/${networkID}/camera/${cameraID}/disable`);
     }
 
-    async createCamera(networkID, addCameraBody) {
-        return await this.post(`/network/${networkID}/camera/add`, addCameraBody);
-    }
+    // async createCamera(networkID, addCameraBody) {
+    //     return await this.post(`/network/${networkID}/camera/add`, addCameraBody);
+    // }
 
-    async deleteCamera(networkID, cameraID) {
-        return await this.post(`/network/${networkID}/camera/${cameraID}/delete/`);
-    }
+    // async deleteCamera(networkID, cameraID) {
+    //     return await this.post(`/network/${networkID}/camera/${cameraID}/delete/`);
+    // }
 
     async getCameraMotionRegions(networkID, cameraID) {
         return await this.get(`/api/v1/accounts/{accountID}/networks/${networkID}/cameras/${cameraID}/motion_regions`);
@@ -1255,27 +997,8 @@ class BlinkAPI {
     }
 
     /**
-     * {"id":750082050,"created_at":"2020-10-02T00:27:46+00:00","updated_at":"2020-10-02T00:27:46+00:00",
-     *  "execute_time":"2020-10-02T00:27:46+00:00","command":"status","state_stage":"rest",
-     *  "stage_rest":"2020-10-02T00:27:46+00:00","stage_cs_db":null,"stage_cs_sent":null,"stage_sm":null,
-     *  "stage_dev":null,"stage_is":null,"stage_lv":null,"stage_vs":null,"state_condition":"new","sm_ack":null,
-     *  "lfr_ack":null,"sequence":null,"attempts":0,"transaction":"zAvml-R6Q785g6oD","player_transaction":"l7ikC9-cDoE",
-     *  "server":null,"duration":null,"by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,"debug":"",
-     *  "opts_1":0,"target":null,"target_id":null,"parent_command_id":null,"camera_id":4000001,"siren_id":null,
-     *  "firmware_id":null,"network_id":2000001,"account_id":1000001,"sync_module_id":3000001}
-     * {"complete":true,"status":0,"status_msg":"Command succeeded","status_code":908,"commands":[{"id":750082050,
-     *   "created_at":"2020-10-02T00:27:46+00:00","updated_at":"2020-10-02T00:27:49+00:00",
-     *   "execute_time":"2020-10-02T00:27:46+00:00","command":"status","state_stage":"is",
-     *   "stage_rest":"2020-10-02T00:27:46+00:00","stage_cs_db":"2020-10-02T00:27:46+00:00",
-     *   "stage_cs_sent":"2020-10-02T00:27:46+00:00","stage_sm":"2020-10-02T00:27:46+00:00",
-     *   "stage_dev":"2020-10-02T00:27:48+00:00","stage_is":"2020-10-02T00:27:49+00:00","stage_lv":null,
-     *   "stage_vs":null,"state_condition":"done","sm_ack":1,"lfr_ack":0,"sequence":364,"attempts":0,
-     *   "transaction":"zAvml-R6Q785g6oD","player_transaction":"l7idMspqkC9-cDoE","server":null,"duration":null,
-     *   "by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,
-     *   "debug":"{\"lfr_ok\":[2000001,1,364,206,151,158,167,0]}","opts_1":0,"target":null,"target_id":null,
-     *   "parent_command_id":null,"camera_id":4000001,"siren_id":null,"firmware_id":null,"network_id":2000001,
-     *   "account_id":1000001,"sync_module_id":3000001}],"media_id":null}
-     **/
+     * see: SAMPLE.CAMERA_STATUS
+     */
     async updateCameraStatus(networkID, cameraID) {
         return await this.post(`/network/${networkID}/camera/${cameraID}/status`);
     }
@@ -1349,7 +1072,7 @@ class BlinkAPI {
     }
 
     /**
-     *  {"lfr":5,"wifi":5,"updated_at":"2020-10-03T14:50:36+00:00","temp":78,"battery":3}
+     * see: SAMPLE.CAMERA_SIGNALS
      */
     async getCameraSignals(networkID, cameraID) {
         return await this.get(`/network/${networkID}/camera/${cameraID}/signals`);
@@ -1375,17 +1098,17 @@ class BlinkAPI {
         return await this.post(`/api/v1/networks/${networkID}/sirens/activate/`, {duration});
     }
 
-    async createSiren(networkID, addSirenNetworkBody) {
-        return await this.post(`/api/v1/networks/${networkID}/sirens/add/`, addSirenNetworkBody);
-    }
+    // async createSiren(networkID, addSirenNetworkBody) {
+    //     return await this.post(`/api/v1/networks/${networkID}/sirens/add/`, addSirenNetworkBody);
+    // }
 
     async deactivateSirens(networkID) {
         return await this.post(`/api/v1/networks/${networkID}/sirens/deactivate/`);
     }
 
-    async deleteSirens(networkID, sirenID) {
-        return await this.post(`/api/v1/networks/${networkID}/sirens/${sirenID}/delete`);
-    }
+    // async deleteSirens(networkID, sirenID) {
+    //     return await this.post(`/api/v1/networks/${networkID}/sirens/${sirenID}/delete`);
+    // }
 
     async updateSiren(networkID, sirenID, sirenNameBody) {
         return await this.post(`/api/v1/networks/${networkID}/sirens/${sirenID}/update`, sirenNameBody);
@@ -1408,43 +1131,8 @@ class BlinkAPI {
      */
 
     /**
-     *
-     * {
-     *     "name": "G8T1-8888-0000-CCCC",
-     *     "updated_at": "2020-10-25T18:42:55+00:00",
-     *     "fw_version": "9.63",
-     *     "enabled": false,
-     *     "led_enabled": true,
-     *     "led_state": "off",
-     *     "status": "online",
-     *     "video_quality": "best",
-     *     "clip_length_max": 30,
-     *     "clip_length": 30,
-     *     "retrigger_time": 10,
-     *     "motion_sensitivity": 5,
-     *     "motion_regions": 33554431,
-     *     "advanced_motion_regions": [4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095],
-     *     "early_termination": false,
-     *     "night_vision_control": "normal",
-     *     "early_notification": false,
-     *     "early_notification_compatible": true,
-     *     "early_termination_supported": true,
-     *     "illuminator_enable": "auto",
-     *     "illuminator_enable_v2": "auto",
-     *     "illuminator_duration": 1,
-     *     "illuminator_intensity": 4,
-     *     "record_audio_enable": false,
-     *     "volume_control": 7,
-     *     "wifi": 5,
-     *     "video_recording_enable": false,
-     *     "video_recording_optional": true,
-     *     "flip_video": false,
-     *     "flip_video_compatible": true,
-     *     "local_storage_enabled": false,
-     *     "local_storage_compatible": false
-     * }
+     * see: SAMPLE.OWL_CONFIG
      */
-
     async getOwlConfig(networkID, owlID) {
         return await this.get(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/config`);
     }
@@ -1467,96 +1155,55 @@ class BlinkAPI {
         return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/thumbnail`);
     }
 
-    async createOwl(networkID, addOwlBody) {
-        return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/add`, addOwlBody);
-    }
+    // async createOwl(networkID, addOwlBody) {
+    //     return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/add`, addOwlBody);
+    // }
 
     async changeOwlWifi(networkID, owlID, onboardingStartRequest) {
         return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/change_wifi`,
             onboardingStartRequest);
     }
 
-    async deleteOwl(networkID, owlID) {
-        return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/delete`);
-    }
+    // async deleteOwl(networkID, owlID) {
+    //     return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/delete`);
+    // }
 
-    async addOwl(networkID, onboardingStartRequest) {
-        return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/add`, onboardingStartRequest);
-    }
+    // async addOwl(networkID, onboardingStartRequest) {
+    //    return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/add`, onboardingStartRequest);
+    // }
 
     /**
      * METWORK
      */
 
     /**
-     * {"summary":{"2000001":{"name":"82 Downing","onboarded":true}},
-     *   "networks":[{"id":2000001,
-     *     "created_at":"2016-02-13T19:15:54+00:00","updated_at":"2020-10-02T00:29:30+00:00",
-     *     "name":"82 Downing","network_key":"hifSnlicp+k4bLA=","description":"","network_origin":"normal",
-     *     "locale":"","time_zone":"America/Toronto","dst":true,"ping_interval":60,"encryption_key":null,
-     *     "armed":false,"autoarm_geo_enable":false,"autoarm_time_enable":false,"lv_mode":"relay",
-     *     "lfr_channel":0,"video_destination":"server","storage_used":0,"storage_total":0,"video_count":0,
-     *     "video_history_count":4000,"sm_backup_enabled":false,"arm_string":"Disarmed","busy":false,
-     *     "camera_error":false,"sync_module_error":false,"feature_plan_id":null,"account_id":1000001}]}
-     **/
+     * see: SAMPLE.NETWORKS
+     */
     async getNetworks() {
         return await this.get(`/networks`);
     }
 
     /**
-     * {"id":750082190,"network_id":2000001,"command":"arm","state":"new",
-     * "commands":[{"id":750082191,"network_id":2000001, "command":"config_lfr","state":"running"},
-     * {"id":750082192,"network_id":2000001,"command":"config_lfr","state":"running"}]}
-     **/
+     * see: SAMPLE.ARM_NETWORK
+     */
     async armNetwork(networkID) {
         return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/state/arm`);
     }
 
     /**
-     * {"id":750082372,"network_id":2000001,"command":"disarm","state":"new",
-     *   "commands":[{"id":750082373,"network_id":2000001,"command":"config_lfr","state":"running"},
-     *     {"id":750082374,"network_id":2000001,"command":"config_lfr","state":"running"}]}
-     * {"complete":true,"status":0,"status_msg":"Command succeeded","status_code":908,
-     *   "commands":[{"id":750082372,"created_at":"2020-10-02T00:28:42+00:00",
-     *     "updated_at":"2020-10-02T00:28:42+00:00","execute_time":"2020-10-02T00:28:42+00:00","command":"disarm",
-     *     "state_stage":"sm","stage_rest":"2020-10-02T00:28:42+00:00","stage_cs_db":"2020-10-02T00:28:42+00:00",
-     *     "stage_cs_sent":"2020-10-02T00:28:42+00:00","stage_sm":"2020-10-02T00:28:42+00:00","stage_dev":null,
-     *     "stage_is":null,"stage_lv":null,"stage_vs":null,"state_condition":"done","sm_ack":1,"lfr_ack":null,
-     *     "sequence":368,"attempts":0,"transaction":"9YCMRT02qHTVq2zI","player_transaction":"EzfAxyTe_d2fOBjK",
-     *     "server":null,"duration":null,"by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,"debug":"",
-     *     "opts_1":0,"target":null,"target_id":null,"parent_command_id":null,"camera_id":null,"siren_id":null,
-     *     "firmware_id":null,"network_id":2000001,"account_id":1000001,"sync_module_id":3000001},{"id":750082373,
-     *     "created_at":"2020-10-02T00:28:42+00:00","updated_at":"2020-10-02T00:28:44+00:00",
-     *     "execute_time":"2020-10-02T00:28:42+00:00","command":"config_lfr","state_stage":"dev",
-     *     "stage_rest":"2020-10-02T00:28:42+00:00","stage_cs_db":null,"stage_cs_sent":null,"stage_sm":null,
-     *     "stage_dev":"2020-10-02T00:28:44+00:00","stage_is":null,"stage_lv":null,"stage_vs":null,
-     *     "state_condition":"done","sm_ack":null,"lfr_ack":0,"sequence":null,"attempts":0,
-     *     "transaction":"gIGTT5DqPQFAVi2-","player_transaction":"2clJK8w8ylh4EOvP","server":null,"duration":null,
-     *     "by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,
-     *     "debug":"{\"lfr_ok\":[2000001,1,368,206,153,157,167,0]}","opts_1":0,"target":"camera","target_id":4000001,
-     *     "parent_command_id":750082372,"camera_id":4000001,"siren_id":null,"firmware_id":null,"network_id":2000001,
-     *     "account_id":1000001,"sync_module_id":3000001},{"id":750082374,"created_at":"2020-10-02T00:28:42+00:00",
-     *     "updated_at":"2020-10-02T00:28:44+00:00","execute_time":"2020-10-02T00:28:42+00:00","command":"config_lfr",
-     *     "state_stage":"dev","stage_rest":"2020-10-02T00:28:42+00:00","stage_cs_db":null,"stage_cs_sent":null,
-     *     "stage_sm":null,"stage_dev":"2020-10-02T00:28:44+00:00","stage_is":null,"stage_lv":null,"stage_vs":null,
-     *     "state_condition":"done","sm_ack":null,"lfr_ack":0,"sequence":null,"attempts":0,"transaction":"PoVq-TaTajuR",
-     *     "player_transaction":"TSJ1eLMJawm5zp5a","server":null,"duration":null,
-     *     "by_whom":"unknown - 6.1.1 (8854) #e06341d7f","diagnostic":false,
-     *     "debug":"{\"lfr_ok\":[2000001,2,368,215,144,149,171,0]}","opts_1":0,"target":"camera","target_id":13812,
-     *     "parent_command_id":750082372,"camera_id":13812,"siren_id":null,"firmware_id":null,"network_id":2000001,
-     *     "account_id":1000001,"sync_module_id":3000001}],"media_id":null}
-     **/
+     * see: SAMPLE.DISARM_NETWORK
+     */
     async disarmNetwork(networkID) {
         return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/state/disarm`);
     }
 
-    async createNetwork(addNetworkBody) {
-        return await this.post(`/network/add`, addNetworkBody);
-    }
+    // async createNetwork(addNetworkBody) {
+    //     return await this.post(`/network/add`, addNetworkBody);
+    // }
 
-    async deleteNetwork(networkID) {
-        return await this.post(`/network/${networkID}/delete`);
-    }
+    // async deleteNetwork(networkID) {
+    //     return await this.post(`/network/${networkID}/delete`);
+    // }
 
     /**
      * POST {"dst":true,"lv_mode":"relay","time_zone":"America\/Toronto"}
@@ -1573,17 +1220,20 @@ class BlinkAPI {
         return await this.post(`/network/${networkID}/update`, updateNetworkSaveAllLiveViews);
     }
 
+    /**
+     * see: SAMPLE.DEVICE
+     */
     async getDevice(serialNumber) {
         return await this.get(`/api/v1/devices/identify/${serialNumber}`);
     }
 
-    async addSyncModuleDevice(networkID, type, onboardingStartRequest) {
-        return await this.post(`/api/v2/network/${networkID}/sync_module/${type}`);
-    }
+    // async addSyncModuleDevice(networkID, type, onboardingStartRequest) {
+    //     return await this.post(`/api/v2/network/${networkID}/sync_module/${type}`);
+    // }
 
-    async deleteSyncModule(networkID, syncModuleID) {
-        return await this.post(`/network/${networkID}/syncmodule/${syncModuleID}/delete/`);
-    }
+    // async deleteSyncModule(networkID, syncModuleID) {
+    //     return await this.post(`/network/${networkID}/syncmodule/${syncModuleID}/delete/`);
+    // }
 
     async updateSystem(networkID, updateSystemNameBody) {
         return await this.post(`/network/${networkID}/update`, updateSystemNameBody);
@@ -1597,37 +1247,29 @@ class BlinkAPI {
      * BLINK CORE
      */
 
-    // {
-    // "message": "The Blink Cloud service is operating normally.",
-    // "message_code": 0,
-    // "message_params": [],
-    // "check_interval": 60,
-    // "next_check_time": "2020-10-03T15:23:03Z",
-    // "monitor_last_update": "2020-10-03T15:22:58Z",
-    // "url": ""
-    // }
+    /**
+     * see: SAMPLE.BLINK_STATUS
+     */
     async getBlinkStatus(tier = 'prod') {
         return await this.get(`https://blinkstatus.net/api/v1/${tier}`);
     }
 
-    // {}
+    /**
+     * see: SAMPLE.BLINK_SUPPORT
+     */
     async getBlinkSupport() {
         return await this.get(`/api/v2/support/ob_phone/`);
     }
 
-    // {"message":"OK","code":103,"update_available":false,"update_required":false}
+    /**
+     * see: SAMPLE.BLINK_APP_VERSION
+     */
     async getBlinkAppVersion() {
         return await this.get(`/api/v1/version`);
     }
 
     /**
-     *
-     * {"preferred":"usu026","regions":{"usu026":{"display_order":1,"dns":"u026",
-     *   "friendly_name":"United States - EAST","registration":true},
-     *   "usu019":{"display_order":2,"dns":"u019","friendly_name":"United States - CENTRAL","registration":true},
-     *   "usu015":{"display_order":3,"dns":"u015","friendly_name":"United States - WEST","registration":true},
-     *   "e003":{"display_order":4,"dns":"e003","friendly_name":"Europe","registration":true},
-     *   "sg":{"display_order":5,"dns":"prsg","friendly_name":"Southeast Asia","registration":true}}}
+     * see: SAMPLE.BLINK_REGIONS
      */
     async getBlinkRegions(country = 'US') {
         return await this.get(`/regions?locale=${country}`);

@@ -78,8 +78,8 @@ describe('Blink', () => {
             expect(cameraDevice.lowBattery).toBe(false);
             expect(await cameraDevice.getBattery()).toBe(73);
             expect(await cameraDevice.getWifiSSR()).toBe(-52);
-            expect(cameraDevice.getTemperature()).toBe(16.7);
-            expect(cameraDevice.getTemperature()).toBe(16.7);
+            expect(cameraDevice.temperature).toBe(16.7);
+            expect(cameraDevice.temperature).toBe(16.7);
             expect(cameraDevice.armed).toBe(true);
             expect(cameraDevice.enabled).toBe(true);
             expect(cameraDevice.getEnabled()).toBe(true);
@@ -94,7 +94,7 @@ describe('Blink', () => {
             expect(miniCameraDevice.lowBattery).toBeNull();
             expect(await miniCameraDevice.getBattery()).toBeNull();
             expect(await miniCameraDevice.getWifiSSR()).toBeNull();
-            expect(miniCameraDevice.getTemperature()).toBeNull();
+            expect(miniCameraDevice.temperature).toBeNull();
             expect(miniCameraDevice.armed).toBe(false);
             expect(miniCameraDevice.enabled).toBe(true);
             expect(miniCameraDevice.getEnabled()).toBe(true);

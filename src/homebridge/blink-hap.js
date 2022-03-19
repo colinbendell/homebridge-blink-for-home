@@ -1,9 +1,27 @@
-const BlinkCameraDelegate = require('../blink-camera-deligate');
-const {Blink, BlinkNetwork, BlinkCamera} = require('../blink');
+const BlinkCameraDelegate = require('./blink-camera-deligate');
+const {Blink, BlinkDevice, BlinkNetwork, BlinkCamera} = require('../blink');
 const {Accessory, Categories, Characteristic, Service, UUIDGen} = require('./hap');
 const {log} = require('../log');
 
 const ARMED_DELAY = 60; // 60s
+const DEFAULT_OPTIONS = {
+    username: null,
+    password: null,
+    pin: null,
+    alarm: true,
+    manualArmSwitch: true,
+    enabledSwitch: true,
+    privacySwitch: true,
+    liveView: true,
+    avoidThumbnailBatteryDrain: true,
+    cameraThumbnailRefreshSeconds: Blink.THUMBNAIL_TTL,
+    cameraStatusPollingSeconds: Blink.STATUS_POLL,
+    cameraMotionPollingSeconds: Blink.MOTION_POLL,
+    verbose: false,
+    debug: false,
+    startupDiagnostic: false,
+};
+
 // const StreamingStatusTypes = {STATUS: 0x01};
 
 // const StreamingStatus = {
@@ -12,12 +30,21 @@ const ARMED_DELAY = 60; // 60s
 //     UNAVAILABLE: 0x02, // other reasons
 // };
 
-class BlinkDeviceHAP {
+class BlinkDeviceHAP extends BlinkDevice {
+    constructor(data, blink) {
+        super(data, blink);
+    }
+
     static bindCharacteristic(service, characteristic, desc, getFunc, setFunc, format) {
         const getCallback = async callback => {
-            await Promise.resolve(getFunc.bind(this)())
-                .then(res => callback(null, res))
-                .catch(err => log.error(err) && callback(err));
+            try {
+                const res = await Promise.resolve(getFunc.call(this));
+                callback(null, res);
+            }
+            catch (err) {
+                log.error(err);
+                callback(err);
+            }
         };
         const changeCallback = change => {
             let disp = change.newValue;
@@ -28,9 +55,14 @@ class BlinkDeviceHAP {
         };
 
         const setCallback = async (val, callback) => {
-            await Promise.resolve(setFunc.bind(this)(val))
-                .then(res => callback(null, res))
-                .catch(err => log.error(err) && callback(err));
+            try {
+                await Promise.resolve(setFunc.call(this, val));
+                callback(null);
+            }
+            catch (err) {
+                log.error(err);
+                callback(err);
+            }
         };
 
         const actual = service.getCharacteristic(characteristic);
@@ -45,18 +77,18 @@ class BlinkDeviceHAP {
     createAccessory(cachedAccessories = [], category = null) {
         if (this.accessory) return this;
 
-        log('Initing: ' + this.canonicalID);
+        log('ADD: ' + this.canonicalID);
 
         this.uuid = UUIDGen.generate(this.canonicalID);
 
         this.accessory = new Accessory(`Blink ${this.name}`, this.uuid, category);
 
-        this.accessory.getService(Service.AccessoryInformation)
-            .setCharacteristic(Characteristic.FirmwareRevision, this.firmware || 'Unknown')
-            .setCharacteristic(Characteristic.Manufacturer, 'Blink')
-            .setCharacteristic(Characteristic.Model, this.model || 'Unknown')
+        const service = this.accessory.getService(Service.AccessoryInformation)
             .setCharacteristic(Characteristic.Name, this.name)
-            .setCharacteristic(Characteristic.SerialNumber, this.serial || 'None');
+            .setCharacteristic(Characteristic.Manufacturer, 'Blink');
+        if (this.firmware) service.setCharacteristic(Characteristic.FirmwareRevision, this.firmware);
+        if (this.model) service.setCharacteristic(Characteristic.Model, this.model);
+        if (this.serial) service.setCharacteristic(Characteristic.SerialNumber, this.serial);
 
         // TODO: add online state
         this.accessory.context.canonicalID = this.canonicalID;
@@ -144,11 +176,11 @@ class BlinkNetworkHAP extends BlinkNetwork {
     createAccessory(cachedAccessories = []) {
         if (this.accessory) return this;
 
-        if (!this.blink.config.alarm && !this.blink.config.manualArmSwitch) return this;
+        if (!this.blink?.config?.alarm && !this.blink?.config?.manualArmSwitch) return this;
 
         super.createAccessory(cachedAccessories, Categories.SECURITY_SYSTEM);
 
-        if (this.blink.config.alarm) {
+        if (this.blink?.config?.alarm) {
             const securitySystem = this.accessory.addService(Service.SecuritySystem);
             BlinkDeviceHAP.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState,
                 `${this.name} Armed (Current)`, this.getCurrentArmedState);
@@ -162,9 +194,9 @@ class BlinkNetworkHAP extends BlinkNetwork {
             ];
             securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({validValues});
         }
-        if (this.blink.config.manualArmSwitch) {
-            const occupiedService = this.accessory.addService(Service.Switch, `${this.name} Arm`,
-                'armed.' + this.serial);
+        if (this.blink?.config?.manualArmSwitch) {
+            const occupiedService = this.accessory.addService(Service.Switch,
+                `${this.name} Arm`, `armed.${this.serial}`);
             BlinkDeviceHAP.bindCharacteristic(occupiedService, Characteristic.On,
                 `${this.name} Arm`, this.getManualArmed, this.setManualArmed);
             BlinkDeviceHAP.bindCharacteristic(occupiedService, Characteristic.Name,
@@ -198,7 +230,7 @@ class BlinkCameraHAP extends BlinkCamera {
         if (this.accessory) return this;
         super.createAccessory(cachedAccessories, Categories.CAMERA);
 
-        const cameraDelegate = new BlinkCameraDelegate(this, log);
+        const cameraDelegate = new BlinkCameraDelegate(this);
 
         this.accessory.configureController(cameraDelegate.controller);
 
@@ -217,8 +249,8 @@ class BlinkCameraHAP extends BlinkCamera {
         // const microphone = this.accessory.addService(Service.Microphone);
         // this.bindCharacteristic(microphone, Characteristic.Mute, 'Microphone', () => false);
 
-        const motionService = this.accessory.addService(Service.MotionSensor, `Motion Detected`,
-            'motion-sensor.' + this.serial);
+        const motionService = this.accessory.addService(Service.MotionSensor,
+            `Motion Detected`, `motion-sensor.${this.serial}`);
         BlinkDeviceHAP.bindCharacteristic(motionService, Characteristic.MotionDetected,
             'Motion', this.getMotionDetected);
         BlinkDeviceHAP.bindCharacteristic(motionService, Characteristic.StatusActive,
@@ -226,15 +258,16 @@ class BlinkCameraHAP extends BlinkCamera {
 
         if (this.blink.config.enabledSwitch) {
             // No idea how to set the motion enabled/disabled on minis
-            const enabledSwitch = this.accessory.addService(Service.Switch, `Enabled`, 'enabled.' + this.serial);
+            const enabledSwitch = this.accessory.addService(Service.Switch,
+                `Enabled`, `enabled.${this.serial}`);
             BlinkDeviceHAP.bindCharacteristic(enabledSwitch, Characteristic.On,
                 'Enabled', this.getEnabled, this.setEnabled);
         }
 
-        if (!this.isCameraMini()) {
+        if (!this.isCameraMini) {
             // Battery Levels are only available in non Minis
-            const batteryService = this.accessory.addService(Service.BatteryService, `Battery`,
-                'battery-sensor.' + this.serial);
+            const batteryService = this.accessory.addService(Service.BatteryService,
+                `Battery`, `battery-sensor.${this.serial}`);
             BlinkDeviceHAP.bindCharacteristic(batteryService, Characteristic.BatteryLevel,
                 'Battery Level', this.getBattery);
             BlinkDeviceHAP.bindCharacteristic(batteryService, Characteristic.ChargingState,
@@ -243,19 +276,19 @@ class BlinkCameraHAP extends BlinkCamera {
                 'Battery LowBattery', this.getLowBattery);
 
             // no temperaure sensor on the minis
-            const tempService = this.accessory.addService(Service.TemperatureSensor, `Temperature`,
-                'temp-sensor.' + this.serial);
+            const tempService = this.accessory.addService(Service.TemperatureSensor,
+                `Temperature`, `temp-sensor.${this.serial}`);
             // allow negative values
             tempService.getCharacteristic(Characteristic.CurrentTemperature).setProps({minValue: -100});
             BlinkDeviceHAP.bindCharacteristic(tempService, Characteristic.CurrentTemperature,
-                'Temperature', this.getTemperature);
+                'Temperature', () => this.temperature);
             BlinkDeviceHAP.bindCharacteristic(tempService, Characteristic.StatusActive,
                 'Temperature Sensor Active', () => true);
         }
 
-        if (!this.blink.config.privacySwitch) {
-            const privacyModeService = this.accessory.addService(Service.Switch, `Privacy Mode`,
-                'privacy.' + this.serial);
+        if (!this.blink?.config?.privacySwitch) {
+            const privacyModeService = this.accessory.addService(Service.Switch,
+                `Privacy Mode`, `privacy.${this.serial}`);
             BlinkDeviceHAP.bindCharacteristic(privacyModeService, Characteristic.On,
                 'Privacy Mode', this.getPrivacyMode, this.setPrivacyMode);
         }
@@ -273,7 +306,39 @@ class BlinkCameraHAP extends BlinkCamera {
 
 class BlinkHAP extends Blink {
     constructor(clientUUID, auth, config = {}) {
-        super(clientUUID, auth, config);
+        config = BlinkHAP.normalizeConfig(config);
+        super(clientUUID, auth, config.statusPollingSeconds, config.motionPollingSeconds, config.snapshotSeconds);
+    }
+    static normalizeConfig(config) {
+        const newConfig = Object.assign({}, DEFAULT_OPTIONS, config || {});
+        const checkValue = function(key, propName, cast = Boolean) {
+            if ((key in newConfig) && newConfig[key] !== '' && newConfig[key] !== null) {
+                const newValue = cast(newConfig[key]);
+                if (newValue !== null && (cast !== Number || !Number.isNaN(newValue))) {
+                    newConfig[propName] = newValue;
+                    // invert the property value
+                    if (/^(hide|disable|no)/.test(key)) newConfig[propName] = !newConfig[propName];
+                }
+            }
+        };
+        checkValue('hide-alarm', 'alarm');
+        checkValue('hide-manual-arm-switch', 'manualArmSwitch');
+        checkValue('hide-enabled-switch', 'enabledSwitch');
+        checkValue('hide-privacy-switch', 'privacySwitch');
+        checkValue('enable-liveview', 'liveView');
+        checkValue('avoid-thumbnail-battery-drain', 'avoidThumbnailBatteryDrain');
+        checkValue('camera-thumbnail-refresh-seconds', 'snapshotSeconds', Number);
+        checkValue('camera-status-polling-seconds', 'statusPollingSeconds', Number);
+        checkValue('camera-motion-polling-seconds', 'motionPollingSeconds', Number);
+        checkValue('enable-verbose-logging', 'verbose');
+        checkValue('enable-debug-logging', 'debug');
+        checkValue('enable-startup-diagnostic', 'startupDiagnostic');
+
+        // special use case of a -1 which effectively disables
+        if (newConfig.snapshotSeconds <= 0) {
+            newConfig.snapshotSeconds = Number.MAX_SAFE_INTEGER;
+        }
+        return newConfig;
     }
 
     createNetwork(data) {

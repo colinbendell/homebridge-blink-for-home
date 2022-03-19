@@ -11,23 +11,6 @@ const MOTION_POLL = 20;
 const STATUS_POLL = 45;
 const ARMED_DELAY = 60; // 60s
 const MOTION_TRIGGER_DECAY = 90; // 90s
-const DEFAULT_OPTIONS = {
-    username: null,
-    password: null,
-    pin: null,
-    alarm: true,
-    manualArmSwitch: true,
-    enabledSwitch: true,
-    privacySwitch: true,
-    liveView: true,
-    avoidThumbnailBatteryDrain: true,
-    cameraThumbnailRefreshSeconds: THUMBNAIL_TTL,
-    cameraStatusPollingSeconds: STATUS_POLL,
-    cameraMotionPollingSeconds: MOTION_POLL,
-    verbose: false,
-    debug: false,
-    startupDiagnostic: false,
-};
 
 // const OFFLINE_BYTES = fs.readFileSync(`${__dirname}/offline.png`);
 const PRIVACY_BYTES = fs.readFileSync(`${__dirname}/privacy.png`);
@@ -39,6 +22,10 @@ class BlinkDevice {
         this._data = data;
         this._prefix = 'Blink ';
         this._context = {};
+    }
+
+    get canonicalID() {
+        return `Blink:Device:${this.networkID}`;
     }
 
     get networkID() {
@@ -216,7 +203,7 @@ class BlinkCamera extends BlinkDevice {
         return this.model === 'owl';
     }
 
-    getTemperature() {
+    get temperature() {
         return fahrenheitToCelsius(this.data?.signals?.temp) || null;
     }
 
@@ -251,15 +238,15 @@ class BlinkCamera extends BlinkDevice {
     async getMotionDetected() {
         if (!this.armed) return false;
 
-        const lastDeviceUpdate = Math.max(this.updatedAt, this.network.updatedAt, 0) + MOTION_TRIGGER_DECAY * 1000;
+        const lastDeviceUpdate = Math.max(this.updatedAt, this.network.updatedAt, 0) + Blink.MOTION_TRIGGER_DECAY * 1000;
         if (Date.now() > lastDeviceUpdate) return false;
 
         const lastMotion = await this.blink.getCameraLastMotion(this.networkID, this.cameraID);
         if (!lastMotion) return false;
 
-        const triggerEnd = (Date.parse(lastMotion?.created_at) || 0) + MOTION_TRIGGER_DECAY * 1000;
+        const triggerEnd = (Date.parse(lastMotion?.created_at) || 0) + Blink.MOTION_TRIGGER_DECAY * 1000;
         // use the last time we armed or the current updated_at field to determine if the motion was recent
-        const triggerStart = (this.network.armedAt || this.network.updatedAt || 0) - ARMED_DELAY * 1000;
+        const triggerStart = (this.network.armedAt || this.network.updatedAt || 0) - Blink.ARMED_DELAY * 1000;
 
         return Date.now() >= triggerStart && Date.now() <= triggerEnd;
     }
@@ -317,39 +304,11 @@ BlinkCamera.PRIVACY_BYTES = PRIVACY_BYTES;
 BlinkCamera.DISABLED_BYTES = DISABLED_BYTES;
 
 class Blink {
-    static normalizeConfig(config) {
-        const newConfig = Object.assign({}, DEFAULT_OPTIONS, config || {});
-        const checkValue = function(key, propName, cast = Boolean) {
-            if ((key in newConfig) && newConfig[key] !== '' && newConfig[key] !== null) {
-                const newValue = cast(newConfig[key]);
-                if (newValue !== null && (cast !== Number || !Number.isNaN(newValue))) {
-                    newConfig[propName] = newValue;
-                    // invert the property value
-                    if (/^(hide|disable|no)/.test(key)) newConfig[propName] = !newConfig[propName];
-                }
-            }
-        };
-        checkValue('hide-alarm', 'alarm');
-        checkValue('hide-manual-arm-switch', 'manualArmSwitch');
-        checkValue('hide-enabled-switch', 'enabledSwitch');
-        checkValue('hide-privacy-switch', 'privacySwitch');
-        checkValue('enable-liveview', 'liveView');
-        checkValue('avoid-thumbnail-battery-drain', 'avoidThumbnailBatteryDrain');
-        checkValue('camera-thumbnail-refresh-seconds', 'cameraThumbnailRefreshSeconds', Number);
-        checkValue('camera-status-polling-seconds', 'cameraStatusPollingSeconds', Number);
-        checkValue('camera-motion-polling-seconds', 'cameraMotionPollingSeconds', Number);
-        checkValue('enable-verbose-logging', 'verbose');
-        checkValue('enable-debug-logging', 'debug');
-        checkValue('enable-startup-diagnostic', 'startupDiagnostic');
-
-        if (newConfig.cameraThumbnailRefreshSeconds <= 0) {
-            newConfig.cameraThumbnailRefreshSeconds = Number.MAX_SAFE_INTEGER;
-        }
-        return newConfig;
-    }
-    constructor(clientUUID, auth, config = {}) {
-        this.config = Blink.normalizeConfig(config);
+    constructor(clientUUID, auth, statusPoll = STATUS_POLL, motionPoll = MOTION_POLL, snapshotRate = THUMBNAIL_TTL) {
         this.blinkAPI = new BlinkAPI(clientUUID, auth);
+        this.statusPoll = statusPoll;
+        this.motionPoll = motionPoll;
+        this.snapshotRate = snapshotRate;
     }
 
     createNetwork(data) {
@@ -460,95 +419,93 @@ class Blink {
             anonRegexMap.set(value, new RegExp(`\\b${key}\\b`, 'g'));
         }
 
-        function anonymize(obj) {
-            let output = stringify(Buffer.isBuffer(obj) ? [] : obj);
+        const anonymize = async p => {
+            const res = await Promise.resolve(p).catch(e => log.error(e));
+            let output = stringify(Buffer.isBuffer(res) ? [] : res);
             for (const [replaceValue, anonRegex] of anonRegexMap.entries()) {
                 output = output.replaceAll(anonRegex, replaceValue);
             }
             log(output);
-        }
+        };
+
         log('login()');
-        anonymize(login);
+        await anonymize(login);
         log('getAccountHomescreen()');
-        anonymize(homescreen);
+        await anonymize(homescreen);
         if (homescreen) {
             log('getMediaChange()');
-            anonymize(await this.blinkAPI.getMediaChange().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getMediaChange());
             log('getAccount()');
-            anonymize(account);
+            await anonymize(account);
             log('getAccountNotifications()');
-            anonymize(await this.blinkAPI.getAccountNotifications().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getAccountNotifications());
             log('getAccountOptions()');
-            anonymize(await this.blinkAPI.getAccountOptions().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getAccountOptions());
             log('getAccountStatus()');
-            anonymize(await this.blinkAPI.getAccountStatus().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getAccountStatus());
             log('getAppStatus()');
-            anonymize(await this.blinkAPI.getAppStatus('IOS_8854').catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getAppStatus('IOS_8854'));
             log('getBlinkAppVersion()');
-            anonymize(await this.blinkAPI.getBlinkAppVersion().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getBlinkAppVersion());
             log('getBlinkRegions()');
-            anonymize(await this.blinkAPI.getBlinkRegions().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getBlinkRegions());
             log('getBlinkStatus()');
-            anonymize(await this.blinkAPI.getBlinkStatus().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getBlinkStatus());
             log('getBlinkSupport()');
-            anonymize(await this.blinkAPI.getBlinkSupport().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getBlinkSupport());
             log('getClientOptions()');
-            anonymize(await this.blinkAPI.getClientOptions().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getClientOptions());
             log('getNetworks()');
-            anonymize(await this.blinkAPI.getNetworks().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getNetworks());
             log('getSirens()');
-            anonymize(await this.blinkAPI.getSirens().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getSirens());
             log('getCameraUsage()');
-            anonymize(await this.blinkAPI.getCameraUsage().catch(e => log.error(e)));
+            await anonymize(this.blinkAPI.getCameraUsage());
 
             for (const network of homescreen.networks) {
                 log('getNetworkSirens()');
-                anonymize(await this.blinkAPI.getNetworkSirens(network.id).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getNetworkSirens(network.id));
                 log('getPrograms()');
-                anonymize(await this.blinkAPI.getPrograms(network.id).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getPrograms(network.id));
             }
             for (const sm of homescreen.sync_modules) {
                 log('getSyncModuleFirmware()');
-                anonymize(await this.blinkAPI.getSyncModuleFirmware(sm.serial).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getSyncModuleFirmware(sm.serial));
                 log('getDevice()');
-                anonymize(await this.blinkAPI.getDevice(sm.serial).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getDevice(sm.serial));
             }
 
             for (const camera of homescreen.cameras) {
                 log('getCameraConfig()');
-                anonymize(await this.blinkAPI.getCameraConfig(camera.network_id, camera.id).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getCameraConfig(camera.network_id, camera.id));
 
                 log('getCameraMotionRegions()');
-                anonymize(await this.blinkAPI.getCameraMotionRegions(camera.network_id, camera.id)
-                    .catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getCameraMotionRegions(camera.network_id, camera.id));
                 log('getCameraSignals()');
-                anonymize(await this.blinkAPI.getCameraSignals(camera.network_id, camera.id).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getCameraSignals(camera.network_id, camera.id));
                 log('getCameraStatus()');
-                anonymize(await this.blinkAPI.getCameraStatus(camera.network_id, camera.id, 0)
-                    .catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getCameraStatus(camera.network_id, camera.id, 0));
                 // log('getCameraLiveViewV5()');
-                // anonymize(await this.blinkAPI.getCameraLiveViewV5(camera.network_id, camera.id)
-                //     .catch(e => log.error(e))));
+                // await anonymize(this.blinkAPI.getCameraLiveViewV5(camera.network_id, camera.id)));
                 log('getDevice()');
-                anonymize(await this.blinkAPI.getDevice(camera.serial).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getDevice(camera.serial));
             }
 
             for (const owl of homescreen.owls) {
                 log('getOwlConfig()');
-                anonymize(await this.blinkAPI.getOwlConfig(owl.network_id, owl.id).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getOwlConfig(owl.network_id, owl.id));
                 log('getOwlMotionRegions()');
-                anonymize(await this.blinkAPI.getCameraMotionRegions(owl.network_id, owl.id).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getCameraMotionRegions(owl.network_id, owl.id));
                 log('getOwlSignals()');
-                anonymize(await this.blinkAPI.getCameraSignals(owl.network_id, owl.id).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getCameraSignals(owl.network_id, owl.id));
                 log('getOwlStatus()');
-                anonymize(
-                    await this.blinkAPI.getCameraStatus(owl.network_id, owl.id, 0).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getCameraStatus(owl.network_id, owl.id, 0));
                 log('getOwlFirmware()');
-                anonymize(await this.blinkAPI.getOwlFirmware(owl.serial).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getOwlFirmware(owl.serial));
                 log('getDevice()');
-                anonymize(await this.blinkAPI.getDevice(owl.serial).catch(e => log.error(e)));
+                await anonymize(this.blinkAPI.getDevice(owl.serial));
                 // log('getOwlLiveView()');
-                // anonymize(await this.blinkAPI.getOwlLiveView().catch(e => log.error(e))));
+                // await anonymize(this.blinkAPI.getOwlLiveView()));
             }
         }
 
@@ -556,7 +513,7 @@ class Blink {
     }
 
     async refreshData(force = false) {
-        const ttl = force ? 0 : this.config.cameraStatusPollingSeconds;
+        const ttl = force ? 0 : this.statusPoll;
         const homescreen = await this.blinkAPI.getAccountHomescreen(ttl);
         homescreen.cameras.push(...homescreen.owls);
 
@@ -609,7 +566,7 @@ class Blink {
             .filter(camera => !cameraID || camera.cameraID === cameraID);
 
         const status = await Promise.all(cameras.map(async camera => {
-            const lastSnapshot = camera.thumbnailCreatedAt + (this.config.cameraThumbnailRefreshSeconds * 1000);
+            const lastSnapshot = camera.thumbnailCreatedAt + (this.snapshotRate * 1000);
             if (force || (camera.armed && camera.enabled && Date.now() >= lastSnapshot)) {
                 try {
                     log(`Refreshing snapshot for ${camera.name}`);
@@ -641,7 +598,7 @@ class Blink {
 
         const status = await Promise.all(cameras.map(async camera => {
             const lastMedia = await this.getCameraLastMotion(camera.networkID, camera.cameraID);
-            const lastSnapshot = Date.parse(lastMedia.created_at) + (this.config.cameraThumbnailRefreshSeconds * 1000);
+            const lastSnapshot = Date.parse(lastMedia.created_at) + (this.snapshotRate * 1000);
             if (force || (camera.armed && camera.enabled && Date.now() >= lastSnapshot)) {
                 try {
                     log(`Refreshing clip for ${camera.name}`);
@@ -704,8 +661,7 @@ class Blink {
     }
 
     async getCameraLastMotion(networkID, cameraID = null) {
-        const motionPoll = this.config.cameraMotionPollingSeconds;
-        const res = await this.blinkAPI.getMediaChange(motionPoll);
+        const res = await this.blinkAPI.getMediaChange(this.motionPoll);
         const media = (res.media || [])
             .filter(m => !networkID || m.network_id === networkID)
             .filter(m => !cameraID || m.device_id === cameraID)
@@ -755,7 +711,7 @@ class Blink {
         }
 
         // TODO: we should stash and keep track of this
-        this._commandWait(camera.networkID, res.command_id, timeout * 1000);
+        await this._commandWait(camera.networkID, res.command_id, timeout * 1000);
 
         return res;
     }
@@ -768,5 +724,10 @@ class Blink {
         network.commandID = null;
     }
 }
+Blink.THUMBNAIL_TTL = THUMBNAIL_TTL;
+Blink.MOTION_POLL = MOTION_POLL;
+Blink.STATUS_POLL = STATUS_POLL;
+Blink.ARMED_DELAY = ARMED_DELAY;
+Blink.MOTION_TRIGGER_DECAY = MOTION_TRIGGER_DECAY;
 
 module.exports = {Blink, BlinkDevice, BlinkCamera, BlinkNetwork};

@@ -16,7 +16,7 @@ describe('log', () => {
     });
     const tests = [
         null,
-        {logger: null, verbose: true, debug: true, debugEnabled: true, vOut: true, dOut: true, debugAsInfo: false},
+        {logger: null, verbose: true, debug: true, debugEnabled: true, vOut: false, dOut: false, debugAsInfo: false},
         {logger: true, verbose: true, debug: true, debugEnabled: true, vOut: true, dOut: true, debugAsInfo: false},
         {logger: true, verbose: false, debug: false, debugEnabled: true, vOut: true, dOut: true, debugAsInfo: false},
         {logger: true, verbose: true, debug: true, debugEnabled: false, vOut: true, dOut: false, debugAsInfo: true},
@@ -39,13 +39,14 @@ describe('log', () => {
             let errorOut;
 
             if (!t || !t.logger) {
+                const original = require('./log').log;
                 console.log = (...data) => [logOut] = data;
                 console.info = (...data) => [infoOut] = data;
                 console.debug = (...data) => [debugOut] = data;
                 console.error = (...data) => [errorOut] = data;
                 // special case where t.logger is null
                 if (t) setLogger(t.logger, t.verbose, t.debug);
-                expect(require('./log').log = originalLog.loglog);
+                expect(require('./log').log).toBe(original);
             }
             else {
                 const logger = (...data) => [logOut] = data;
@@ -72,7 +73,7 @@ describe('log', () => {
 
             value = Math.random().toString(36).substring(7);
             log.info(value);
-            if (!t || t.vOut) {
+            if (!t || t?.vOut) {
                 expect(infoOut).toBe(value);
             }
             else {

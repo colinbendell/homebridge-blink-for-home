@@ -1,5 +1,5 @@
 const {setHap} = require('./homebridge/hap');
-const {HomebridgeBlink} = require('./homebridge/blink');
+const {HomebridgeBlink} = require('./homebridge');
 
 // Blink Security Platform Plugin for HomeBridge (https://github.com/colinbendell/homebridge-blink-for-home)
 //

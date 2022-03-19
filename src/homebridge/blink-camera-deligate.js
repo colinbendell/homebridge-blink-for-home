@@ -1,6 +1,6 @@
 // import ip from "ip";
 const {spawn} = require('child_process');
-const {hap} = require('../hap');
+const {hap} = require('./hap');
 const {log} = require('../log');
 
 const {
@@ -14,7 +14,7 @@ const {
 } = require('@homebridge/camera-utils');
 const pathToFfmpeg = require('ffmpeg-for-homebridge');
 
-const {Http2TLSTunnel} = require('./proxy');
+const {Http2TLSTunnel} = require('../proxy');
 // class SessionInfo {
 //     address: string, // address of the HAP controller
 //

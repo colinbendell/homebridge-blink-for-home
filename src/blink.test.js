@@ -75,8 +75,8 @@ describe('Blink', () => {
             expect(cameraDevice.thumbnailCreatedAt).toBe(Date.parse('2020-01-01T01:01:00.000Z'));
             expect(cameraDevice.thumbnailCreatedAt).toBe(Date.parse('2020-01-01T01:01:00.000Z'));
             expect(cameraDevice.isBatteryPower).toBe(true);
-            expect(cameraDevice.lowBattery).toBe(false);
-            expect(await cameraDevice.getBattery()).toBe(73);
+            expect(cameraDevice.lowBattery).toBe(true);
+            expect(await cameraDevice.getBattery()).toBe(10);
             expect(await cameraDevice.getWifiSSR()).toBe(-52);
             expect(cameraDevice.temperature).toBe(16.7);
             expect(cameraDevice.temperature).toBe(16.7);

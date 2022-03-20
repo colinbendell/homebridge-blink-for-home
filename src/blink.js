@@ -196,7 +196,7 @@ class BlinkCamera extends BlinkDevice {
     }
 
     get lowBattery() {
-        return this.isBatteryPower ? (this.battery === 'low') : null;
+        return this.isBatteryPower ? (this.data.battery === 'low') : null;
     }
 
     get isCameraMini() {

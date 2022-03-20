@@ -62,7 +62,7 @@
         "rules": {
             "indent": ["error", 4],
             "brace-style": ["error", "stroustrup"],
-            "max-len": ["error", 120],
+            "max-len": ["error", 125],
             "require-jsdoc": "off",
             "valid-jsdoc": "off",
             "arrow-parens": ["error", "as-needed"],

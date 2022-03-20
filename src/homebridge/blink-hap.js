@@ -8,10 +8,10 @@ const DEFAULT_OPTIONS = {
     username: null,
     password: null,
     pin: null,
-    alarm: true,
-    manualArmSwitch: true,
-    enabledSwitch: true,
-    privacySwitch: true,
+    noAlarm: false,
+    noManualArmSwitch: false,
+    noEnabledSwitch: false,
+    noPrivacySwitch: false,
     liveView: true,
     avoidThumbnailBatteryDrain: true,
     cameraThumbnailRefreshSeconds: Blink.THUMBNAIL_TTL,
@@ -108,7 +108,7 @@ class BlinkNetworkHAP extends BlinkNetwork {
     }
 
     get securitySystemState() {
-        return this.context?.armed;
+        return Number.parseInt(this.context?.armed);
     }
     set securitySystemState(val) {
         this.context.armed = val;
@@ -122,29 +122,34 @@ class BlinkNetworkHAP extends BlinkNetwork {
     }
 
     async getSecuritySystemCurrentState() {
-        const armedState = this.getSecuritySystemState();
-        if (armedState !== Characteristic.SecuritySystemCurrentState.DISARMED) {
+        const currentSecurityState = this.getSecuritySystemState();
+        if (currentSecurityState !== Characteristic.SecuritySystemCurrentState.DISARMED) {
+            // if we are armed, check if we have motion
+            // if we just armed, add a delay before checking the cameras for motion
+            // when there is motion, the network updatedat will also increment
+            // we don't want to constantly bombard with alarm triggered states, so we delay 60s between alarms
+            // TODO: re-evaluate this algorithm
+            const triggerStart = Math.max(this.armedAt, this.updatedAt) + (ARMED_DELAY * 1000);
             // const triggerStart = this.network.updatedAt - ARMED_DELAY*1000;
-            const triggerStart = Math.max(this.armedAt, this.updatedAt) + ARMED_DELAY * 1000;
 
-            if (triggerStart && Date.now() >= triggerStart) {
+            if (Date.now() >= triggerStart) {
                 const cameraMotionDetected = await Promise.all(this.cameras.map(c => c.getMotionDetected()));
                 if (cameraMotionDetected.includes(true)) {
                     return Characteristic.SecuritySystemCurrentState.ALARM_TRIGGERED;
                 }
             }
+            // fall through to returning the current state value;
         }
-        return armedState;
+        return currentSecurityState;
     }
 
     getSecuritySystemState() {
         if (this.armed) {
-            this.securitySystemState = Number.parseInt(this.securitySystemState);
-
             // Prevent from returning armedState bigger than DISARMED. In that case, TRIGGERED
             if (this.securitySystemState < Characteristic.SecuritySystemCurrentState.DISARMED) {
                 return this.securitySystemState;
             }
+            return Characteristic.SecuritySystemCurrentState.AWAY_ARM;
         }
         return Characteristic.SecuritySystemCurrentState.DISARMED;
     }
@@ -158,10 +163,10 @@ class BlinkNetworkHAP extends BlinkNetwork {
     createAccessory(cachedAccessories = []) {
         if (this.accessory) return this;
 
-        if (!this.blink?.config?.alarm && !this.blink?.config?.manualArmSwitch) return this;
+        if (this.blink?.config?.noAlarm && this.blink?.config?.noManualArmSwitch) return this;
 
         super.createAccessory(cachedAccessories, Categories.SECURITY_SYSTEM);
-        if (this.blink?.config?.alarm) {
+        if (!this.blink?.config?.noAlarm) {
             const securitySystem = this.accessory.addService(Service.SecuritySystem);
             BlinkDeviceHAP.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState,
                 `${this.name} Armed (Current)`, this.getSecuritySystemCurrentState);
@@ -175,7 +180,7 @@ class BlinkNetworkHAP extends BlinkNetwork {
             ];
             securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({validValues});
         }
-        if (this.blink?.config?.manualArmSwitch) {
+        if (!this.blink?.config?.noManualArmSwitch) {
             const service = this.accessory.addService(Service.Switch,
                 `${this.name} Arm`, `armed.${this.serial}`);
             BlinkDeviceHAP.bindCharacteristic(service, Characteristic.On,
@@ -198,14 +203,6 @@ class BlinkCameraHAP extends BlinkCamera {
         return this.lowBattery ?
             Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW :
             Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
-    }
-
-    getPrivacyMode() {
-        return this.privacyMode;
-    }
-
-    setPrivacyMode(val) {
-        this.privacyMode = val;
     }
 
     createAccessory(cachedAccessories = []) {
@@ -238,14 +235,6 @@ class BlinkCameraHAP extends BlinkCamera {
         BlinkDeviceHAP.bindCharacteristic(motionService, Characteristic.StatusActive,
             'Motion Sensor Active', this.getMotionDetectActive);
 
-        if (this.blink.config.enabledSwitch) {
-            // No idea how to set the motion enabled/disabled on minis
-            const enabledSwitch = this.accessory.addService(Service.Switch,
-                `Enabled`, `enabled.${this.serial}`);
-            BlinkDeviceHAP.bindCharacteristic(enabledSwitch, Characteristic.On,
-                'Enabled', this.getEnabled, this.setEnabled);
-        }
-
         if (!this.isCameraMini) {
             // Battery Levels are only available in non Minis
             const batteryService = this.accessory.addService(Service.BatteryService,
@@ -268,11 +257,19 @@ class BlinkCameraHAP extends BlinkCamera {
                 'Temperature Sensor Active', () => true);
         }
 
-        if (!this.blink?.config?.privacySwitch) {
+        if (!this.blink?.config?.noEnabledSwitch) {
+            // No idea how to set the motion enabled/disabled on minis
+            const enabledSwitch = this.accessory.addService(Service.Switch,
+                `Enabled`, `enabled.${this.serial}`);
+            BlinkDeviceHAP.bindCharacteristic(enabledSwitch, Characteristic.On,
+                'Enabled', this.getEnabled, this.setEnabled);
+        }
+
+        if (!this.blink?.config?.noPrivacySwitch) {
             const privacyModeService = this.accessory.addService(Service.Switch,
                 `Privacy Mode`, `privacy.${this.serial}`);
             BlinkDeviceHAP.bindCharacteristic(privacyModeService, Characteristic.On,
-                'Privacy Mode', this.getPrivacyMode, this.setPrivacyMode);
+                'Privacy Mode', () => this.privacyMode, val => this.privacyMode = val);
         }
 
         // TODO: use snapshot_period_minutes for poll
@@ -304,10 +301,10 @@ class BlinkHAP extends Blink {
                 }
             }
         };
-        checkValue('hide-alarm', 'alarm');
-        checkValue('hide-manual-arm-switch', 'manualArmSwitch');
-        checkValue('hide-enabled-switch', 'enabledSwitch');
-        checkValue('hide-privacy-switch', 'privacySwitch');
+        checkValue('hide-alarm', 'noAlarm');
+        checkValue('hide-manual-arm-switch', 'noManualArmSwitch');
+        checkValue('hide-enabled-switch', 'noEnabledSwitch');
+        checkValue('hide-privacy-switch', 'noPrivacySwitch');
         checkValue('enable-liveview', 'liveView');
         checkValue('avoid-thumbnail-battery-drain', 'avoidThumbnailBatteryDrain');
         checkValue('camera-thumbnail-refresh-seconds', 'snapshotSeconds', Number);

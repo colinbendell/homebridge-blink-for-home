@@ -13,6 +13,7 @@ setLogger(logger, false, false);
 setHap(new HomebridgeAPI());
 
 const {Service, Characteristic, Accessory} = require('./hap');
+const {SecuritySystemCurrentState, SecuritySystemTargetState} = require('./hap').Characteristic;
 const {BlinkDeviceHAP, BlinkHAP, BlinkNetworkHAP, BlinkCameraHAP} = require('./blink-hap');
 
 const DEFAULT_BLINK_CLIENT_UUID = 'A5BF5C52-56F3-4ADB-A7C2-A70619552084';
@@ -84,12 +85,12 @@ describe('BlinkHAP', () => {
     });
     describe('BlinkNetworkHAP', () => {
         test.concurrent.each([
-            [false, false, false, false],
-            [true, false, true, false],
-            [true, true, true, true],
-            [false, true, false, true],
-        ])('.createAccessory()', async (alarm, manualArmSwitch, expectSecurity, expectSwitch) => {
-            const config = {alarm, manualArmSwitch};
+            [true, true, false, false],
+            [false, true, true, false],
+            [false, false, true, true],
+            [true, false, false, true],
+        ])('.createAccessory()', async (noAlarm, noManualArmSwitch, expectSecurity, expectSwitch) => {
+            const config = {noAlarm, noManualArmSwitch};
             const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID, null, config);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             await blink.refreshData();
@@ -104,8 +105,8 @@ describe('BlinkHAP', () => {
                     expect(accessory).toBeDefined();
                     const securitySystem = accessory.getService(Service.SecuritySystem);
                     expect(securitySystem).toBeDefined();
-                    expect(securitySystem.getCharacteristic(Characteristic.SecuritySystemCurrentState)).toBeDefined();
-                    expect(securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState)).toBeDefined();
+                    expect(securitySystem.getCharacteristic(SecuritySystemCurrentState)).toBeDefined();
+                    expect(securitySystem.getCharacteristic(SecuritySystemTargetState)).toBeDefined();
                 }
                 else {
                     expect(accessory.getService(Service.SecuritySystem)).toBeUndefined();
@@ -124,8 +125,185 @@ describe('BlinkHAP', () => {
                 expect(accessory).toBeUndefined();
             }
         });
+
+        test.concurrent('.setManualArmed()', async () => {
+            const config = {alarm: false, manualArmSwitch: true};
+            const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID, null, config);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+
+            const networkDevice = blink.networks.get(cameraData.network_id);
+
+            let currState;
+            networkDevice.setSecuritySystemState = value => currState = value;
+            await networkDevice.setManualArmed(true);
+            expect(currState).toBe(SecuritySystemTargetState.AWAY_ARM);
+
+            await networkDevice.setManualArmed(false);
+            expect(currState).toBe(SecuritySystemTargetState.DISARM);
+        });
+
+        test.concurrent.each([
+            [true, SecuritySystemTargetState.STAY_ARM, SecuritySystemCurrentState.STAY_ARM],
+            [true, SecuritySystemTargetState.AWAY_ARM, SecuritySystemCurrentState.AWAY_ARM],
+            [true, SecuritySystemTargetState.NIGHT_ARM, SecuritySystemCurrentState.NIGHT_ARM],
+            [true, null, SecuritySystemCurrentState.AWAY_ARM],
+            [false, SecuritySystemTargetState.STAY_ARM, SecuritySystemCurrentState.DISARMED],
+            [false, SecuritySystemTargetState.AWAY_ARM, SecuritySystemCurrentState.DISARMED],
+            [false, SecuritySystemTargetState.NIGHT_ARM, SecuritySystemCurrentState.DISARMED],
+            [false, null, SecuritySystemCurrentState.DISARMED],
+        ])('.getSecuritySystemState()', async (armed, target, expected) => {
+            const config = {alarm: false, manualArmSwitch: true};
+            const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID, null, config);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+
+            const networkDevice = blink.networks.get(cameraData.network_id);
+            networkDevice.data.armed = armed;
+            networkDevice.securitySystemState = target;
+
+            const currState = await networkDevice.getSecuritySystemState();
+            expect(currState).toBe(expected);
+        });
+
+        test.concurrent.each([
+            [null, true],
+            [SecuritySystemTargetState.STAY_ARM, true],
+            [SecuritySystemTargetState.AWAY_ARM, true],
+            [SecuritySystemTargetState.NIGHT_ARM, true],
+            [SecuritySystemTargetState.DISARM, false],
+        ])('.setSecuritySystemState()', async (securitySystemTarget, expectedArmed) => {
+            const config = {alarm: false, manualArmSwitch: true};
+            const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID, null, config);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+
+            const networkDevice = blink.networks.get(cameraData.network_id);
+            let outputArmed;
+            networkDevice.setArmedState = value => outputArmed = value;
+            await networkDevice.setSecuritySystemState(securitySystemTarget);
+            expect(outputArmed).toBe(expectedArmed);
+        });
+        test.concurrent.each([
+            [false, SecuritySystemTargetState.STAY_ARM, 0, Date.now(), true, 0, SecuritySystemCurrentState.DISARMED],
+            [false, SecuritySystemTargetState.AWAY_ARM, 0, Date.now(), true, 0, SecuritySystemCurrentState.DISARMED],
+            [false, SecuritySystemTargetState.NIGHT_ARM, 0, Date.now(), true, 0, SecuritySystemCurrentState.DISARMED],
+            [false, SecuritySystemTargetState.DISARM, 0, Date.now(), true, 0, SecuritySystemCurrentState.DISARMED],
+            [true, SecuritySystemTargetState.STAY_ARM, 0, Date.now(), true, 0, SecuritySystemCurrentState.STAY_ARM],
+            [true, SecuritySystemTargetState.AWAY_ARM, 0, Date.now(), true, 0, SecuritySystemCurrentState.AWAY_ARM],
+            [true, SecuritySystemTargetState.NIGHT_ARM, 0, Date.now(), true, 0, SecuritySystemCurrentState.NIGHT_ARM],
+            [true, SecuritySystemTargetState.STAY_ARM,
+                0, Date.now() - 61000, false, 1, SecuritySystemCurrentState.STAY_ARM],
+            [true, SecuritySystemTargetState.AWAY_ARM,
+                0, Date.now() - 61000, false, 1, SecuritySystemCurrentState.AWAY_ARM],
+            [true, SecuritySystemTargetState.NIGHT_ARM,
+                0, Date.now() - 61000, false, 1, SecuritySystemCurrentState.NIGHT_ARM],
+            [true, SecuritySystemTargetState.STAY_ARM,
+                Date.now(), Date.now() - 61000, false, 0, SecuritySystemCurrentState.STAY_ARM],
+            [true, SecuritySystemTargetState.AWAY_ARM,
+                Date.now(), Date.now() - 61000, false, 0, SecuritySystemCurrentState.AWAY_ARM],
+            [true, SecuritySystemTargetState.NIGHT_ARM,
+                Date.now(), Date.now() - 61000, false, 0, SecuritySystemCurrentState.NIGHT_ARM],
+            [true, SecuritySystemTargetState.STAY_ARM,
+                0, Date.now() - 61000, true, 1, SecuritySystemCurrentState.ALARM_TRIGGERED],
+            [true, SecuritySystemTargetState.AWAY_ARM,
+                0, Date.now() - 61000, true, 1, SecuritySystemCurrentState.ALARM_TRIGGERED],
+            [true, SecuritySystemTargetState.NIGHT_ARM,
+                0, Date.now() - 61000, true, 1, SecuritySystemCurrentState.ALARM_TRIGGERED],
+        ])('.getSecuritySystemCurrentState()', async (armed, target, armedAt, updatedAt, motion, apiCalled, outState) => {
+            const config = {alarm: false, manualArmSwitch: true};
+            const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID, null, config);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+            const networkDevice = blink.networks.get(cameraData.network_id);
+
+            networkDevice.securitySystemState = target;
+            networkDevice.data.armed = armed;
+            if (armedAt >= 0) networkDevice.armedAt = armedAt;
+            networkDevice.data.updated_at = new Date(updatedAt).toISOString();
+            const getMotionDetected = jest.fn(()=> motion);
+            for (const camera of networkDevice.cameras) camera.getMotionDetected = getMotionDetected;
+
+            const res = await networkDevice.getSecuritySystemCurrentState();
+            expect(res).toBe(outState);
+            expect(getMotionDetected).toHaveBeenCalledTimes(apiCalled);
+        });
     });
     describe('BlinkCameraHAP', () => {
+        test.concurrent.each([
+            [false, false, false],
+            [false, false, true],
+            [false, true, false],
+            [false, true, true],
+            [true, false, false],
+            [true, false, true],
+            [true, true, false],
+            [true, true, true],
+        ])('.createAccessory()', async (mini, noEnabledSwitch, noPrivacySwitch) => {
+            const config = {noEnabledSwitch, noPrivacySwitch};
+            const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID, null, config);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            const cameraData = mini ? SAMPLE.HOMESCREEN.MINI : SAMPLE.HOMESCREEN.CAMERA_OG;
 
+            const cameraDevice = blink.cameras.get(cameraData.id);
+            cameraDevice.createAccessory();
+
+            const accessory = cameraDevice.accessory;
+            expect(accessory).toBeDefined();
+            expect(cameraDevice.createAccessory().accessory).toBe(accessory);
+
+            const motionSensor = accessory.getService(Service.MotionSensor);
+            expect(motionSensor).toBeDefined();
+            expect(motionSensor.getCharacteristic(Characteristic.MotionDetected)).toBeDefined();
+            expect(motionSensor.getCharacteristic(Characteristic.StatusActive)).toBeDefined();
+
+            if (!mini) {
+                const battery = accessory.getService(Service.BatteryService);
+                expect(battery).toBeDefined();
+                expect(battery.getCharacteristic(Characteristic.BatteryLevel)).toBeDefined();
+                expect(battery.getCharacteristic(Characteristic.ChargingState)).toBeDefined();
+                expect(battery.getCharacteristic(Characteristic.StatusLowBattery)).toBeDefined();
+
+                const tempSensor = accessory.getService(Service.TemperatureSensor);
+                expect(tempSensor).toBeDefined();
+                expect(tempSensor.getCharacteristic(Characteristic.CurrentTemperature)).toBeDefined();
+                expect(tempSensor.getCharacteristic(Characteristic.StatusActive)).toBeDefined();
+            }
+            else {
+                expect(accessory.getService(Service.BatteryService)).toBeUndefined();
+                expect(accessory.getService(Service.TemperatureSensor)).toBeUndefined();
+            }
+            if (!noEnabledSwitch) {
+                const service = accessory.getService(`enabled.${cameraDevice.serial}`);
+                expect(service).toBeDefined();
+                expect(service.getCharacteristic(Characteristic.On)).toBeDefined();
+            }
+            if (!noPrivacySwitch) {
+                const service = accessory.getService(`privacy.${cameraDevice.serial}`);
+                expect(service).toBeDefined();
+                expect(service.getCharacteristic(Characteristic.On)).toBeDefined();
+            }
+        });
+        test.concurrent.each([
+            [true, Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW],
+            [false, Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL],
+        ])('.getLowBattery()', async (lowBattery, expectedState) => {
+            const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+
+            const cameraDevice = blink.cameras.get(cameraData.id);
+
+            cameraDevice.data.battery = lowBattery ? 'low' : 'ok';
+
+            expect(cameraDevice.getLowBattery()).toBe(expectedState);
+        });
     });
 });

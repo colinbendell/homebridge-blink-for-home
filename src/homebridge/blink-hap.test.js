@@ -83,7 +83,47 @@ describe('BlinkHAP', () => {
         });
     });
     describe('BlinkNetworkHAP', () => {
+        test.concurrent.each([
+            [false, false, false, false],
+            [true, false, true, false],
+            [true, true, true, true],
+            [false, true, false, true],
+        ])('.createAccessory()', async (alarm, manualArmSwitch, expectSecurity, expectSwitch) => {
+            const config = {alarm, manualArmSwitch};
+            const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID, null, config);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
 
+            const networkDevice = blink.networks.get(cameraData.network_id);
+            await networkDevice.createAccessory();
+
+            const accessory = networkDevice.accessory;
+            if (expectSecurity || expectSwitch) {
+                if (expectSecurity) {
+                    expect(accessory).toBeDefined();
+                    const securitySystem = accessory.getService(Service.SecuritySystem);
+                    expect(securitySystem).toBeDefined();
+                    expect(securitySystem.getCharacteristic(Characteristic.SecuritySystemCurrentState)).toBeDefined();
+                    expect(securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState)).toBeDefined();
+                }
+                else {
+                    expect(accessory.getService(Service.SecuritySystem)).toBeUndefined();
+                }
+                if (expectSwitch) {
+                    const service = accessory.getService(Service.Switch);
+                    expect(service).toBeDefined();
+                    expect(service.getCharacteristic(Characteristic.On)).toBeDefined();
+                    expect(service.getCharacteristic(Characteristic.Name)?.value).toContain(' Arm');
+                }
+                else {
+                    expect(accessory.getService(Service.Switch)).toBeUndefined();
+                }
+            }
+            else {
+                expect(accessory).toBeUndefined();
+            }
+        });
     });
     describe('BlinkCameraHAP', () => {
 

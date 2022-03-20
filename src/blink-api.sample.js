@@ -725,12 +725,10 @@ const DISARM_NETWORK = {
     state: 'new',
 };
 const CAMERA_LIVE_VIEW = {
-    command: 'lv_relay',
-    commands: [
-    ],
-    id: 999999999,
-    network_id: 2000001,
-    state: 'new',
+    command_id: 999999999, join_available: true, join_state: 'available',
+    server: 'rtsps://lv2-app-prod.immedia-semi.com:443/NIE5YSJGOOOn__IMDS_B0000001?client_id=208&blinkRTSP=true',
+    duration: 300, continue_interval: 30, continue_warning: 10, submit_logs: true, new_command: true,
+    network_id: 2000001, media_id: null, options: {},
 };
 
 module.exports = {

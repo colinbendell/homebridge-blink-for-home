@@ -101,39 +101,28 @@ class BlinkDeviceHAP extends BlinkDevice {
     }
 }
 
-Object.assign(BlinkNetwork.prototype, BlinkDeviceHAP);
+BlinkNetwork.prototype.createAccessory = BlinkDeviceHAP.prototype.createAccessory;
 class BlinkNetworkHAP extends BlinkNetwork {
     constructor(data, blink) {
         super(data, blink);
     }
 
-    get armedState() {
-        return this.context.armed;
+    get securitySystemState() {
+        return this.context?.armed;
     }
-    set armedState(val) {
+    set securitySystemState(val) {
         this.context.armed = val;
     }
 
-    async getManualArmed() {
-        return this.armed;
-    }
-
     async setManualArmed(value) {
-        if (value) {
-            if (Number.parseInt(this.armedState) < Characteristic.SecuritySystemTargetState.DISARM) {
-                // if old state is remembered, use it
-                return await this.setTargetArmed(this.armedState);
-            }
-            // default to AWAY_ARM
-            return await this.setTargetArmed(Characteristic.SecuritySystemTargetState.AWAY_ARM);
-        }
+        let targetState = Characteristic.SecuritySystemTargetState.AWAY_ARM;
+        if (!value) targetState = Characteristic.SecuritySystemTargetState.DISARM;
 
-        // otherwise disarm
-        return await this.setTargetArmed(Characteristic.SecuritySystemTargetState.DISARM);
+        return await this.setSecuritySystemState(targetState);
     }
 
-    async getCurrentArmedState() {
-        const armedState = await this.getArmedState();
+    async getSecuritySystemCurrentState() {
+        const armedState = this.getSecuritySystemState();
         if (armedState !== Characteristic.SecuritySystemCurrentState.DISARMED) {
             // const triggerStart = this.network.updatedAt - ARMED_DELAY*1000;
             const triggerStart = Math.max(this.armedAt, this.updatedAt) + ARMED_DELAY * 1000;
@@ -148,29 +137,22 @@ class BlinkNetworkHAP extends BlinkNetwork {
         return armedState;
     }
 
-    async getArmedState() {
+    getSecuritySystemState() {
         if (this.armed) {
-            this.armedState = Number.parseInt(this.armedState) || 0;
+            this.securitySystemState = Number.parseInt(this.securitySystemState);
 
             // Prevent from returning armedState bigger than DISARMED. In that case, TRIGGERED
-            if (this.armedState >= 0 && this.armedState < Characteristic.SecuritySystemCurrentState.DISARMED) {
-                return this.armedState;
+            if (this.securitySystemState < Characteristic.SecuritySystemCurrentState.DISARMED) {
+                return this.securitySystemState;
             }
         }
         return Characteristic.SecuritySystemCurrentState.DISARMED;
     }
 
-    async setTargetArmed(val) {
-        this.armedState = val;
+    async setSecuritySystemState(val) {
+        this.securitySystemState = val;
         const targetArmed = (val !== Characteristic.SecuritySystemTargetState.DISARM);
-        if (targetArmed) {
-            // only if we are going from disarmed to armed
-            this.armedAt = Date.now();
-        }
-
-        if (this.armed !== targetArmed) {
-            await this.blink.setArmedState(this.networkID, targetArmed);
-        }
+        await this.setArmedState(targetArmed);
     }
 
     createAccessory(cachedAccessories = []) {
@@ -179,13 +161,12 @@ class BlinkNetworkHAP extends BlinkNetwork {
         if (!this.blink?.config?.alarm && !this.blink?.config?.manualArmSwitch) return this;
 
         super.createAccessory(cachedAccessories, Categories.SECURITY_SYSTEM);
-
         if (this.blink?.config?.alarm) {
             const securitySystem = this.accessory.addService(Service.SecuritySystem);
             BlinkDeviceHAP.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState,
-                `${this.name} Armed (Current)`, this.getCurrentArmedState);
+                `${this.name} Armed (Current)`, this.getSecuritySystemCurrentState);
             BlinkDeviceHAP.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState,
-                `${this.name} Armed (Target)`, this.getArmedState, this.setTargetArmed);
+                `${this.name} Armed (Target)`, this.getSecuritySystemState, this.setSecuritySystemState);
             const validValues = [
                 Characteristic.SecuritySystemTargetState.STAY_ARM,
                 Characteristic.SecuritySystemTargetState.AWAY_ARM,
@@ -195,18 +176,19 @@ class BlinkNetworkHAP extends BlinkNetwork {
             securitySystem.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({validValues});
         }
         if (this.blink?.config?.manualArmSwitch) {
-            const occupiedService = this.accessory.addService(Service.Switch,
+            const service = this.accessory.addService(Service.Switch,
                 `${this.name} Arm`, `armed.${this.serial}`);
-            BlinkDeviceHAP.bindCharacteristic(occupiedService, Characteristic.On,
-                `${this.name} Arm`, this.getManualArmed, this.setManualArmed);
-            BlinkDeviceHAP.bindCharacteristic(occupiedService, Characteristic.Name,
+            BlinkDeviceHAP.bindCharacteristic(service, Characteristic.On,
+                `${this.name} Arm`, () => this.armed, this.setManualArmed);
+            BlinkDeviceHAP.bindCharacteristic(service, Characteristic.Name,
                 `${this.name} Arm`, () => `Manual Arm`);
         }
         return this;
     }
 }
 
-Object.assign(BlinkCamera.prototype, BlinkDeviceHAP);
+// Object.assign(BlinkCamera.prototype, BlinkDeviceHAP);
+BlinkCamera.prototype.createAccessory = BlinkDeviceHAP.prototype.createAccessory;
 class BlinkCameraHAP extends BlinkCamera {
     constructor(data, blink) {
         super(data, blink);
@@ -308,6 +290,7 @@ class BlinkHAP extends Blink {
     constructor(clientUUID, auth, config = {}) {
         config = BlinkHAP.normalizeConfig(config);
         super(clientUUID, auth, config.statusPollingSeconds, config.motionPollingSeconds, config.snapshotSeconds);
+        this.config = config;
     }
     static normalizeConfig(config) {
         const newConfig = Object.assign({}, DEFAULT_OPTIONS, config || {});

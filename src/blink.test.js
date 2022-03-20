@@ -98,6 +98,10 @@ describe('Blink', () => {
             expect(miniCameraDevice.armed).toBe(false);
             expect(miniCameraDevice.enabled).toBe(true);
             expect(miniCameraDevice.getEnabled()).toBe(true);
+
+            const g2CameraDataa = SAMPLE.HOMESCREEN.CAMERA_G2;
+            const g2CameraDevice = blink.cameras.get(g2CameraDataa.id);
+            expect(await g2CameraDevice.getBattery()).toBe(73);
         });
 
         test.concurrent.each([

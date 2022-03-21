@@ -7,7 +7,8 @@ const SAMPLE = require('../blink-api.sample');
 // set test logger
 const logger = () => {};
 logger.log = () => {};
-logger.error = console.error;
+// logger.error = console.error;
+logger.error = () => {};
 setLogger(logger, false, false);
 // set hap
 setHap(new HomebridgeAPI());
@@ -38,8 +39,40 @@ describe('BlinkHAP', () => {
             expect(typeof camera.createAccessory).toEqual('function');
         }
     });
+    test('BlinkHAP(config)', async () => {
+        const expectConfig = {
+            noAlarm: true,
+            noManualArmSwitch: true,
+            noEnabledSwitch: true,
+            noPrivacySwitch: true,
+            liveView: false,
+            avoidThumbnailBatteryDrain: false,
+            snapshotSeconds: Number.MAX_SAFE_INTEGER,
+            statusPollingSeconds: 9999,
+            motionPollingSeconds: 9999,
+            verbose: true,
+            debug: true,
+            startupDiagnostic: true,
+        };
+        const config = {
+            'hide-alarm': true,
+            'hide-manual-arm-switch': true,
+            'hide-enabled-switch': true,
+            'hide-privacy-switch': true,
+            'enable-liveview': false,
+            'avoid-thumbnail-battery-drain': false,
+            'camera-thumbnail-refresh-seconds': -1,
+            'camera-status-polling-seconds': 9999,
+            'camera-motion-polling-seconds': 9999,
+            'enable-verbose-logging': true,
+            'enable-debug-logging': true,
+            'enable-startup-diagnostic': true,
+        };
+        const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID, null, config);
+        expect(blink.config).toMatchObject(expectConfig);
+    });
     describe('BlinkDeviceHAP', () => {
-        test('.bindCharacteristic()', async () => {
+        test.concurrent('.bindCharacteristic()', async () => {
             let charValue = true;
             const accessory = new Accessory('test', DEFAULT_BLINK_CLIENT_UUID);
             const enabledSwitch = accessory.addService(Service.Switch, 'Switch1');
@@ -53,6 +86,22 @@ describe('BlinkHAP', () => {
             expect(charValue).toBe(false);
 
             await characteristic.getValue();
+            expect(characteristic.value).toBe(false);
+        });
+
+        test.concurrent('.bindCharacteristic(error)', async () => {
+            const errorFn = async () => {
+                throw new Error('error');
+            };
+            const accessory = new Accessory('test2', DEFAULT_BLINK_CLIENT_UUID);
+            const enabledSwitch = accessory.addService(Service.Switch, 'Switch2');
+            const characteristic = BlinkDeviceHAP.bindCharacteristic(enabledSwitch, Characteristic.On,
+                'switch', errorFn, errorFn);
+
+            await characteristic.getValue();
+            expect(characteristic.value).toBe(false);
+
+            await characteristic.setValue(true);
             expect(characteristic.value).toBe(false);
         });
         test.concurrent.each([

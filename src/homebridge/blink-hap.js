@@ -2,6 +2,7 @@ const BlinkCameraDelegate = require('./blink-camera-deligate');
 const {Blink, BlinkDevice, BlinkNetwork, BlinkCamera} = require('../blink');
 const {Accessory, Categories, Characteristic, Service, UUIDGen} = require('./hap');
 const {log} = require('../log');
+const {HAPStatus} = require("hap-nodejs/dist/lib/HAPServer");
 
 const ARMED_DELAY = 60; // 60s
 const DEFAULT_OPTIONS = {
@@ -38,12 +39,12 @@ class BlinkDeviceHAP extends BlinkDevice {
     static bindCharacteristic(service, characteristic, desc, getFunc, setFunc, format) {
         const getCallback = async callback => {
             try {
-                const res = await Promise.resolve(getFunc.call(this));
-                callback(null, res);
+                const res = await getFunc.call(this);
+                callback(HAPStatus.SUCCESS, res);
             }
             catch (err) {
                 log.error(err);
-                callback(err);
+                callback(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
             }
         };
         const changeCallback = change => {
@@ -57,11 +58,11 @@ class BlinkDeviceHAP extends BlinkDevice {
         const setCallback = async (val, callback) => {
             try {
                 await Promise.resolve(setFunc.call(this, val));
-                callback(null);
+                callback(HAPStatus.SUCCESS);
             }
             catch (err) {
                 log.error(err);
-                callback(err);
+                callback(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
             }
         };
 
@@ -294,10 +295,10 @@ class BlinkHAP extends Blink {
         const checkValue = function(key, propName, cast = Boolean) {
             if ((key in newConfig) && newConfig[key] !== '' && newConfig[key] !== null) {
                 const newValue = cast(newConfig[key]);
-                if (newValue !== null && (cast !== Number || !Number.isNaN(newValue))) {
+                if (newValue !== null && (typeof cast() !== 'number' || !Number.isNaN(newValue))) {
                     newConfig[propName] = newValue;
                     // invert the property value
-                    if (/^(hide|disable|no)/.test(key)) newConfig[propName] = !newConfig[propName];
+                    // if (/^(hide|disable|no)/.test(key)) newConfig[propName] = !newConfig[propName];
                 }
             }
         };

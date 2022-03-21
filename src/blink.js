@@ -60,8 +60,7 @@ class BlinkDevice {
     }
 
     get data() {
-        if (this.context?.data) return this.context.data;
-        return this._data;
+        return this.context.data ?? this._data;
     }
 
     set data(newInfo) {
@@ -318,6 +317,14 @@ class Blink {
         return new BlinkCamera(data, this);
     }
 
+    get nextLoginAttempt() {
+        return this._nextLoginAttempt || 0;
+    }
+
+    set nextLoginAttempt(val) {
+        this._nextLoginAttempt = val;
+    }
+
     async getCommand(networkID, commandID) {
         if (!networkID || !commandID) return;
         return await this.blinkAPI.getCommand(networkID, commandID).catch(() => undefined) || {};
@@ -546,7 +553,61 @@ class Blink {
     }
 
     async authenticate() {
-        return this.blinkAPI.login(true);
+        if (Date.now() < this.nextLoginAttempt ) {
+            log.error('Too frequent logins, wait 5s');
+            throw new Error('Too frequent logins, wait 5s');
+        }
+
+        this.nextLoginAttempt = Date.now() + 5 * 1000;
+
+        let login = await this.blinkAPI.login(true, null, false);
+        // convenience function to avoid the business logic layer from having to handle this check constantly
+        if (/Client already deleted/i.test(login?.message)) {
+            delete this.blinkAPI.auth.pin;
+            login = await this.blinkAPI.login(true, null, false);
+        }
+
+        if (login.account?.account_verification_required) {
+            log.error('Account is not verified; login with the app first.');
+            throw new Error('Account is not verified; login with the app first.');
+        }
+        if (login.force_password_reset) {
+            log.error('Account password needs reset; login with the app first.');
+            throw new Error('Account password needs reset; login with the app first.');
+        }
+        if (login.lockout_time_remaining > 0) {
+            this.nextLoginAttempt = Date.now() + login.lockout_time_remaining * 1000;
+
+            log.error(`Account locked. Retry in ${login.lockout_time_remaining}`);
+            throw new Error(`Account locked. Retry in ${login.lockout_time_remaining}`);
+        }
+        if (login.account?.client_verification_required) {
+            if (this.blinkAPI.auth?.pin) {
+                const pinVerify = await this.blinkAPI.verifyPIN(this.blinkAPI.auth?.pin, false);
+                Object.assign(login, pinVerify);
+
+                if (pinVerify.require_new_pin || !pinVerify.valid) {
+                    const pinResend = await this.blinkAPI.resendPIN(false);
+
+                    log.error(`PIN verification failed: ${pinVerify.message}; resending (${pinResend.message})`);
+                    throw new Error(`PIN verification failed: ${pinVerify.message}; resending (${pinResend.message})`);
+                }
+            }
+            else {
+                login.pinResend = await this.blinkAPI.resendPIN(false);
+            }
+
+            if (!login.valid) {
+                const twofa = login.verification?.email.required ? 'email' : login.verification?.phone?.channel;
+                log.error(`2FA required. PIN sent to ${twofa}`);
+                throw new Error(`2FA required. PIN sent to ${twofa}`);
+            }
+        }
+        return login;
+    }
+
+    async logout() {
+        return this.blinkAPI.logout();
     }
 
     async setArmedState(networkID, arm = true) {

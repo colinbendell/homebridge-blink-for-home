@@ -100,6 +100,12 @@ async function login(options) {
         console.log('Success');
     });
 }
+async function logout(options) {
+    await withBlink(async blink => {
+        await blink.logout();
+        console.log('Success');
+    });
+}
 async function enable(id, options) {
     await withBlink(async blink => {
         const camera = await getCamera(blink, id);
@@ -485,6 +491,10 @@ program
     .command('login')
     .description('Test Authentication')
     .action(login);
+program
+    .command('logout')
+    .description('Test Authentication')
+    .action(logout);
 
 program
     .command('list')

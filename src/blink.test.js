@@ -2,7 +2,7 @@ const {describe, expect, test} = require('@jest/globals');
 const {setLogger} = require('./log');
 const logger = () => {};
 logger.log = () => {};
-logger.error = console.error;
+logger.error = () => {};
 setLogger(logger, false, false);
 const {Blink, BlinkCamera} = require('./blink');
 const SAMPLE = require('./blink-api.sample');
@@ -13,12 +13,55 @@ jest.mock('./blink-api');
 const DEFAULT_BLINK_CLIENT_UUID = 'A5BF5C52-56F3-4ADB-A7C2-A70619552084';
 
 describe('Blink', () => {
-    test.concurrent('authenticate()', async () => {
+    test.concurrent.each([
+        [false, 123, true, false, 1, false, false],
+        [null, 123, true, false, 2, false, false],
+        [true, 123, true, false, 1, true, false],
+        [true, null, true, true, 1, false, true],
+        [true, 123, false, true, 1, true, true],
+    ])('authenticate()', async (needPin, pin, validPin, isError, loginCalled, verifyCalled, resendCalled) => {
         const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
-        blink.blinkAPI.login.mockResolvedValue({});
-        await blink.authenticate();
-        expect(blink.blinkAPI.login).toHaveBeenCalled();
+
+        const login = JSON.parse(JSON.stringify(needPin === null ? SAMPLE.LOGIN_CLIENT_DELETED : SAMPLE.LOGIN));
+        if (needPin !== null) login.account.client_verification_required = needPin;
+        blink.blinkAPI.login.mockResolvedValue(login);
+        blink.blinkAPI.verifyPIN.mockResolvedValue(validPin ? SAMPLE.LOGIN_VALID_PIN : SAMPLE.LOGIN_INVALID_PIN);
+        blink.blinkAPI.resendPIN.mockResolvedValue(SAMPLE.LOGIN_RESEND_PIN);
+        if (pin) blink.blinkAPI.auth = {pin};
+        if (isError) {
+            await expect(async () => await blink.authenticate()).rejects.toThrow(Error);
+        }
+        else {
+            await blink.authenticate();
+        }
+        expect(blink.blinkAPI.login).toBeCalledTimes(loginCalled);
+        expect(blink.blinkAPI.verifyPIN).toBeCalledTimes(verifyCalled ? 1 : 0);
+        expect(blink.blinkAPI.resendPIN).toBeCalledTimes(resendCalled ? 1 : 0);
+
+        await expect(async () => await blink.authenticate()).rejects.toThrow(Error);
     });
+
+    test.concurrent.each([
+        [true, false, null],
+        [true, false, 6],
+        [false, true, null],
+        [false, false, 6],
+    ])('authenticate(errors)', async (locked, reset, lockoutRetry) => {
+        const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+
+        const login = JSON.parse(JSON.stringify(SAMPLE.LOGIN));
+        if (locked !== null) login.account.account_verification_required = locked;
+        if (reset !== null) login.force_password_reset = reset;
+        if (lockoutRetry !== null) login.lockout_time_remaining = lockoutRetry;
+        blink.blinkAPI.login.mockResolvedValue(login);
+        await expect(async () => await blink.authenticate()).rejects.toThrow(Error);
+    });
+    test.concurrent('logout()', async () => {
+        const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+        blink.blinkAPI.logout.mockResolvedValue(SAMPLE.LOGOUT);
+        await blink.logout();
+    });
+
     test.concurrent('refreshData()', async () => {
         const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
         blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);

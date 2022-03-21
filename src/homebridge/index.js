@@ -114,7 +114,7 @@ class HomebridgeBlink {
         }
         catch (e) {
             this.log.error(e);
-            throw new Error('Unable to authenticate with Blink. Missing 2FA PIN?');
+            throw new Error('Blink Authentication failed.');
         }
 
         return blink;

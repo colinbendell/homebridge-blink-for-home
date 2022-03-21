@@ -23,6 +23,22 @@ const LOGIN = {
     phone: {country_calling_code: '1', last_4_digits: '3387', number: '+1******3387', valid: true},
     verification: {email: {required: false}, phone: {channel: 'sms', required: true}},
 };
+
+const LOGIN_INVALID = {code: 200, message: 'Invalid credentials'};
+
+const LOGIN_CLIENT_DELETED = {
+    allow_pin_resend_seconds: 90, code: 242, force_password_reset: false, lockout_time_remaining: 0,
+    message: 'Client already deleted. Please re-login',
+};
+
+const LOGIN_INVALID_PIN = {valid: false, require_new_pin: false, code: 1621, message: 'Invalid PIN'};
+
+const LOGIN_VALID_PIN = {code: 1626, message: 'Client has been successfully verified', require_new_pin: false, valid: true};
+
+const LOGIN_RESEND_PIN = {allow_pin_resend_seconds: 90, code: 211, message: 'Verification Email Sent'};
+
+const LOGOUT = {message: 'logout'};
+
 const ACCOUNT = {
     id: 1000003, name: '', account_id: 1000001, updated_at: '2022-03-17T02:31:50+00:00',
     created_at: '2016-02-13T19:15:54+00:00', country_calling_code: '1', country_id: 'CA',
@@ -733,6 +749,12 @@ const CAMERA_LIVE_VIEW = {
 
 module.exports = {
     LOGIN,
+    LOGIN_INVALID,
+    LOGIN_CLIENT_DELETED,
+    LOGIN_RESEND_PIN,
+    LOGIN_VALID_PIN,
+    LOGIN_INVALID_PIN,
+    LOGOUT,
     ACCOUNT,
     ACCOUNT_OPTIONS,
     ACCOUNT_STATUS,

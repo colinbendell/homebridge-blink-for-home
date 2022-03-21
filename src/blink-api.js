@@ -12,6 +12,14 @@ const DEFAULT_BLINK_CLIENT_UUID = '1EAF7C88-2AAB-BC51-038D-DB96D6EEE22F';
 const BLINK_API_HOST = 'immedia-semi.com';
 const CACHE = new Map();
 
+const DEFAULT_CLIENT_OPTIONS = {
+    notificationKey: null,
+    device: 'iPhone12,3',
+    type: 'ios',
+    name: 'unknown',
+    appVersion: '6.1.1 (8854) #e06341d7f',
+};
+
 /* eslint-disable */
 /**
  * https://github.com/MattTW/BlinkMonitorProtocol
@@ -216,15 +224,15 @@ class BlinkAPI {
         return reset();
     }
 
-    async get(path = '/', maxTTL = 1, autologin = true) {
-        return await this._request('GET', path, null, maxTTL, autologin);
+    async get(path = '/', maxTTL = 1, autologin = true, httpErrorAsError = true) {
+        return await this._request('GET', path, null, maxTTL, autologin, httpErrorAsError);
     }
 
-    async post(path = '/', body = null, autologin = true) {
-        return this._request('POST', path, body, null, autologin);
+    async post(path = '/', body = null, autologin = true, httpErrorAsError = true) {
+        return this._request('POST', path, body, null, autologin, httpErrorAsError);
     }
 
-    async _request(method = 'GET', path = '/', body = null, maxTTL = null, autologin = true) {
+    async _request(method = 'GET', path = '/', body = null, maxTTL = null, autologin = true, httpErrorAsError = true) {
         // first invocation we refresh the API tokens
         if (autologin) await this.login();
         const targetPath = path.replace('{accountID}', this.accountID).replace('{clientID}', this.clientID);
@@ -295,35 +303,36 @@ class BlinkAPI {
             // if the API call resulted in 401 Unauthorized (token expired?), try logging in again.
             if (autologin) {
                 await this.login(true);
-                return await this._request(method, path, body, maxTTL, false);
+                return this._request(method, path, body, maxTTL, false, httpErrorAsError);
             }
             // fallback
             // TODO: handle error states more gracefully
-            log.error(
-                `${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
-            log.error(Object.fromEntries(res.headers));
-            throw new Error(res.headers.get('status'));
+            log.error(`${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
+            log.error(res?._body ?? Object.fromEntries(res.headers));
+            if (httpErrorAsError) {
+                throw new Error(res.headers.get('status'));
+            }
         }
-        else if (this.status >= 500) {
+        else if (res.status >= 500) {
             // TODO: how do we get out of infinite retry?
-            log.error(
-                `RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
+            log.error(`RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
             this.token = null; // force a re-login if 5xx errors
             await sleep(1000);
-            return await this._request(method, path, body, maxTTL, false);
+            return this._request(method, path, body, maxTTL, false, httpErrorAsError);
         }
-        else if (this.status === 429) {
+        else if (res.status === 429) {
             // TODO: how do we get out of infinite retry?
-            log.error(
-                `RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
+            log.error(`RETRY: ${method} ${targetPath} (${res.headers.get('status') || res.status + ' ' + res.statusText})`);
             await sleep(500);
-            return await this._request(method, path, body, maxTTL, false);
+            return this._request(method, path, body, maxTTL, false, httpErrorAsError);
         }
-        else if (this.status >= 400) {
+        else if (res.status >= 400) {
             const status = res.headers.get('status') || res.status + ' ' + res.statusText;
             log.error(`${method} ${targetPath} (${status})`);
-            log.error(Object.fromEntries(res.headers));
-            throw new Error(`${method} ${targetPath} (${status})`);
+            log.error(res?._body ?? Object.fromEntries(res.headers));
+            if (httpErrorAsError) {
+                throw new Error(`${method} ${targetPath} (${status})`);
+            }
         }
         // TODO: what about other 3xx?
         else if (res.status === 200) {
@@ -425,37 +434,33 @@ class BlinkAPI {
      * }
      *
      **/
-    async login(force = false, email = null, password = null, clientUUID = null, client = {}) {
+
+    async login(force = false, client = DEFAULT_CLIENT_OPTIONS, httpErrorAsError = true) {
         if (!force && this.token) return;
-        if (!this.auth.email || !this.auth.password) throw new Error('Email or Password is blank');
+        if (!this.auth?.email || !this.auth?.password) throw new Error('Email or Password is blank');
 
-        client = client || {};
+        client = Object.assign({}, DEFAULT_CLIENT_OPTIONS, client || {});
         const data = {
-            'app_version': client.appVersion || '6.1.1 (8854) #e06341d7f',
-            'client_name': client.name || 'unknown',
-            'client_type': client.type || 'ios',
-            'device_identifier': client.device || 'iPhone12,3',
-            'email': email || this.auth.email,
+            'app_version': client.appVersion,
+            'client_name': client.name,
+            'client_type': client.type,
+            'device_identifier': client.device,
+            'email': this.auth.email,
             'notification_key': client.notificationKey || this.auth.notificationKey,
-            'os_version': client.os || '14.5',
-            'password': password || this.auth.password,
-            'reauth': 'true',
-            'unique_id': clientUUID || this.auth.clientUUID,
+            'os_version': client.os,
+            'password': this.auth.password,
+            'unique_id': this.auth.clientUUID,
         };
+        if (this.auth.pin) data.reauth = 'true';
 
-        const res = await this.post('/api/v5/account/login', data, false);
+        const res = await this.post('/api/v5/account/login', data, false, httpErrorAsError);
 
-        // convenience function to avoid the business logic layer from having to handle this check constantly
-        if (!res || /unauthorized|invalid/i.test(res.message)) {
+        if (/unauthorized|invalid/i.test(res?.message)) {
             throw new Error(res.message);
         }
         else {
-            this.init(res.auth.token, res.account.account_id, res.account.client_id, res.account.tier);
-            if (res.account.client_verification_required && this.auth.pin) {
-                await this.verify();
-            }
+            this.init(res.auth?.token, res.account?.account_id, res.account?.client_id, res.account?.tier);
         }
-
         return res;
     }
 
@@ -493,15 +498,15 @@ class BlinkAPI {
      *     "valid": true
      * }
      **/
-    async verify(pin) {
+    async verifyPIN(pin, httpAsError = true) {
         const data = {
             pin: pin || this.auth.pin,
         };
-        const res = await this.post(`/api/v4/account/{accountID}/client/{clientID}/pin/verify`, data, false);
+        return await this.post(`/api/v4/account/{accountID}/client/{clientID}/pin/verify/`, data, false, httpAsError);
+    }
 
-        // If the PIN is invalid, we reject / throw an error
-        if (!res || !res.valid) return Promise.reject(res);
-        return res;
+    async resendPIN(httpAsError = true) {
+        return await this.post(`/api/v4/account/{accountID}/client/{clientID}/pin/resend/`, null, false, httpAsError);
     }
 
     async logout() {
@@ -1147,8 +1152,7 @@ class BlinkAPI {
     }
 
     async updateOwlSettings(networkID, owlID, updateOwlBody) {
-        return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/config`,
-            updateOwlBody);
+        return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/owls/${owlID}/config`, updateOwlBody);
     }
 
     async updateOwlThumbnail(networkID, owlID) {

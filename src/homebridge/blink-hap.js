@@ -36,7 +36,7 @@ class BlinkDeviceHAP extends BlinkDevice {
         super(data, blink);
     }
 
-    static bindCharacteristic(service, characteristic, desc, getFunc, setFunc, format) {
+    bindCharacteristic(service, characteristic, desc, getFunc, setFunc, format) {
         const getCallback = async callback => {
             try {
                 const res = await getFunc.call(this);
@@ -102,6 +102,7 @@ class BlinkDeviceHAP extends BlinkDevice {
     }
 }
 
+BlinkNetwork.prototype.bindCharacteristic = BlinkDeviceHAP.prototype.bindCharacteristic;
 BlinkNetwork.prototype.createAccessory = BlinkDeviceHAP.prototype.createAccessory;
 class BlinkNetworkHAP extends BlinkNetwork {
     constructor(data, blink) {
@@ -169,9 +170,9 @@ class BlinkNetworkHAP extends BlinkNetwork {
         super.createAccessory(cachedAccessories, Categories.SECURITY_SYSTEM);
         if (!this.blink?.config?.noAlarm) {
             const securitySystem = this.accessory.addService(Service.SecuritySystem);
-            BlinkDeviceHAP.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState,
+            this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState,
                 `${this.name} Armed (Current)`, this.getSecuritySystemCurrentState);
-            BlinkDeviceHAP.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState,
+            this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState,
                 `${this.name} Armed (Target)`, this.getSecuritySystemState, this.setSecuritySystemState);
             const validValues = [
                 Characteristic.SecuritySystemTargetState.STAY_ARM,
@@ -184,9 +185,9 @@ class BlinkNetworkHAP extends BlinkNetwork {
         if (!this.blink?.config?.noManualArmSwitch) {
             const service = this.accessory.addService(Service.Switch,
                 `${this.name} Arm`, `armed.${this.serial}`);
-            BlinkDeviceHAP.bindCharacteristic(service, Characteristic.On,
+            this.bindCharacteristic(service, Characteristic.On,
                 `${this.name} Arm`, () => this.armed, this.setManualArmed);
-            BlinkDeviceHAP.bindCharacteristic(service, Characteristic.Name,
+            this.bindCharacteristic(service, Characteristic.Name,
                 `${this.name} Arm`, () => `Manual Arm`);
         }
         return this;
@@ -194,6 +195,7 @@ class BlinkNetworkHAP extends BlinkNetwork {
 }
 
 // Object.assign(BlinkCamera.prototype, BlinkDeviceHAP);
+BlinkCamera.prototype.bindCharacteristic = BlinkDeviceHAP.prototype.bindCharacteristic;
 BlinkCamera.prototype.createAccessory = BlinkDeviceHAP.prototype.createAccessory;
 class BlinkCameraHAP extends BlinkCamera {
     constructor(data, blink) {
@@ -231,20 +233,20 @@ class BlinkCameraHAP extends BlinkCamera {
 
         const motionService = this.accessory.addService(Service.MotionSensor,
             `Motion Detected`, `motion-sensor.${this.serial}`);
-        BlinkDeviceHAP.bindCharacteristic(motionService, Characteristic.MotionDetected,
+        this.bindCharacteristic(motionService, Characteristic.MotionDetected,
             'Motion', this.getMotionDetected);
-        BlinkDeviceHAP.bindCharacteristic(motionService, Characteristic.StatusActive,
+        this.bindCharacteristic(motionService, Characteristic.StatusActive,
             'Motion Sensor Active', this.getMotionDetectActive);
 
         if (!this.isCameraMini) {
             // Battery Levels are only available in non Minis
-            const batteryService = this.accessory.addService(Service.BatteryService,
+            const batteryService = this.accessory.addService(Service.Battery,
                 `Battery`, `battery-sensor.${this.serial}`);
-            BlinkDeviceHAP.bindCharacteristic(batteryService, Characteristic.BatteryLevel,
+            this.bindCharacteristic(batteryService, Characteristic.BatteryLevel,
                 'Battery Level', this.getBattery);
-            BlinkDeviceHAP.bindCharacteristic(batteryService, Characteristic.ChargingState,
+            this.bindCharacteristic(batteryService, Characteristic.ChargingState,
                 'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
-            BlinkDeviceHAP.bindCharacteristic(batteryService, Characteristic.StatusLowBattery,
+            this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery,
                 'Battery LowBattery', this.getLowBattery);
 
             // no temperaure sensor on the minis
@@ -252,9 +254,9 @@ class BlinkCameraHAP extends BlinkCamera {
                 `Temperature`, `temp-sensor.${this.serial}`);
             // allow negative values
             tempService.getCharacteristic(Characteristic.CurrentTemperature).setProps({minValue: -100});
-            BlinkDeviceHAP.bindCharacteristic(tempService, Characteristic.CurrentTemperature,
+            this.bindCharacteristic(tempService, Characteristic.CurrentTemperature,
                 'Temperature', () => this.temperature);
-            BlinkDeviceHAP.bindCharacteristic(tempService, Characteristic.StatusActive,
+            this.bindCharacteristic(tempService, Characteristic.StatusActive,
                 'Temperature Sensor Active', () => true);
         }
 
@@ -262,14 +264,14 @@ class BlinkCameraHAP extends BlinkCamera {
             // No idea how to set the motion enabled/disabled on minis
             const enabledSwitch = this.accessory.addService(Service.Switch,
                 `Enabled`, `enabled.${this.serial}`);
-            BlinkDeviceHAP.bindCharacteristic(enabledSwitch, Characteristic.On,
+            this.bindCharacteristic(enabledSwitch, Characteristic.On,
                 'Enabled', this.getEnabled, this.setEnabled);
         }
 
         if (!this.blink?.config?.noPrivacySwitch) {
             const privacyModeService = this.accessory.addService(Service.Switch,
                 `Privacy Mode`, `privacy.${this.serial}`);
-            BlinkDeviceHAP.bindCharacteristic(privacyModeService, Characteristic.On,
+            this.bindCharacteristic(privacyModeService, Characteristic.On,
                 'Privacy Mode', () => this.privacyMode, val => this.privacyMode = val);
         }
 

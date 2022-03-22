@@ -11,7 +11,7 @@ function setLogger(logger, verbose = false, debug = false) {
     }
     else {
         log = (...data) => logger(...data);
-        log.error = logger.error;
+        log.error = (...data) => logger.error(...data);
         log.info = () => undefined;
         log.debug = () => undefined;
         if (verbose || debug) {

@@ -1,17 +1,12 @@
-const HAP = require('homebridge');
-const {HomebridgeAPI} = require('homebridge/lib/api');
-
 let api;
 let hap;
-let Accessory;
 
 class CurrentHAP {
     static setHap(hapInstance) {
         if (!hapInstance) return;
-        if (hapInstance instanceof HomebridgeAPI) {
+        if (hapInstance.hap) {
             api = hapInstance;
             hap = hapInstance.hap;
-            Accessory = api.platformAccessory;
         }
         else {
             hap = hapInstance;

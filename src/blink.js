@@ -33,7 +33,7 @@ class BlinkDevice {
     }
 
     get name() {
-        return `${this._prefix}${this.data.name}`;
+        return `${this._prefix}${this.data?.name}`;
     }
 
     get serial() {
@@ -170,7 +170,7 @@ class BlinkCamera extends BlinkDevice {
     }
 
     get privacyMode() {
-        return this.context._privacy;
+        return Boolean(this.context?._privacy);
     }
 
     set privacyMode(val) {
@@ -220,7 +220,7 @@ class BlinkCamera extends BlinkDevice {
         if (this.lowBattery) return 10;
 
         const fullStatus = await this.getFullStatus();
-        const alkalineVolts = Math.max(fullStatus.camera_status.battery_voltage / 100, 0);
+        const alkalineVolts = Math.max((fullStatus?.camera_status?.battery_voltage || 1.8)/ 100, 0);
 
         // AA and AAA Alkaline batteries are rated for 1.5V
         // assume battery voltage between 1.2V and 1.8V is acceptable and express it as a function of 20% to 100%

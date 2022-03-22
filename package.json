@@ -21,22 +21,22 @@
         "url": "git@github.com:colinbendell/homebridge-blink-for-home.git"
     },
     "engines": {
-        "node": ">=14.19.0",
+        "node": ">=14.19.1",
         "homebridge": ">=1.4.0"
     },
     "dependencies": {
         "@adobe/helix-fetch": "^3.0.7",
         "@homebridge/camera-utils": "^2.1.0",
         "commander": "^9.1.0",
-        "ffmpeg-for-homebridge": "^0.0.9",
-        "hap-nodejs": "^0.10.0",
-        "homebridge": "^1.4.0"
+        "ffmpeg-for-homebridge": "^0.0.9"
     },
     "devDependencies": {
         "@jest/globals": "^27.5.1",
         "eslint": "^8.11.0",
         "eslint-config-google": "^0.14.0",
         "eslint-plugin-jest": "^26.1.2",
+        "hap-nodejs": "^0.10.0",
+        "homebridge": "^1.4.0",
         "homebridge-config-ui-x": "^4.42.0",
         "jest": "^27.5.1"
     },

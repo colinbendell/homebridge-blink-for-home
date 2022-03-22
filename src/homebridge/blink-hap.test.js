@@ -1,7 +1,10 @@
 const {describe, expect, test} = require('@jest/globals');
 const {setLogger} = require('../log');
 const {HomebridgeAPI} = require('homebridge/lib/api');
-const {setHap} = require('./hap');
+const {Service, Characteristic} = require('hap-nodejs');
+const {SecuritySystemCurrentState, SecuritySystemTargetState} = require('hap-nodejs').Characteristic;
+
+const hap = require('./hap');
 const SAMPLE = require('../blink-api.sample');
 
 // set test logger
@@ -11,10 +14,8 @@ logger.log = () => {};
 logger.error = () => {};
 setLogger(logger, false, false);
 // set hap
-setHap(new HomebridgeAPI());
+hap.setHap(new HomebridgeAPI());
 
-const {Service, Characteristic, Accessory} = require('hap-nodejs');
-const {SecuritySystemCurrentState, SecuritySystemTargetState} = require('hap-nodejs').Characteristic;
 const {BlinkDeviceHAP, BlinkHAP, BlinkNetworkHAP, BlinkCameraHAP} = require('./blink-hap');
 
 const DEFAULT_BLINK_CLIENT_UUID = 'A5BF5C52-56F3-4ADB-A7C2-A70619552084';
@@ -74,9 +75,10 @@ describe('BlinkHAP', () => {
     describe('BlinkDeviceHAP', () => {
         test.concurrent('.bindCharacteristic()', async () => {
             let charValue = true;
-            const accessory = new Accessory('test', DEFAULT_BLINK_CLIENT_UUID);
+            const accessory = new hap.Accessory('test', DEFAULT_BLINK_CLIENT_UUID);
             const enabledSwitch = accessory.addService(Service.Switch, 'Switch1');
-            const characteristic = BlinkDeviceHAP.bindCharacteristic(enabledSwitch, Characteristic.On,
+            const bindDevice = new BlinkDeviceHAP();
+            const characteristic = bindDevice.bindCharacteristic(enabledSwitch, Characteristic.On,
                 'switch', () => charValue, value => charValue = value);
 
             await characteristic.getValue();
@@ -93,9 +95,10 @@ describe('BlinkHAP', () => {
             const errorFn = async () => {
                 throw new Error('error');
             };
-            const accessory = new Accessory('test2', DEFAULT_BLINK_CLIENT_UUID);
+            const accessory = new hap.Accessory('test2', DEFAULT_BLINK_CLIENT_UUID);
             const enabledSwitch = accessory.addService(Service.Switch, 'Switch2');
-            const characteristic = BlinkDeviceHAP.bindCharacteristic(enabledSwitch, Characteristic.On,
+            const bindDevice = new BlinkDeviceHAP();
+            const characteristic = bindDevice.bindCharacteristic(enabledSwitch, Characteristic.On,
                 'switch', errorFn, errorFn);
 
             await characteristic.getValue();

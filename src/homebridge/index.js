@@ -1,5 +1,5 @@
 const {setLogger} = require('../log');
-const {setHap} = require('./hap');
+const hap = require('./hap');
 const BLINK_STATUS_EVENT_LOOP = 10; // internal poll interval
 
 class HomebridgeBlink {
@@ -15,7 +15,7 @@ class HomebridgeBlink {
         this.log = logger;
         setLogger(logger);
         this.api = api;
-        setHap(api);
+        hap.setHap(api);
 
         this.accessoryLookup = [];
         this.cachedAccessories = [];

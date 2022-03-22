@@ -1,6 +1,5 @@
 const {setLogger} = require('../log');
 const {setHap} = require('./hap');
-const {BlinkHAP} = require('./blink-hap');
 const BLINK_STATUS_EVENT_LOOP = 10; // internal poll interval
 
 class HomebridgeBlink {
@@ -105,7 +104,8 @@ class HomebridgeBlink {
             pin: this.config.pin,
         };
 
-        const blink = new BlinkHAP(clientUUID, auth, this.config);
+        const {BlinkHAP} = require('./blink-hap');
+        const blink = BlinkHAP(clientUUID, auth, this.config);
         try {
             await blink.authenticate();
             await blink.refreshData();

@@ -1,8 +1,7 @@
 const BlinkCameraDelegate = require('./blink-camera-deligate');
 const {Blink, BlinkDevice, BlinkNetwork, BlinkCamera} = require('../blink');
-const {Accessory, Categories, Characteristic, Service, UUIDGen} = require('./hap');
+const {Accessory, Categories, Characteristic, Service, UUIDGen, hap} = require('./hap');
 const {log} = require('../log');
-const {HAPStatus} = require("hap-nodejs/dist/lib/HAPServer");
 
 const ARMED_DELAY = 60; // 60s
 const DEFAULT_OPTIONS = {
@@ -40,11 +39,11 @@ class BlinkDeviceHAP extends BlinkDevice {
         const getCallback = async callback => {
             try {
                 const res = await getFunc.call(this);
-                callback(HAPStatus.SUCCESS, res);
+                callback(hap.HAPStatus.SUCCESS, res);
             }
             catch (err) {
                 log.error(err);
-                callback(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+                callback(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
             }
         };
         const changeCallback = change => {
@@ -58,11 +57,11 @@ class BlinkDeviceHAP extends BlinkDevice {
         const setCallback = async (val, callback) => {
             try {
                 await Promise.resolve(setFunc.call(this, val));
-                callback(HAPStatus.SUCCESS);
+                callback(hap.HAPStatus.SUCCESS);
             }
             catch (err) {
                 log.error(err);
-                callback(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+                callback(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
             }
         };
 

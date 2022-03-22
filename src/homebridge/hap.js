@@ -1,31 +1,51 @@
-const HAP = require('homebridge');
 const {HomebridgeAPI} = require('homebridge/lib/api');
 
-let Accessory;
-let Categories;
-let Characteristic;
-let Service;
-let UUIDGen;
-let hap;
-
-function setHap(hapInstance) {
-    if (!hapInstance) return;
-    if (hapInstance instanceof HomebridgeAPI) {
-        hap = hapInstance.hap;
-        Accessory = hapInstance.platformAccessory;
-    }
-    else {
-        hap = hapInstance;
+class CurrentHAP {
+    constructor() {
     }
 
-    if (hap) {
-        Categories = hap.Categories;
-        Characteristic = hap.Characteristic;
-        Service = hap.Service;
-        UUIDGen = hap.uuid;
+    get hap() {
+        return this._hap;
+    }
+    set hap(value) {
+        this._hap = value;
     }
 
-    module.exports = {hap, setHap, Accessory, Categories, Characteristic, Service, UUIDGen};
+    get Categories() {
+        return this._hap?.Categories;
+    }
+
+    get Characteristic() {
+        return this._hap?.Characteristic;
+    }
+
+    get Service() {
+        return this._hap?.Service;
+    }
+
+    get UUIDGen() {
+        return this._hap?.uuid;
+    }
+
+    set Accessory(value) {
+        this._Accessory = value;
+    }
+
+    get Accessory() {
+        return this._Accessory;
+    }
+
+    setHap(hapInstance) {
+        if (!hapInstance) return;
+        if (hapInstance instanceof HomebridgeAPI) {
+            this.hap = hapInstance.hap;
+            this.Accessory = hapInstance.platformAccessory;
+        }
+        else {
+            this.hap = hapInstance;
+        }
+    }
 }
+const current = new CurrentHAP();
 
-module.exports = {hap, setHap, Accessory, Categories, Characteristic, Service, UUIDGen};
+module.exports = {current, setHap: hap => current.setHap(hap)};

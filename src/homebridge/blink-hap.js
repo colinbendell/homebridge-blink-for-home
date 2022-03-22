@@ -1,6 +1,6 @@
 const BlinkCameraDelegate = require('./blink-camera-deligate');
 const {Blink, BlinkDevice, BlinkNetwork, BlinkCamera} = require('../blink');
-const {Accessory, Categories, Characteristic, Service, UUIDGen, hap} = require('./hap');
+const {Accessory, Categories, Characteristic, Service, UUIDGen, hap} = require('./hap').current;
 const {log} = require('../log');
 
 const ARMED_DELAY = 60; // 60s

@@ -1,6 +1,6 @@
 // import ip from "ip";
 const {spawn} = require('child_process');
-const {hap} = require('./hap');
+const {hap} = require('./hap').current;
 const {log} = require('../log');
 
 const {

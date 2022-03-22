@@ -1,54 +1,58 @@
-const {describe, expect, test, afterEach} = require('@jest/globals');
+const {describe, expect, test} = require('@jest/globals');
 const HAP = require('hap-nodejs');
 const {setHap} = require('./hap');
-const {HomebridgeAPI} = require("homebridge/lib/api");
+const {HomebridgeAPI} = require('homebridge/lib/api');
 
 const original = {
-    hap: require('./hap').hap,
-    Accessory: require('./hap').Accessory,
-    Categories: require('./hap').Categories,
-    Characteristic: require('./hap').Characteristic,
-    Service: require('./hap').Service,
+    hap: require('./hap').current.hap,
+    Accessory: require('./hap').current.Accessory,
+    Categories: require('./hap').current.Categories,
+    Characteristic: require('./hap').current.Characteristic,
+    Service: require('./hap').current.Service,
 };
 
 describe('hap', () => {
     test('default', () => {
-        expect(original.hap).toBeUndefined();
-        expect(original.Accessory).toBeUndefined();
-        expect(original.Categories).toBeUndefined();
-        expect(original.Characteristic).toBeUndefined();
-        expect(original.Service).toBeUndefined();
+        const {hap, Accessory, Categories, Characteristic, Service} = original;
+        expect(hap).toBeUndefined();
+        expect(Accessory).toBeUndefined();
+        expect(Categories).toBeUndefined();
+        expect(Characteristic).toBeUndefined();
+        expect(Service).toBeUndefined();
     });
     test('setHap()', () => {
         setHap(null);
-        expect(original.hap).toBeUndefined();
-        expect(original.Accessory).toBeUndefined();
-        expect(original.Categories).toBeUndefined();
-        expect(original.Characteristic).toBeUndefined();
-        expect(original.Service).toBeUndefined();
+        const {hap, Accessory, Categories, Characteristic, Service} = original;
+        expect(hap).toBeUndefined();
+        expect(Accessory).toBeUndefined();
+        expect(Categories).toBeUndefined();
+        expect(Characteristic).toBeUndefined();
+        expect(Service).toBeUndefined();
     });
     test('setHap(HAP)', () => {
         // const hap = new HAP();
         setHap(HAP);
+        const {hap, Accessory, Categories, Characteristic, Service, UUIDGen} = require('./hap').current;
 
-        expect(require('./hap').hap).toBe(HAP);
-        expect(require('./hap').Accessory).toBeUndefined();
-        expect(require('./hap').Categories).toBe(HAP.Categories);
-        expect(require('./hap').Characteristic).toBe(HAP.Characteristic);
-        expect(require('./hap').Service).toBe(HAP.Service);
-        expect(require('./hap').UUIDGen).toBe(HAP.uuid);
+        expect(hap).toBe(HAP);
+        expect(Accessory).toBeUndefined();
+        expect(Categories).toBe(HAP.Categories);
+        expect(Characteristic).toBe(HAP.Characteristic);
+        expect(Service).toBe(HAP.Service);
+        expect(UUIDGen).toBe(HAP.uuid);
     });
     test('setHap(API)', () => {
         // const hap = new HAP();
         const api = new HomebridgeAPI();
         setHap(api);
+        const {hap, Accessory, Categories, Characteristic, Service, UUIDGen} = require('./hap').current;
 
-        expect(require('./hap').hap).toBe(api.hap);
-        expect(require('./hap').hap).toBe(HAP);
-        expect(require('./hap').Accessory).toBe(api.platformAccessory);
-        expect(require('./hap').Categories).toBe(HAP.Categories);
-        expect(require('./hap').Characteristic).toBe(HAP.Characteristic);
-        expect(require('./hap').Service).toBe(HAP.Service);
-        expect(require('./hap').UUIDGen).toBe(HAP.uuid);
+        expect(hap).toBe(api.hap);
+        expect(hap).toBe(HAP);
+        expect(Accessory).toBe(api.platformAccessory);
+        expect(Categories).toBe(HAP.Categories);
+        expect(Characteristic).toBe(HAP.Characteristic);
+        expect(Service).toBe(HAP.Service);
+        expect(UUIDGen).toBe(HAP.uuid);
     });
 });

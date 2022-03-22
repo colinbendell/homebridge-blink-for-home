@@ -105,7 +105,7 @@ class HomebridgeBlink {
         };
 
         const {BlinkHAP} = require('./blink-hap');
-        const blink = BlinkHAP(clientUUID, auth, this.config);
+        const blink = new BlinkHAP(clientUUID, auth, this.config);
         try {
             await blink.authenticate();
             await blink.refreshData();

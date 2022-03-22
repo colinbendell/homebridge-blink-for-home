@@ -1,7 +1,8 @@
 const BlinkCameraDelegate = require('./blink-camera-deligate');
 const {Blink, BlinkDevice, BlinkNetwork, BlinkCamera} = require('../blink');
-const {Accessory, Categories, Characteristic, Service, UUIDGen, hap} = require('./hap').current;
 const {log} = require('../log');
+const hap = require('./hap');
+const {Categories, Characteristic, HAPStatus, Service, uuid} = require('hap-nodejs');
 
 const ARMED_DELAY = 60; // 60s
 const DEFAULT_OPTIONS = {
@@ -39,11 +40,11 @@ class BlinkDeviceHAP extends BlinkDevice {
         const getCallback = async callback => {
             try {
                 const res = await getFunc.call(this);
-                callback(hap.HAPStatus.SUCCESS, res);
+                callback(HAPStatus.SUCCESS, res);
             }
             catch (err) {
                 log.error(err);
-                callback(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+                callback(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
             }
         };
         const changeCallback = change => {
@@ -57,11 +58,11 @@ class BlinkDeviceHAP extends BlinkDevice {
         const setCallback = async (val, callback) => {
             try {
                 await Promise.resolve(setFunc.call(this, val));
-                callback(hap.HAPStatus.SUCCESS);
+                callback(HAPStatus.SUCCESS);
             }
             catch (err) {
                 log.error(err);
-                callback(hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+                callback(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
             }
         };
 
@@ -79,9 +80,9 @@ class BlinkDeviceHAP extends BlinkDevice {
 
         log('ADD: ' + this.canonicalID);
 
-        this.uuid = UUIDGen.generate(this.canonicalID);
+        this.uuid = uuid.generate(this.canonicalID);
 
-        this.accessory = new Accessory(`Blink ${this.name}`, this.uuid, category);
+        this.accessory = new hap.Accessory(`Blink ${this.name}`, this.uuid, category);
 
         const service = this.accessory.getService(Service.AccessoryInformation)
             .setCharacteristic(Characteristic.Name, this.name)

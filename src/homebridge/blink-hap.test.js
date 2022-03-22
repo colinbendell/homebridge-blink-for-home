@@ -13,8 +13,8 @@ setLogger(logger, false, false);
 // set hap
 setHap(new HomebridgeAPI());
 
-const {Service, Characteristic, Accessory} = require('./hap').current;
-const {SecuritySystemCurrentState, SecuritySystemTargetState} = require('./hap').current.Characteristic;
+const {Service, Characteristic, Accessory} = require('hap-nodejs');
+const {SecuritySystemCurrentState, SecuritySystemTargetState} = require('hap-nodejs').Characteristic;
 const {BlinkDeviceHAP, BlinkHAP, BlinkNetworkHAP, BlinkCameraHAP} = require('./blink-hap');
 
 const DEFAULT_BLINK_CLIENT_UUID = 'A5BF5C52-56F3-4ADB-A7C2-A70619552084';

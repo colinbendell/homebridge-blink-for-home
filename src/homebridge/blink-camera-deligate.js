@@ -1,6 +1,6 @@
 // import ip from "ip";
 const {spawn} = require('child_process');
-const {hap} = require('./hap').current;
+const {StreamRequestTypes, CameraController, SRTPCryptoSuites, H264Profile, H264Level} = require('hap-nodejs');
 const {log} = require('../log');
 
 const {
@@ -57,13 +57,10 @@ const {Http2TLSTunnel} = require('../proxy');
 //     '4.0',
 // ];
 
-let StreamRequestTypes;
-
 class BlinkCameraDelegate {
     constructor(blinkCamera) {
         this.blinkCamera = blinkCamera;
 
-        StreamRequestTypes = hap.StreamRequestTypes;
         // keep track of sessions
         this.pendingSessions = new Map();
         this.proxySessions = new Map();
@@ -86,17 +83,17 @@ class BlinkCameraDelegate {
 
                     // NONE is not supported by iOS just there for testing with Wireshark for example
                     supportedCryptoSuites: [
-                        hap.SRTPCryptoSuites.NONE,
-                        hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80],
+                        SRTPCryptoSuites.NONE,
+                        SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80],
                     video: {
                         codec: {
                             profiles: [
-                                // hap.H264Profile.BASELINE, hap.H264Profile.MAIN,
-                                hap.H264Profile.HIGH],
+                                // H264Profile.BASELINE, H264Profile.MAIN,
+                                H264Profile.HIGH],
                             levels: [
-                                // hap.H264Level.LEVEL3_1,
-                                // hap.H264Level.LEVEL3_2,
-                                hap.H264Level.LEVEL4_0],
+                                // H264Level.LEVEL3_1,
+                                // H264Level.LEVEL3_2,
+                                H264Level.LEVEL4_0],
                         },
                         resolutions: [
                             // [1920, 1080, 30], // width, height, framerate
@@ -123,7 +120,7 @@ class BlinkCameraDelegate {
                 },
             };
 
-            this._controller = new hap.CameraController(options);
+            this._controller = new CameraController(options);
         }
         return this._controller;
     }
@@ -144,7 +141,7 @@ class BlinkCameraDelegate {
         log.debug(request);
 
         const {sessionID, video} = request;
-        const videoSSRC = hap.CameraController.generateSynchronisationSource();
+        const videoSSRC = CameraController.generateSynchronisationSource();
         const sessionInfo = {
             address: request.targetAddress,
 
@@ -252,7 +249,7 @@ class BlinkCameraDelegate {
             ]);
 
             let targetProtocol = 'rtp';
-            if (sessionInfo.videoCryptoSuite === hap.SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80) {
+            if (sessionInfo.videoCryptoSuite === SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80) {
                 // actually ffmpeg just supports AES_CM_128_HMAC_SHA1_80
 
                 // eslint-disable-next-line max-len

@@ -11,11 +11,10 @@ class HomebridgeBlink {
     }
 
     constructor(logger, config, api) {
-        this.config = config;
+        this.config = config || {};
         this.log = logger;
-        setLogger(logger);
         this.api = api;
-        hap.setHap(api);
+        setLogger(logger, this.config['enable-verbose-logging'], this.config['enable-debug-logging']);
 
         this.accessoryLookup = [];
         this.cachedAccessories = [];
@@ -45,7 +44,7 @@ class HomebridgeBlink {
             // await this.conn.observe(handleUpdates);
 
             const data = [...this.blink.networks.values(), ...this.blink.cameras.values()];
-            this.accessoryLookup = data.map(entry => entry.createAccessory(this.cachedAccessories));
+            this.accessoryLookup = data.map(entry => entry.createAccessory(this.api, this.cachedAccessories));
 
             this.api.unregisterPlatformAccessories(
                 HomebridgeBlink.PLUGIN_NAME,

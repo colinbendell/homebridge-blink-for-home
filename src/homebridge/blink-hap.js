@@ -1,9 +1,17 @@
 const BlinkCameraDelegate = require('./blink-camera-deligate');
 const {Blink, BlinkDevice, BlinkNetwork, BlinkCamera} = require('../blink');
 const {log} = require('../log');
-const hap = require('./hap');
-const {Categories, Characteristic, HAPStatus, Service, uuid} = require('hap-nodejs');
-
+const {hap} = require('./hap');
+const {Categories, Characteristic, CameraController, HAPStatus, Service} = hap;
+const {
+    SRTPCryptoSuites,
+    H264Profile,
+    H264Level,
+    VideoCodecType,
+    MediaContainerType,
+    AudioStreamingCodecType,
+    AudioStreamingSamplerate,
+} = hap;
 const ARMED_DELAY = 60; // 60s
 const DEFAULT_OPTIONS = {
     username: null,
@@ -30,6 +38,111 @@ const DEFAULT_OPTIONS = {
 //     IN_USE: 0x01, // Session is marked IN_USE after the first setup request
 //     UNAVAILABLE: 0x02, // other reasons
 // };
+
+const CAMERA_DELEGATE_OPTIONS = {
+    sensors: {
+        motion: true,
+    },
+    recording: {
+        delegate: {
+            updateRecordingActive: (...data) => log('updateRecordingActive', [...data]),
+            updateRecordingConfiguration: () => log('updateRecordingConfiguration'),
+            handleRecordingStreamRequest: () => (log('handleRecordingStreamRequest') || []),
+            acknowledgeStream: () => log('acknowledgeStream'),
+            closeRecordingStream: () => {},
+        },
+        options: {
+            mediaContainerConfiguration: {
+                type: MediaContainerType.FRAGMENTED_MP4,
+                fragmentLength: 4000,
+            },
+            video: {
+                type: VideoCodecType.H264,
+                parameters: {
+                    profiles: [
+                        H264Profile.BASELINE,
+                        // H264Profile.MAIN,
+                        // H264Profile.HIGH,
+                    ],
+                    levels: [
+                        H264Level.LEVEL3_1,
+                        // H264Level.LEVEL3_2,
+                        // H264Level.LEVEL4_0,
+                    ],
+                },
+                resolutions: [
+                    // [1920, 1080, 30], // width, height, framerate
+                    // [1280, 960, 30],
+                    [1280, 720, 24],
+                    // [1024, 768, 30],
+                    // [640, 480, 30],
+                    // [640, 360, 30],
+                    // [480, 360, 30],
+                    // [480, 270, 30],
+                    // [320, 240, 30],
+                    [320, 240, 15], // Apple Watch requires this configuration
+                    // [320, 180, 30],
+                ],
+            },
+            audio: {
+                codecs: [
+                    {
+                        type: AudioStreamingCodecType.AAC_ELD,
+                        samplerate: AudioStreamingSamplerate.KHZ_16,
+                    },
+                ],
+            },
+        },
+    },
+    cameraStreamCount: 1, // HomeKit requires at least 2 streams, but 1 is also just fine
+
+    streamingOptions: {
+        // legacy option which will just enable AES_CM_128_HMAC_SHA1_80 (can still be used though)
+        // srtp: true,
+
+        // NONE is not supported by iOS just there for testing with Wireshark for example
+        supportedCryptoSuites: [
+            SRTPCryptoSuites.NONE,
+            SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80,
+        ],
+        video: {
+            codec: {
+                profiles: [
+                    H264Profile.BASELINE,
+                    // H264Profile.MAIN,
+                    // H264Profile.HIGH,
+                ],
+                levels: [
+                    H264Level.LEVEL3_1,
+                    // H264Level.LEVEL3_2,
+                    // H264Level.LEVEL4_0,
+                ],
+            },
+            resolutions: [
+                // [1920, 1080, 30], // width, height, framerate
+                // [1280, 960, 30],
+                [1280, 720, 24],
+                // [1024, 768, 30],
+                // [640, 480, 30],
+                // [640, 360, 30],
+                // [480, 360, 30],
+                // [480, 270, 30],
+                // [320, 240, 30],
+                [320, 240, 15], // Apple Watch requires this configuration
+                // [320, 180, 30],
+            ],
+        },
+        audio: {
+            codecs: [
+                {
+                    type: AudioStreamingCodecType.AAC_ELD,
+                    samplerate: AudioStreamingSamplerate.KHZ_16,
+                },
+            ],
+        },
+    },
+};
+
 
 class BlinkDeviceHAP extends BlinkDevice {
     constructor(data, blink) {
@@ -75,14 +188,15 @@ class BlinkDeviceHAP extends BlinkDevice {
         return actual;
     }
 
-    createAccessory(cachedAccessories = [], category = null) {
+    createAccessory(hapAPI, cachedAccessories = [], category = null) {
         if (this.accessory) return this;
 
         log('ADD: ' + this.canonicalID);
 
-        this.uuid = uuid.generate(this.canonicalID);
+        this.uuid = hap.uuid.generate(this.canonicalID);
 
-        this.accessory = new hap.Accessory(`Blink ${this.name}`, this.uuid, category);
+        // eslint-disable-next-line new-cap
+        this.accessory = new hapAPI.platformAccessory(`Blink ${this.name}`, this.uuid, category);
 
         const service = this.accessory.getService(Service.AccessoryInformation)
             .setCharacteristic(Characteristic.Name, this.name)
@@ -162,12 +276,12 @@ class BlinkNetworkHAP extends BlinkNetwork {
         await this.setArmedState(targetArmed);
     }
 
-    createAccessory(cachedAccessories = []) {
+    createAccessory(hapAPI, cachedAccessories = []) {
         if (this.accessory) return this;
 
         if (this.blink?.config?.noAlarm && this.blink?.config?.noManualArmSwitch) return this;
 
-        super.createAccessory(cachedAccessories, Categories.SECURITY_SYSTEM);
+        super.createAccessory(hapAPI, cachedAccessories, Categories.SECURITY_SYSTEM);
         if (!this.blink?.config?.noAlarm) {
             const securitySystem = this.accessory.addService(Service.SecuritySystem);
             this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState,
@@ -208,46 +322,57 @@ class BlinkCameraHAP extends BlinkCamera {
             Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
     }
 
-    createAccessory(cachedAccessories = []) {
+    createAccessory(hapAPI, cachedAccessories = []) {
         if (this.accessory) return this;
-        super.createAccessory(cachedAccessories, Categories.CAMERA);
+        super.createAccessory(hapAPI, cachedAccessories, Categories.CAMERA);
 
         const cameraDelegate = new BlinkCameraDelegate(this);
+        const controllerOptions = Object.assign({delegate: cameraDelegate}, CAMERA_DELEGATE_OPTIONS);
+        const cameraController = new CameraController(controllerOptions);
 
-        this.accessory.configureController(cameraDelegate.controller);
+        this.accessory.configureController(cameraController);
+        // this.accessory.activeCameraController = cameraDelegate.controller;
+        // console.log('activeCameraController?', this.accessory.activeCameraController);
 
-        // this.bindCharacteristic(this.getService(Service.AccessoryInformation),
-        //     Characteristic.ReceivedSignalStrengthIndication, 'Wifi Strength', this.getWifi);
+        const cameraMode = this.accessory.getService(Service.CameraOperatingMode);
+        this.bindCharacteristic(cameraMode, Characteristic.EventSnapshotsActive,
+            'EventSnapshotsActive', () => Boolean(this.context._eventSnapshots), val => this.context._eventSnapshots = val);
+        this.bindCharacteristic(cameraMode, Characteristic.HomeKitCameraActive,
+            'HomeKitCameraActive', () => this.enabled, async val => await this.setEnabled(val));
+        this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive,
+            'PeriodicSnapshotsActive', () => this.privacyMode);
+        this.bindCharacteristic(cameraMode, Characteristic.ManuallyDisabled,
+            'ManuallyDisabled', () => !this.network.armed);
 
-        // const cameraMode = this.accessory.addService(Service.CameraOperatingMode, 'Camera Operating Mode',
-        //     'activated mode.' + this.serial);
-        // this.bindCharacteristic(cameraMode, Characteristic.HomeKitCameraActive, 'Camera Active', this.getEnabled);
-        // this.bindCharacteristic(cameraMode, Characteristic.EventSnapshotsActive, 'Privacy Mode', this.getEnabled);
-        // this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive, 'Privacy Mode',
-        //     this.getPrivacyMode);
-        // this.bindCharacteristic(cameraMode, Characteristic.ThirdPartyCameraActive, 'Third Party Camera Active',
-        //     this.getPrivacyMode);
+        const cameraStream = this.accessory.getService(Service.CameraRTPStreamManagement);
+        this.bindCharacteristic(cameraStream, Characteristic.Active,
+            'Active', () => false);
+
+        const cameraRecording = this.accessory.getService(Service.CameraRecordingManagement);
+        this.bindCharacteristic(cameraRecording, Characteristic.Active,
+            'Active', () => false);
 
         // const microphone = this.accessory.addService(Service.Microphone);
         // this.bindCharacteristic(microphone, Characteristic.Mute, 'Microphone', () => false);
 
         const motionService = this.accessory.addService(Service.MotionSensor,
             `Motion Detected`, `motion-sensor.${this.serial}`);
+        // const motionService = this.accessory.getService(Service.MotionSensor);
         this.bindCharacteristic(motionService, Characteristic.MotionDetected,
-            'Motion', this.getMotionDetected);
+            'Motion', async () => await this.getMotionDetected());
         this.bindCharacteristic(motionService, Characteristic.StatusActive,
-            'Motion Sensor Active', this.getMotionDetectActive);
+            'Motion Sensor Active', async () => await this.getMotionDetectActive());
 
         if (!this.isCameraMini) {
             // Battery Levels are only available in non Minis
             const batteryService = this.accessory.addService(Service.Battery,
                 `Battery`, `battery-sensor.${this.serial}`);
-            this.bindCharacteristic(batteryService, Characteristic.BatteryLevel,
-                'Battery Level', this.getBattery);
-            this.bindCharacteristic(batteryService, Characteristic.ChargingState,
-                'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
+            // this.bindCharacteristic(batteryService, Characteristic.BatteryLevel,
+            //     'Battery Level', () => this.getBattery());
+            // this.bindCharacteristic(batteryService, Characteristic.ChargingState,
+            //     'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
             this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery,
-                'Battery LowBattery', this.getLowBattery);
+                'Battery LowBattery', () => this.getLowBattery());
 
             // no temperaure sensor on the minis
             const tempService = this.accessory.addService(Service.TemperatureSensor,
@@ -265,7 +390,7 @@ class BlinkCameraHAP extends BlinkCamera {
             const enabledSwitch = this.accessory.addService(Service.Switch,
                 `Enabled`, `enabled.${this.serial}`);
             this.bindCharacteristic(enabledSwitch, Characteristic.On,
-                'Enabled', this.getEnabled, this.setEnabled);
+                'Enabled', () => this.getEnabled(), async val => await this.setEnabled(val));
         }
 
         if (!this.blink?.config?.noPrivacySwitch) {

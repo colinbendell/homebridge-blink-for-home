@@ -5,6 +5,7 @@ logger.log = () => {};
 logger.error = () => {};
 setLogger(logger, false, false);
 const {Blink, BlinkCamera} = require('./blink');
+const {sleep} = require('./utils');
 const SAMPLE = require('./blink-api.sample');
 
 // eslint-disable-next-line no-undef
@@ -85,6 +86,23 @@ describe('Blink', () => {
 
         expect(await blink._commandWait(networkID)).toBeUndefined();
         expect(await blink._commandWait(null, commandID)).toBeUndefined();
+    });
+    test.concurrent('_lock()', async () => {
+        const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+
+        let calls = 0;
+        const cmd = async () => {
+            await sleep(1);
+            calls++;
+        };
+        blink._lock('test', cmd);
+        await blink._lock('test', cmd);
+        await sleep(11);
+
+        expect(calls).toBe(1);
+
+        await blink._lock('test', cmd);
+        expect(calls).toBe(2);
     });
     describe('BlinkCamera', () => {
         test.concurrent('.data', async () => {
@@ -449,7 +467,7 @@ describe('Blink', () => {
             [true, true, 1],
             [true, false, 2],
             [false, false, 1],
-        ])('Blink._command()', async (busy, timeout, expectedAPI) => {
+        ])('._command()', async (busy, timeout, expectedAPI) => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             await blink.refreshData();
@@ -457,12 +475,14 @@ describe('Blink', () => {
             const busyArm = JSON.parse(JSON.stringify(SAMPLE.ARM_NETWORK));
             if (busy) busyArm.message = 'Busy';
 
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+            const networkID = cameraData.network_id;
             blink.blinkAPI.getCommand.mockResolvedValue(SAMPLE.COMMAND_COMPLETE);
             blink.blinkAPI.armNetwork
                 .mockResolvedValueOnce(busyArm)
                 .mockResolvedValueOnce(SAMPLE.ARM_NETWORK);
 
-            const res = await blink._command(() => blink.blinkAPI.armNetwork(1), timeout ? 0 : 30, 0.001);
+            const res = await blink._command(networkID, () => blink.blinkAPI.armNetwork(networkID), timeout ? 0 : 30, 0.001);
             if (timeout) {
                 expect(res).toBeUndefined();
             }

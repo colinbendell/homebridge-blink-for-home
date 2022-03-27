@@ -5,7 +5,7 @@ const fs = require('fs');
 const {stringify} = require('./stringify');
 // const stringify = JSON.stringify;
 
-const THUMBNAIL_TTL = 60 * 60; // 60min
+const THUMBNAIL_TTL = 1 * 60; // 60min
 const BATTERY_TTL = 60 * 60; // 60min
 const MOTION_POLL = 20;
 const STATUS_POLL = 45;
@@ -305,9 +305,10 @@ BlinkCamera.DISABLED_BYTES = DISABLED_BYTES;
 class Blink {
     constructor(clientUUID, auth, statusPoll = STATUS_POLL, motionPoll = MOTION_POLL, snapshotRate = THUMBNAIL_TTL) {
         this.blinkAPI = new BlinkAPI(clientUUID, auth);
-        this.statusPoll = statusPoll;
-        this.motionPoll = motionPoll;
-        this.snapshotRate = snapshotRate;
+        this.statusPoll = statusPoll ?? STATUS_POLL;
+        this.motionPoll = motionPoll ?? MOTION_POLL;
+        this.snapshotRate = snapshotRate ?? THUMBNAIL_TTL;
+        this._lockCache = new Map();
     }
 
     createNetwork(data) {
@@ -358,12 +359,12 @@ class Blink {
         return cmd;
     }
 
-    async _commandWaitAll(commands = [], timeout = null) {
+    async _commandWaitAll(networkID, commands = [], timeout = null) {
         return await Promise.all([commands].flatMap(c =>
-            this._commandWait(c.network_id, c.id || c.command_id, timeout)));
+            this._commandWait(networkID, c.id || c.command_id, timeout)));
     }
 
-    async _command(fn, timeout = 15, busyWait = 5) {
+    async _command(networkID, fn, timeout = 15, busyWait = 5) {
         const start = Date.now();
 
         // if there is an error, we are going to retry for 15s and fail
@@ -376,7 +377,20 @@ class Blink {
             if (Date.now() - start > timeout * 1000) return;
             cmd = await Promise.resolve(fn()).catch(e => log.error(e)) || {message: 'busy'};
         }
-        return await this._commandWaitAll(cmd, timeout);
+        return await this._commandWaitAll(networkID, cmd, timeout);
+    }
+
+    async _lock(name, promiseCmd) {
+        if (this._lockCache.has(name)) return this._lockCache.get(name);
+
+        this._lockCache.set(name, promiseCmd.call(this));
+
+        try {
+            await Promise.resolve(this._lockCache.get(name));
+        }
+        finally {
+            this._lockCache.delete(name);
+        }
     }
 
     async getUrl(url) {
@@ -527,7 +541,7 @@ class Blink {
     }
 
     async refreshData(force = false) {
-        const ttl = force ? 0 : this.statusPoll;
+        const ttl = force ? 100 : this.statusPoll;
         const homescreen = await this.blinkAPI.getAccountHomescreen(ttl);
         homescreen.cameras.push(...homescreen.owls);
 
@@ -613,7 +627,7 @@ class Blink {
     async setArmedState(networkID, arm = true) {
         const cmd = arm ? this.blinkAPI.armNetwork : this.blinkAPI.disarmNetwork;
 
-        await this._command(async () => cmd.call(this.blinkAPI, networkID));
+        await this._command(networkID, async () => cmd.call(this.blinkAPI, networkID));
         await this.refreshData(true);
     }
 
@@ -622,7 +636,7 @@ class Blink {
         let cmd = enabled ? this.blinkAPI.enableCameraMotion : await this.blinkAPI.disableCameraMotion;
         if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlSettings;
 
-        await this._command(async () => cmd.call(this.blinkAPI, networkID, cameraID, {enabled: enabled}));
+        await this._command(networkID, async () => cmd.call(this.blinkAPI, networkID, cameraID, {enabled: enabled}));
         await this.refreshData(true);
     }
 
@@ -634,12 +648,25 @@ class Blink {
             .filter(camera => !cameraID || camera.cameraID === cameraID);
 
         const status = await Promise.all(cameras.map(async camera => {
-            const lastSnapshot = camera.thumbnailCreatedAt + (this.snapshotRate * 1000);
-            if (force || (camera.armed && camera.enabled && Date.now() >= lastSnapshot)) {
+            const ttl = force ? 500 : (this.snapshotRate * 1000);
+            const lastSnapshot = camera.thumbnailCreatedAt + ttl;
+            const eligible = force || (camera.armed && camera.enabled);
+
+            if (eligible && Date.now() >= lastSnapshot) {
+                const networkID = camera.networkID;
+                const cameraID = camera.cameraID;
                 log(`Refreshing snapshot for ${camera.name}`);
-                let cmd = this.blinkAPI.updateCameraThumbnail;
-                if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlThumbnail;
-                await this._command(async () => cmd.call(this.blinkAPI, camera.networkID, camera.cameraID));
+                let updateCamera = this.blinkAPI.updateCameraThumbnail;
+                if (camera.isCameraMini) updateCamera = this.blinkAPI.updateOwlThumbnail;
+
+                // this is an overly complicated nesting, but we have the tree of:
+                // lock --> update camera --> poll command
+                // TODO: organize this better. Perhaps auto check on the _command call? or implement in the blink api?
+                const updateCameraPromise = async () => updateCamera.call(this.blinkAPI, networkID, cameraID);
+                const commandPromise = async () => this._command(networkID, updateCameraPromise);
+                // only run once, attach to another request if it is inflight
+                await this._lock(`refreshCameraThumbnail(${networkID}, ${cameraID}`, commandPromise);
+
                 return true; // we updated a camera
             }
             return false;
@@ -664,7 +691,7 @@ class Blink {
             if (force || (camera.armed && camera.enabled && Date.now() >= lastSnapshot)) {
                 log(`Refreshing clip for ${camera.name}`);
                 const cmd = async () => await this.blinkAPI.updateCameraClip(camera.networkID, camera.cameraID);
-                await this._command(cmd);
+                await this._command(camera.networkID, cmd);
 
                 return true; // we updated a camera
             }
@@ -679,7 +706,7 @@ class Blink {
         const camera = this.cameras.get(cameraID);
 
         // quick exit that avoids having to poll the motion API
-        if (camera.thumbnailCreatedAt > camera.updatedAt - 2 * 1000) {
+        if (camera.thumbnailCreatedAt > camera.updatedAt - 60 * 1000) {
             return camera.thumbnail;
         }
 
@@ -749,7 +776,7 @@ class Blink {
         let cmd = this.blinkAPI.getCameraLiveViewV5;
         if (camera.isCameraMini) cmd = this.blinkAPI.getOwlLiveView;
 
-        return await this._command(() => cmd.call(this.blinkAPI, networkID, cameraID, timeout));
+        return await this._command(networkID, () => cmd.call(this.blinkAPI, networkID, cameraID, timeout));
     }
 
     async stopCameraLiveView(networkID) {

@@ -367,7 +367,7 @@ class Blink {
             this._commandWait(networkID, c.id || c.command_id, timeout)));
     }
 
-    async _command(networkID, fn, timeout = 15, busyWait = 5) {
+    async _command(networkID, fn, timeout = 60, busyWait = 5) {
         const start = Date.now();
 
         // if there is an error, we are going to retry for 15s and fail
@@ -629,8 +629,8 @@ class Blink {
 
     async setArmedState(networkID, arm = true) {
         const cmd = arm ? this.blinkAPI.armNetwork : this.blinkAPI.disarmNetwork;
-
-        await this._command(networkID, async () => cmd.call(this.blinkAPI, networkID));
+        const commandPromise = async () => await this._command(networkID, async () => cmd.call(this.blinkAPI, networkID));
+        await this._lock(`setArmedState(${networkID})`, commandPromise);
         await this.refreshData(true);
     }
 
@@ -638,6 +638,10 @@ class Blink {
         const camera = this.cameras.get(cameraID);
         let cmd = enabled ? this.blinkAPI.enableCameraMotion : await this.blinkAPI.disableCameraMotion;
         if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlSettings;
+
+        const updateCameraPromise = async () => cmd.call(this.blinkAPI, networkID, cameraID, {enabled: enabled});
+        const commandPromise = async () => await this._command(networkID, updateCameraPromise);
+        await this._lock(`setCameraMotionSensorState(${networkID}, ${cameraID})`, commandPromise);
 
         await this._command(networkID, async () => cmd.call(this.blinkAPI, networkID, cameraID, {enabled: enabled}));
         await this.refreshData(true);
@@ -668,7 +672,7 @@ class Blink {
                 const updateCameraPromise = async () => updateCamera.call(this.blinkAPI, networkID, cameraID);
                 const commandPromise = async () => this._command(networkID, updateCameraPromise);
                 // only run once, attach to another request if it is inflight
-                await this._lock(`refreshCameraThumbnail(${networkID}, ${cameraID}`, commandPromise);
+                await this._lock(`refreshCameraThumbnail(${networkID}, ${cameraID})`, commandPromise);
 
                 return true; // we updated a camera
             }

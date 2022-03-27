@@ -45,10 +45,10 @@ const CAMERA_DELEGATE_OPTIONS = {
     },
     recording: {
         delegate: {
-            updateRecordingActive: (...data) => log('updateRecordingActive', [...data]),
-            updateRecordingConfiguration: () => log('updateRecordingConfiguration'),
-            handleRecordingStreamRequest: () => (log('handleRecordingStreamRequest') || []),
-            acknowledgeStream: () => log('acknowledgeStream'),
+            updateRecordingActive: (...data) => log.debug('updateRecordingActive', [...data]),
+            updateRecordingConfiguration: () => log.debug('updateRecordingConfiguration'),
+            handleRecordingStreamRequest: () => (log.debug('handleRecordingStreamRequest') || []),
+            acknowledgeStream: () => log.debug('acknowledgeStream'),
             closeRecordingStream: () => {},
         },
         options: {
@@ -335,38 +335,42 @@ class BlinkCameraHAP extends BlinkCamera {
         // console.log('activeCameraController?', this.accessory.activeCameraController);
 
         const cameraMode = this.accessory.getService(Service.CameraOperatingMode);
-        this.bindCharacteristic(cameraMode, Characteristic.EventSnapshotsActive,
-            'EventSnapshotsActive', () => Boolean(this.context._eventSnapshots), val => this.context._eventSnapshots = val);
-        this.bindCharacteristic(cameraMode, Characteristic.HomeKitCameraActive,
-            'HomeKitCameraActive', () => this.enabled, async val => await this.setEnabled(val));
-        this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive,
-            'PeriodicSnapshotsActive', () => this.privacyMode);
+        // this.bindCharacteristic(cameraMode, Characteristic.EventSnapshotsActive,
+        //     'EventSnapshotsActive', () => Boolean(this.context._eventSnapshots), val => this.context._eventSnapshots = val);
+        // this.bindCharacteristic(cameraMode, Characteristic.HomeKitCameraActive,
+        //     'HomeKitCameraActive', () => this.enabled); // , async val => await this.setEnabled(val));
+        // this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive,
+        //     'PeriodicSnapshotsActive', () => this.privacyMode);
         this.bindCharacteristic(cameraMode, Characteristic.ManuallyDisabled,
             'ManuallyDisabled', () => !this.network.armed);
 
-        const cameraStream = this.accessory.getService(Service.CameraRTPStreamManagement);
-        this.bindCharacteristic(cameraStream, Characteristic.Active,
-            'Active', () => false);
+        // const cameraStream = this.accessory.getService(Service.CameraRTPStreamManagement);
+        // this.bindCharacteristic(cameraStream, Characteristic.Active,
+        //     'Active', () => false);
 
-        const cameraRecording = this.accessory.getService(Service.CameraRecordingManagement);
-        this.bindCharacteristic(cameraRecording, Characteristic.Active,
-            'Active', () => false);
+        // const cameraRecording = this.accessory.getService(Service.CameraRecordingManagement);
+        // this.bindCharacteristic(cameraRecording, Characteristic.Active,
+        //     'Active', () => false);
 
         // const microphone = this.accessory.addService(Service.Microphone);
         // this.bindCharacteristic(microphone, Characteristic.Mute, 'Microphone', () => false);
 
-        const motionService = this.accessory.addService(Service.MotionSensor,
-            `Motion Detected`, `motion-sensor.${this.serial}`);
-        // const motionService = this.accessory.getService(Service.MotionSensor);
+        const motionService = this.accessory.getService(Service.MotionSensor);
         this.bindCharacteristic(motionService, Characteristic.MotionDetected,
             'Motion', async () => await this.getMotionDetected());
-        this.bindCharacteristic(motionService, Characteristic.StatusActive,
-            'Motion Sensor Active', async () => await this.getMotionDetectActive());
+
+        // disabling sensor active as it isn't clear if this actually is needed, but causes a lot of load on homebridge
+
+        // this.bindCharacteristic(motionService, Characteristic.StatusActive,
+        //     'Motion Sensor Active', async () => await this.getMotionDetectActive());
 
         if (!this.isCameraMini) {
             // Battery Levels are only available in non Minis
             const batteryService = this.accessory.addService(Service.Battery,
                 `Battery`, `battery-sensor.${this.serial}`);
+
+            // disabling temperatures as it isn't accruate with alkaline batteries and causes load on blink cameras
+
             // this.bindCharacteristic(batteryService, Characteristic.BatteryLevel,
             //     'Battery Level', () => this.getBattery());
             // this.bindCharacteristic(batteryService, Characteristic.ChargingState,
@@ -388,14 +392,14 @@ class BlinkCameraHAP extends BlinkCamera {
         if (!this.blink?.config?.noEnabledSwitch) {
             // No idea how to set the motion enabled/disabled on minis
             const enabledSwitch = this.accessory.addService(Service.Switch,
-                `Enabled`, `enabled.${this.serial}`);
+                `${this.name} Enabled`, `enabled.${this.serial}`);
             this.bindCharacteristic(enabledSwitch, Characteristic.On,
                 'Enabled', () => this.getEnabled(), async val => await this.setEnabled(val));
         }
 
         if (!this.blink?.config?.noPrivacySwitch) {
             const privacyModeService = this.accessory.addService(Service.Switch,
-                `Privacy Mode`, `privacy.${this.serial}`);
+                `${this.name} Privacy Mode`, `privacy.${this.serial}`);
             this.bindCharacteristic(privacyModeService, Characteristic.On,
                 'Privacy Mode', () => this.privacyMode, val => this.privacyMode = val);
         }

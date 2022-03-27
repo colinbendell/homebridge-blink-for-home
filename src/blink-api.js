@@ -266,7 +266,7 @@ class BlinkAPI {
             options.headers['Content-Type'] = 'application/json';
         }
 
-        log.info(`${method} ${targetPath}`);
+        log.info(`${method} ${targetPath} @${maxTTL}`);
         log.debug(options);
         const urlPrefix = targetPath.startsWith('http') ?
             '' :
@@ -337,7 +337,7 @@ class BlinkAPI {
         // TODO: what about other 3xx?
         else if (res.status === 200) {
             if (method === 'GET') {
-                CACHE.set(method + path, res);
+                CACHE.set(method + targetPath, res);
             }
         }
 
@@ -958,6 +958,21 @@ class BlinkAPI {
 
     /**
      * POST {"intent":"liveview","motion_event_start_time":""}
+     * {
+     *     "command_id": 1023787103,
+     *     "continue_interval": 30,
+     *     "continue_warning": 10,
+     *     "duration": 300,
+     *     "extended_duration": 5400,
+     *     "join_available": true,
+     *     "join_state": "available",
+     *     "media_id": null,
+     *     "new_command": true,
+     *     "options": {},
+     *     "polling_interval": 15,
+     *     "server": "rtsps://lv2-app-prod.immedia-semi.com:443/iaRAwBZRD_R__IMDS_160060593?client_id=208&blinkRTSP=true",
+     *     "submit_logs": true
+     * }
      * {"command_id":750082091,"join_available":true,"join_state":"available",
      *   "server":"rtsps://lv2-app-prod.immedia-semi.com:443/NIE5YSJGOOOn__IMDS_B0000001?client_id=208&blinkRTSP=true",
      *   "duration":300,"continue_interval":30,"continue_warning":10,"submit_logs":true,"new_command":true,

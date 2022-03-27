@@ -7,8 +7,8 @@ const {stringify} = require('./stringify');
 
 const THUMBNAIL_TTL = 1 * 60; // 60min
 const BATTERY_TTL = 60 * 60; // 60min
-const MOTION_POLL = 20;
-const STATUS_POLL = 45;
+const MOTION_POLL = 15;
+const STATUS_POLL = 30;
 const ARMED_DELAY = 60; // 60s
 const MOTION_TRIGGER_DECAY = 90; // 90s
 
@@ -272,7 +272,7 @@ class BlinkCamera extends BlinkDevice {
         return await this.blink.refreshCameraClip(this.networkID, this.cameraID, force);
     }
 
-    async getThumbnail() {
+    async getThumbnail(includeMotion = false) {
         // if we are in privacy mode, use a placeholder image
         if (!this.armed || !this.enabled) {
             if (this.privacyMode) return BlinkCamera.PRIVACY_BYTES;
@@ -281,13 +281,16 @@ class BlinkCamera extends BlinkDevice {
             if (this.armed && !this.enabled) return BlinkCamera.DISABLED_BYTES;
         }
 
-        const thumbnail = await this.blink.getCameraLastThumbnail(this.networkID, this.cameraID);
+        let thumbnailUrl = this.thumbnail;
+        if (includeMotion) {
+            thumbnailUrl = await this.blink.getCameraLastThumbnail(this.networkID, this.cameraID);
+        }
 
-        if (this.cacheThumbnail.has(thumbnail)) return this.cacheThumbnail.get(thumbnail);
+        if (this.cacheThumbnail.has(thumbnailUrl)) return this.cacheThumbnail.get(thumbnailUrl);
 
-        const data = await this.blink.getUrl(thumbnail + '.jpg');
+        const data = await this.blink.getUrl(thumbnailUrl + '.jpg');
         this.cacheThumbnail.clear(); // avoid memory from getting large
-        this.cacheThumbnail.set(thumbnail, data);
+        this.cacheThumbnail.set(thumbnailUrl, data);
         return data;
     }
 

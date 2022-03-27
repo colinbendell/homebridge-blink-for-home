@@ -15,7 +15,7 @@ const {HomebridgeBlink} = require('./homebridge');
 // ]
 
 module.exports = function(homebridge) {
-    setHap(homebridge);
+    setHap(homebridge.hap);
     homebridge.registerPlatform(HomebridgeBlink.PLUGIN_NAME, HomebridgeBlink.PLATFORM_NAME, HomebridgeBlink, true);
 
     return homebridge;

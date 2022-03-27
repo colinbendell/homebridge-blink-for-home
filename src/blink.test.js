@@ -323,13 +323,14 @@ describe('Blink', () => {
         });
 
         test.concurrent.each([
-            [false, false, true, 0, BlinkCamera.PRIVACY_BYTES],
-            [false, true, true, 0, BlinkCamera.PRIVACY_BYTES],
-            [true, false, true, 0, BlinkCamera.PRIVACY_BYTES],
-            [true, false, false, 0, BlinkCamera.DISABLED_BYTES],
-            [true, true, true, 1, Buffer.from([])],
-            [true, true, false, 1, Buffer.from([])],
-        ])('BlinkCamera.getThumbnail()', async (armed, enabled, privacy, expected, bytes) => {
+            [false, false, true, false, 0, BlinkCamera.PRIVACY_BYTES],
+            [false, true, true, false, 0, BlinkCamera.PRIVACY_BYTES],
+            [true, false, true, false, 0, BlinkCamera.PRIVACY_BYTES],
+            [true, false, false, false, 0, BlinkCamera.DISABLED_BYTES],
+            [true, true, true, false, 1, Buffer.from([])],
+            [true, true, false, false, 1, Buffer.from([])],
+            [true, true, false, true, 1, Buffer.from([])],
+        ])('BlinkCamera.getThumbnail()', async (armed, enabled, privacy, includeMotion, expected, bytes) => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             blink.blinkAPI.getUrl.mockResolvedValue(Buffer.from([]));
@@ -341,11 +342,13 @@ describe('Blink', () => {
             cameraDevice.data.enabled = enabled;
             cameraDevice.privacyMode = privacy;
             cameraDevice.thumbnailCreatedAt = Date.now();
+            blink.getCameraLastThumbnail = jest.fn().mockResolvedValue('https://example.com');
 
-            const data1 = await cameraDevice.getThumbnail();
-            const data2 = await cameraDevice.getThumbnail();
+            const data1 = await cameraDevice.getThumbnail(includeMotion);
+            const data2 = await cameraDevice.getThumbnail(includeMotion);
 
             expect(blink.blinkAPI.getAccountHomescreen).toBeCalledTimes(1);
+            expect(blink.getCameraLastThumbnail).toBeCalledTimes(includeMotion ? 2 : 0);
             expect(blink.blinkAPI.getUrl).toBeCalledTimes(expected);
             expect(data1).toBe(data2);
             expect(data1).toStrictEqual(bytes);

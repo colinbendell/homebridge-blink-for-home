@@ -16,10 +16,10 @@ describe('utils', () => {
         });
     });
     test.concurrent('sleep', async () => {
-        const start = process.hrtime.bigint();
+        const start = Number(process.hrtime.bigint() / 1000n / 1000n);
         await sleep(100);
-        const end = process.hrtime.bigint();
-        expect(end-start).toBeGreaterThan(100 * 1000 * 1000);
+        const end = Number(process.hrtime.bigint() / 1000n / 1000n);
+        expect((end - start) / 10).toBeCloseTo(100 / 10, 0);
     });
 });
 

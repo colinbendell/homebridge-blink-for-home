@@ -631,6 +631,7 @@ class Blink {
         const cmd = arm ? this.blinkAPI.armNetwork : this.blinkAPI.disarmNetwork;
         const commandPromise = async () => await this._command(networkID, async () => cmd.call(this.blinkAPI, networkID));
         await this._lock(`setArmedState(${networkID})`, commandPromise);
+
         await this.refreshData(true);
     }
 
@@ -643,7 +644,6 @@ class Blink {
         const commandPromise = async () => await this._command(networkID, updateCameraPromise);
         await this._lock(`setCameraMotionSensorState(${networkID}, ${cameraID})`, commandPromise);
 
-        await this._command(networkID, async () => cmd.call(this.blinkAPI, networkID, cameraID, {enabled: enabled}));
         await this.refreshData(true);
     }
 

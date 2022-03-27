@@ -2,7 +2,7 @@
 const {spawn} = require('child_process');
 const {log} = require('../log');
 const {hap} = require('./hap');
-const {CameraController, SRTPCryptoSuites, StreamRequestTypes, HAPStatus} = hap;
+const {CameraController, SRTPCryptoSuites, StreamRequestTypes, HAPStatus, HapStatusError, ResourceRequestReason} = hap;
 
 const {
     // doesFfmpegSupportCodec,
@@ -72,7 +72,7 @@ class BlinkCameraDelegate {
         log.debug('handleSnapshotRequest');
         if (this.blinkCamera) {
             // we return the current thumbnail faster and async refresh to avoid long delays
-            const bytes = await this.blinkCamera.getThumbnail();
+            const bytes = await this.blinkCamera.getThumbnail(request.reason === ResourceRequestReason.EVENT);
             this.blinkCamera.refreshThumbnail().catch(e => log.error(e));
             return callback(null, Buffer.from(bytes));
         }
@@ -84,29 +84,31 @@ class BlinkCameraDelegate {
     async prepareStream(request, callback) {
         log.debug('prepareStream()');
         log.debug(request);
+        if (!this.blinkCamera?.blink?.config?.liveView) {
+            return callback(new HapStatusError(HAPStatus.NOT_ALLOWED_IN_CURRENT_STATE));
+        }
 
-        const {sessionID, video} = request;
         const videoSSRC = CameraController.generateSynchronisationSource();
         const sessionInfo = {
             address: request.targetAddress,
-            videoPort: video.port,
-            videoCryptoSuite: video.srtpCryptoSuite,
-            videoSRTP: Buffer.concat([video.srtp_key, video.srtp_salt]),
+            videoPort: request.video?.port,
+            videoCryptoSuite: request.video.srtpCryptoSuite,
+            videoSRTP: Buffer.concat([request.video?.srtp_key, request.video?.srtp_salt]),
             videoSSRC: videoSSRC,
         };
         const response = {
             // SOMEDAY: remove address as it is not needed after homebridge 1.1.3
             address: await getDefaultIpAddress(request.addressVersion === 'ipv6'),
             video: {
-                port: video.port,
+                port: request.video?.port,
                 ssrc: videoSSRC,
 
-                srtp_key: video.srtp_key,
-                srtp_salt: video.srtp_salt,
+                srtp_key: request.video?.srtp_key,
+                srtp_salt: request.video?.srtp_salt,
             },
         };
 
-        this.pendingSessions.set(sessionID, sessionInfo);
+        this.pendingSessions.set(request.sessionID, sessionInfo);
 
         // TODO: this is messy as hell - massive cleanup necessary
         const liveViewURL = await this.blinkCamera.getLiveViewURL();
@@ -119,13 +121,13 @@ class BlinkCameraDelegate {
             const proxyServer = new Http2TLSTunnel(listenPort, host, '0.0.0.0', 443, protocol);
             await proxyServer.start();
             const rtspProxy = {protocol, host, path, listenPort, proxyServer};
-            this.proxySessions.set(sessionID, rtspProxy);
+            this.proxySessions.set(request.sessionID, rtspProxy);
         }
         else if (/^immis/.test(liveViewURL)) {
-            this.proxySessions.set(sessionID, {path: `${__dirname}/unsupported.png`});
+            this.proxySessions.set(request.sessionID, {path: `${__dirname}/unsupported.png`});
         }
         else {
-            this.proxySessions.set(sessionID, {path: liveViewURL});
+            this.proxySessions.set(request.sessionID, {path: liveViewURL});
         }
         callback(null, response);
     }
@@ -134,9 +136,8 @@ class BlinkCameraDelegate {
     async handleStreamRequest(request, callback) {
         log.debug('handleStreamRequest()');
         log.debug(request);
-        const sessionID = request.sessionID;
-        const sessionInfo = this.pendingSessions.get(sessionID);
-        const rtspProxy = this.proxySessions.get(sessionID);
+        const sessionInfo = this.pendingSessions.get(request.sessionID);
+        const rtspProxy = this.proxySessions.get(request.sessionID);
 
         if (request.type === StreamRequestTypes.START) {
             const video = request.video;
@@ -210,8 +211,8 @@ class BlinkCameraDelegate {
             log.debug('FFMPEG command: ffmpeg ' + ffmpegCommandClean.join(' '));
 
             const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
-            this.ongoingSessions.set(sessionID, ffmpegVideo);
-            this.pendingSessions.delete(sessionID);
+            this.ongoingSessions.set(request.sessionID, ffmpegVideo);
+            this.pendingSessions.delete(request.sessionID);
 
             ffmpegVideo.stdout.on('data', data => log.debug('VIDEO: ' + String(data)));
             ffmpegVideo.on('error', error => {
@@ -225,7 +226,7 @@ class BlinkCameraDelegate {
                 }
                 else {
                     log.error(message + ' (error)');
-                    if (this.controller) this.controller.forceStopStreamingSession(sessionID);
+                    if (this.controller) this.controller.forceStopStreamingSession(request.sessionID);
                 }
             });
         }
@@ -234,7 +235,7 @@ class BlinkCameraDelegate {
             log.debug('Received (unsupported) request to reconfigure to: ' + JSON.stringify(request.video));
         }
         else if (request.type === StreamRequestTypes.STOP) {
-            const ffmpegProcess = this.ongoingSessions.get(sessionID);
+            const ffmpegProcess = this.ongoingSessions.get(request.sessionID);
             try {
                 if (rtspProxy.proxyServer) await rtspProxy.proxyServer.stop();
             }
@@ -251,8 +252,8 @@ class BlinkCameraDelegate {
                 log.error(e);
             }
 
-            this.pendingSessions.delete(sessionID);
-            this.ongoingSessions.delete(sessionID);
+            this.pendingSessions.delete(request.sessionID);
+            this.ongoingSessions.delete(request.sessionID);
 
             log.info('Stopped streaming session!');
         }

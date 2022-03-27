@@ -1,7 +1,8 @@
 // import ip from "ip";
 const {spawn} = require('child_process');
-const {StreamRequestTypes, CameraController, SRTPCryptoSuites, H264Profile, H264Level} = require('hap-nodejs');
 const {log} = require('../log');
+const {hap} = require('./hap');
+const {CameraController, SRTPCryptoSuites, StreamRequestTypes, HAPStatus} = hap;
 
 const {
     // doesFfmpegSupportCodec,
@@ -67,72 +68,16 @@ class BlinkCameraDelegate {
         this.ongoingSessions = new Map();
     }
 
-    get ffmpegDebugOutput() {
-        return true;
-    }
-
-    get controller() {
-        if (!this._controller) {
-            const options = {
-                cameraStreamCount: 1, // HomeKit requires at least 2 streams, but 1 is also just fine
-                delegate: this,
-
-                streamingOptions: {
-                    // legacy option which will just enable AES_CM_128_HMAC_SHA1_80 (can still be used though)
-                    // srtp: true,
-
-                    // NONE is not supported by iOS just there for testing with Wireshark for example
-                    supportedCryptoSuites: [
-                        SRTPCryptoSuites.NONE,
-                        SRTPCryptoSuites.AES_CM_128_HMAC_SHA1_80],
-                    video: {
-                        codec: {
-                            profiles: [
-                                // H264Profile.BASELINE, H264Profile.MAIN,
-                                H264Profile.HIGH],
-                            levels: [
-                                // H264Level.LEVEL3_1,
-                                // H264Level.LEVEL3_2,
-                                H264Level.LEVEL4_0],
-                        },
-                        resolutions: [
-                            // [1920, 1080, 30], // width, height, framerate
-                            // [1280, 960, 30],
-                            [1280, 720, 24],
-                            // [1024, 768, 30],
-                            // [640, 480, 30],
-                            // [640, 360, 30],
-                            // [480, 360, 30],
-                            // [480, 270, 30],
-                            // [320, 240, 30],
-                            [320, 240, 15], // Apple Watch requires this configuration
-                            // [320, 180, 30],
-                        ],
-                    },
-                    // audio: {
-                    //     codecs: [
-                    //         {
-                    //             type: AudioStreamingCodecType.AAC_ELD,
-                    //             samplerate: AudioStreamingSamplerate.KHZ_16,
-                    //         },
-                    //     ],
-                    // },
-                },
-            };
-
-            this._controller = new CameraController(options);
-        }
-        return this._controller;
-    }
-
     async handleSnapshotRequest(request, callback) {
+        log.debug('handleSnapshotRequest');
         if (this.blinkCamera) {
-            await this.blinkCamera.refreshThumbnail();
+            // we return the current thumbnail faster and async refresh to avoid long delays
             const bytes = await this.blinkCamera.getThumbnail();
-            return callback(null, new Buffer(bytes));
+            this.blinkCamera.refreshThumbnail().catch(e => log.error(e));
+            return callback(null, Buffer.from(bytes));
         }
 
-        return callback(new Error('Snapshot unavailable'));
+        return callback(HAPStatus.RESOURCE_DOES_NOT_EXIST);
     }
 
     // called when iOS request rtp setup
@@ -144,7 +89,6 @@ class BlinkCameraDelegate {
         const videoSSRC = CameraController.generateSynchronisationSource();
         const sessionInfo = {
             address: request.targetAddress,
-
             videoPort: video.port,
             videoCryptoSuite: video.srtpCryptoSuite,
             videoSRTP: Buffer.concat([video.srtp_key, video.srtp_salt]),
@@ -160,7 +104,6 @@ class BlinkCameraDelegate {
                 srtp_key: video.srtp_key,
                 srtp_salt: video.srtp_salt,
             },
-            // audio is omitted as we do not support audio in this example
         };
 
         this.pendingSessions.set(sessionID, sessionInfo);
@@ -264,19 +207,13 @@ class BlinkCameraDelegate {
             const ffmpegCommandClean = rtspProxy.proxyServer ? ['-user-agent', 'Immedia WalnutPlayer'] : [];
             ffmpegCommandClean.push(...videoffmpegCommand.flat().flatMap(c => c.split(' ')));
 
-            if (this.ffmpegDebugOutput) {
-                log.debug('FFMPEG command: ffmpeg ' + ffmpegCommandClean.join(' '));
-            }
+            log.debug('FFMPEG command: ffmpeg ' + ffmpegCommandClean.join(' '));
 
             const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
             this.ongoingSessions.set(sessionID, ffmpegVideo);
             this.pendingSessions.delete(sessionID);
 
-            ffmpegVideo.stdout.on('data', data => {
-                if (this.ffmpegDebugOutput) {
-                    log.debug('VIDEO: ' + String(data));
-                }
-            });
+            ffmpegVideo.stdout.on('data', data => log.debug('VIDEO: ' + String(data)));
             ffmpegVideo.on('error', error => {
                 log.error('[Video] Failed to start video stream: ' + error.message);
             });

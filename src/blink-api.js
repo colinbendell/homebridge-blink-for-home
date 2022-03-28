@@ -17,7 +17,7 @@ const DEFAULT_CLIENT_OPTIONS = {
     device: 'iPhone12,3',
     type: 'ios',
     name: 'unknown',
-    appVersion: '6.1.1 (8854) #e06341d7f',
+    appVersion: '6.9.0 (2202111015) #58dd34a61-mod',
 };
 
 /* eslint-disable */
@@ -251,8 +251,8 @@ class BlinkAPI {
         }
 
         const headers = {
-            'User-Agent': 'Blink/12379 CFNetwork/1327.0.4 Darwin/21.2.0',
-            'app-build': 'IOS_12379',
+            'User-Agent': 'Blink/2202111015 CFNetwork/1331.0.7 Darwin/21.4.0',
+            'app-build': 'IOS_2202111015',
             'Locale': 'en_US',
             'x-blink-time-zone': 'America/New York',
             'accept-language': 'en_US',

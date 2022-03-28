@@ -202,7 +202,7 @@ const HOMESCREEN = {
             fw_version: '10.53',
             enabled: true,
             // eslint-disable-next-line max-len
-            thumbnail: '/media/production/account/1000001/network/2000001/catalina/4000002/thumbnail/fw_10.53__FY_9_3HS_2020_01_01__01_01AM',
+            thumbnail: '/api/v3/media/production/account/1000001/network/2000001/catalina/4000002/thumbnail/thumbnail.jpg?ts=1648473188&ext=',
             status: 'done',
             battery: 'ok',
             usage_rate: false,

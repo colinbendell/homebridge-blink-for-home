@@ -25,23 +25,28 @@
             },
             "hide-alarm": {
                 "title": "Hide Alarm (Security System)",
-                "placeholder": false,
+                "placeholder": true,
                 "description": "When combined with the arm switch (used or automation), the Security-System will have to be controlled by Blink App.",
                 "type": "boolean"
             },
             "hide-manual-arm-switch": {
-                "title": "Hide Manual Arm Switch (for use in automation)",
+                "title": "Hide Sync Module Arm Switch",
+                "placeholder": true,
+                "description": "The Sync Module Arm switch allows for automations to arm / disarm all cameras associated with a sync module",
+                "type": "boolean"
+            },
+            "hide-temperature-sensor": {
+                "title": "Hide Camera Temperature Sensors",
                 "placeholder": false,
-                "description": "The manual arm switch allows for geo fencing automations. Hiding this switch removes this automation use",
                 "type": "boolean"
             },
             "hide-enabled-switch": {
-                "title": "Hide All Camera Enabled/Disable Switch",
+                "title": "Hide Camera Motion Enabled/Disable Switch",
                 "placeholder": false,
                 "type": "boolean"
             },
             "hide-privacy-switch": {
-                "title": "Hide All Privacy-Mode Enable/Disable Switch ",
+                "title": "Hide Camera Privacy-Mode Enable/Disable Switch",
                 "placeholder": false,
                 "description": "Privacy-Mode prevents thumbnails from refreshing when the Security-System is not armed. Disabling this switch will globally disable privacy-mode on all cameras.",
                 "type": "boolean"
@@ -52,10 +57,10 @@
                 "description": "By default, the camera view will expose the last recorded motion. Enabling live view will enable the experimental liveview relay",
                 "type": "boolean"
             },
-            "avoid-thumbnail-battery-drain": {
-                "title": "Reduce battery drain for thumbnails",
-                "default": true,
-                "description": "Causes thumbnails for cameras using battery to be fetched at a minimum 10 minute interval to avoid draining the battery. This is useful if have the Home app open constantly, causing frequent snapshot requests.",
+            "disable-thumbnail-refresh": {
+                "title": "Disable thumbnail refresh",
+                "default": false,
+                "description": "By default, the thumbnails of the cameras will refresh when the camera is enabled, disabling the auto refresh keeps the default thumbnail untouched.",
                 "type": "boolean"
             },
             "camera-thumbnail-refresh-seconds": {
@@ -63,20 +68,20 @@
                 "type": "integer",
                 "minimum": 0,
                 "placeholder": "60",
-                "description": "Force Thumbnail refresh every N seconds. For battery operated camera's, disable 'Reduce battery drain for thumbnails' option"
+                "description": "Force Thumbnail refresh every N seconds. Disabling thumbnail refresh setting takes priority over the timeout."
             },
             "camera-status-polling-seconds": {
-                "title": "Camera Status Polling (seconds)",
+                "title": "Status Polling (seconds)",
                 "type": "integer",
                 "minimum": 1,
-                "placeholder": "45",
+                "placeholder": "30",
                 "description": "Camera status does not update live and must be fetched periodically. By default this is done every 45 seconds"
             },
             "camera-motion-polling-seconds": {
                 "title": "Camera Motion Polling (seconds)",
                 "type": "integer",
                 "minimum": 0,
-                "placeholder": "20",
+                "placeholder": "15",
                 "description": "Camera motion detection does not update live and must be fetched periodically. By default this is done every 20 seconds"
             },
             "enable-verbose-logging": {

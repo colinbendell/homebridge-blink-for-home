@@ -19,10 +19,11 @@ const DEFAULT_OPTIONS = {
     pin: null,
     noAlarm: false,
     noManualArmSwitch: false,
+    noTemperatureSensor: false,
     noEnabledSwitch: false,
     noPrivacySwitch: false,
     liveView: true,
-    avoidThumbnailBatteryDrain: true,
+    noThumbnailRefresh: false,
     cameraThumbnailRefreshSeconds: Blink.THUMBNAIL_TTL,
     cameraStatusPollingSeconds: Blink.STATUS_POLL,
     cameraMotionPollingSeconds: Blink.MOTION_POLL,
@@ -336,7 +337,7 @@ class BlinkCameraHAP extends BlinkCamera {
 
         const cameraMode = this.accessory.getService(Service.CameraOperatingMode);
         // this.bindCharacteristic(cameraMode, Characteristic.EventSnapshotsActive,
-        //     'EventSnapshotsActive', () => Boolean(this.context._eventSnapshots), val => this.context._eventSnapshots = val);
+        //   'EventSnapshotsActive', () => Boolean(this.context._eventSnapshots), val => this.context._eventSnapshots = val);
         // this.bindCharacteristic(cameraMode, Characteristic.HomeKitCameraActive,
         //     'HomeKitCameraActive', () => this.enabled); // , async val => await this.setEnabled(val));
         // this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive,
@@ -378,21 +379,23 @@ class BlinkCameraHAP extends BlinkCamera {
             this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery,
                 'Battery LowBattery', () => this.getLowBattery());
 
-            // no temperaure sensor on the minis
-            const tempService = this.accessory.addService(Service.TemperatureSensor,
-                `Temperature`, `temp-sensor.${this.serial}`);
-            // allow negative values
-            tempService.getCharacteristic(Characteristic.CurrentTemperature).setProps({minValue: -100});
-            this.bindCharacteristic(tempService, Characteristic.CurrentTemperature,
-                'Temperature', () => this.temperature);
-            this.bindCharacteristic(tempService, Characteristic.StatusActive,
-                'Temperature Sensor Active', () => true);
+            // no temperature sensor on the minis
+            if (!this.blink?.config?.noTemperatureSensor) {
+                const tempService = this.accessory.addService(Service.TemperatureSensor,
+                    `${this.name} Temperature`, `temp-sensor.${this.serial}`);
+                // allow negative values
+                tempService.getCharacteristic(Characteristic.CurrentTemperature).setProps({minValue: -100});
+                this.bindCharacteristic(tempService, Characteristic.CurrentTemperature,
+                    'Temperature', () => this.temperature);
+                // this.bindCharacteristic(tempService, Characteristic.StatusActive,
+                //     'Temperature Sensor Active', () => true);
+            }
         }
 
         if (!this.blink?.config?.noEnabledSwitch) {
             // No idea how to set the motion enabled/disabled on minis
             const enabledSwitch = this.accessory.addService(Service.Switch,
-                `${this.name} Enabled`, `enabled.${this.serial}`);
+                `${this.name} Motion Enabled`, `enabled.${this.serial}`);
             this.bindCharacteristic(enabledSwitch, Characteristic.On,
                 'Enabled', () => this.getEnabled(), async val => await this.setEnabled(val));
         }
@@ -435,10 +438,11 @@ class BlinkHAP extends Blink {
         };
         checkValue('hide-alarm', 'noAlarm');
         checkValue('hide-manual-arm-switch', 'noManualArmSwitch');
+        checkValue('hide-temperature-sensor', 'noTemperatureSensor');
         checkValue('hide-enabled-switch', 'noEnabledSwitch');
         checkValue('hide-privacy-switch', 'noPrivacySwitch');
         checkValue('enable-liveview', 'liveView');
-        checkValue('avoid-thumbnail-battery-drain', 'avoidThumbnailBatteryDrain');
+        checkValue('disable-thumbnail-refresh', 'noThumbnailRefresh');
         checkValue('camera-thumbnail-refresh-seconds', 'snapshotSeconds', Number);
         checkValue('camera-status-polling-seconds', 'statusPollingSeconds', Number);
         checkValue('camera-motion-polling-seconds', 'motionPollingSeconds', Number);
@@ -447,7 +451,7 @@ class BlinkHAP extends Blink {
         checkValue('enable-startup-diagnostic', 'startupDiagnostic');
 
         // special use case of a -1 which effectively disables
-        if (newConfig.snapshotSeconds <= 0) {
+        if (newConfig.snapshotSeconds <= 0 || newConfig.noThumbnailRefresh) {
             newConfig.snapshotSeconds = Number.MAX_SAFE_INTEGER;
         }
         return newConfig;

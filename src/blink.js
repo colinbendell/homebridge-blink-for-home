@@ -5,7 +5,7 @@ const fs = require('fs');
 const {stringify} = require('./stringify');
 // const stringify = JSON.stringify;
 
-const THUMBNAIL_TTL = 1 * 60; // 60min
+const THUMBNAIL_TTL = 1 * 60; // 1min
 const BATTERY_TTL = 60 * 60; // 60min
 const MOTION_POLL = 15;
 const STATUS_POLL = 30;

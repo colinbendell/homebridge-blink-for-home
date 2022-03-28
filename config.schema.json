@@ -84,15 +84,13 @@
                 "placeholder": "15",
                 "description": "Camera motion detection does not update live and must be fetched periodically. By default this is done every 20 seconds"
             },
-            "enable-verbose-logging": {
-                "title": "Enable Verbose Logging",
-                "default": false,
-                "type": "boolean"
-            },
-            "enable-debug-logging": {
-                "title": "Enable Debug Logging",
-                "default": false,
-                "type": "boolean"
+            "logging": {
+                "title": "Advanced Logging",
+                "type": "string",
+                "oneOf": [
+                    { "title": "Verbose", "enum": ["verbose"] },
+                    { "title": "Debug", "enum": ["debug"] }
+                ]
             },
             "enable-startup-diagnostic": {
                 "title": "Enable Diagnostic Logging on startup",
@@ -111,11 +109,19 @@
         { "key": "username", "title": "Credentials", "placeholder": "user@example.com" },
         { "key": "password", "placeholder": "password", "notitle": true },
         { "key": "pin", "placeholder": "2FA pin", "notitle": true },
+        { "type": "section", "title": "Features", "expandable": true, "expanded": false,
+            "items": [
+                "hide-alarm", "hide-manual-arm-switch", "hide-enabled-switch", "hide-privacy-switch",
+                "disable-thumbnail-refresh",
+                "hide-temperature-sensor", "enable-liveview"
+            ]
+        },
         { "type": "section", "title": "Advanced Settings", "expandable": true, "expanded": false,
-            "items": ["hide-privacy-switch", "hide-alarm", "hide-manual-arm-switch", "hide-enabled-switch", "enable-liveview",
-                "avoid-thumbnail-battery-drain", "camera-thumbnail-refresh-seconds",
+            "items": [
+                "camera-thumbnail-refresh-seconds",
                 "camera-status-polling-seconds", "camera-motion-polling-seconds",
-                "enable-verbose-logging", "enable-debug-logging", "enable-startup-diagnostic"]
+                "logging", "enable-startup-diagnostic"
+            ]
         }
     ]
 }

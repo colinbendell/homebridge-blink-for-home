@@ -68,8 +68,7 @@ describe('BlinkHAP', () => {
             'camera-thumbnail-refresh-seconds': -1,
             'camera-status-polling-seconds': 9999,
             'camera-motion-polling-seconds': 9999,
-            'enable-verbose-logging': true,
-            'enable-debug-logging': true,
+            'logging': 'debug',
             'enable-startup-diagnostic': true,
         };
         const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID, null, config);

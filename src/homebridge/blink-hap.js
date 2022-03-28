@@ -446,14 +446,14 @@ class BlinkHAP extends Blink {
         checkValue('camera-thumbnail-refresh-seconds', 'snapshotSeconds', Number);
         checkValue('camera-status-polling-seconds', 'statusPollingSeconds', Number);
         checkValue('camera-motion-polling-seconds', 'motionPollingSeconds', Number);
-        checkValue('enable-verbose-logging', 'verbose');
-        checkValue('enable-debug-logging', 'debug');
         checkValue('enable-startup-diagnostic', 'startupDiagnostic');
 
         // special use case of a -1 which effectively disables
         if (newConfig.snapshotSeconds <= 0 || newConfig.noThumbnailRefresh) {
             newConfig.snapshotSeconds = Number.MAX_SAFE_INTEGER;
         }
+        newConfig.verbose = ['verbose', 'debug'].includes(newConfig.logging);
+        newConfig.debug = ['debug'].includes(newConfig.logging);
         return newConfig;
     }
 

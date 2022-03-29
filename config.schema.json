@@ -58,7 +58,7 @@
                 "type": "boolean"
             },
             "disable-thumbnail-refresh": {
-                "title": "Disable thumbnail refresh",
+                "title": "Disable thumbnail auto-refresh",
                 "default": false,
                 "description": "By default, the thumbnails of the cameras will refresh when the camera is enabled, disabling the auto refresh keeps the default thumbnail untouched.",
                 "type": "boolean"
@@ -67,8 +67,8 @@
                 "title": "Camera Thumbnail Refresh (seconds)",
                 "type": "integer",
                 "minimum": 0,
-                "placeholder": "60",
-                "description": "Force Thumbnail refresh every N seconds. Disabling thumbnail refresh setting takes priority over the timeout."
+                "placeholder": "3600",
+                "description": "Force Thumbnail refresh every N seconds. If auto refresh is disabled, this value is ignored."
             },
             "camera-status-polling-seconds": {
                 "title": "Status Polling (seconds)",

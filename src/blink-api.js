@@ -326,6 +326,14 @@ class BlinkAPI {
             await sleep(500);
             return this._request(method, path, body, maxTTL, false, httpErrorAsError);
         }
+        else if (res.status === 409) {
+            if (httpErrorAsError) {
+                if (!/busy/.test(res?._body?.message)) {
+                    const status = res.headers.get('status') || res.status + ' ' + res.statusText;
+                    throw new Error(`${method} ${targetPath} (${status})`);
+                }
+            }
+        }
         else if (res.status >= 400) {
             const status = res.headers.get('status') || res.status + ' ' + res.statusText;
             log.error(`${method} ${targetPath} (${status})`);

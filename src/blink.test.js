@@ -63,47 +63,6 @@ describe('Blink', () => {
         await blink.logout();
     });
 
-    test.concurrent('refreshData()', async () => {
-        const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
-        blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
-        await blink.refreshData();
-        expect(blink.blinkAPI.getAccountHomescreen).toHaveBeenCalled();
-        expect(blink.networks.size).toBe(3);
-        expect(blink.cameras.size).toBe(3);
-    });
-    test.concurrent('_commandWait()', async () => {
-        const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
-        blink.blinkAPI.getAccountHomescreen.mockResolvedValue(JSON.parse(JSON.stringify(SAMPLE.HOMESCREEN)));
-        await blink.refreshData();
-
-        blink.blinkAPI.getCommand.mockResolvedValue(SAMPLE.COMMAND_RUNNING);
-        blink.blinkAPI.deleteCommand.mockResolvedValue({});
-        const {id: commandID, network_id: networkID} = SAMPLE.COMMAND_RUNNING.commands[0];
-        await blink._commandWait(networkID, commandID, 0.0001);
-
-        expect(blink.blinkAPI.getCommand).toBeCalledTimes(2);
-        expect(blink.blinkAPI.deleteCommand).toBeCalledTimes(1);
-
-        expect(await blink._commandWait(networkID)).toBeUndefined();
-        expect(await blink._commandWait(null, commandID)).toBeUndefined();
-    });
-    test.concurrent('_lock()', async () => {
-        const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
-
-        let calls = 0;
-        const cmd = async () => {
-            await sleep(1);
-            calls++;
-        };
-        blink._lock('test', cmd);
-        await blink._lock('test', cmd);
-        await sleep(11);
-
-        expect(calls).toBe(1);
-
-        await blink._lock('test', cmd);
-        expect(calls).toBe(2);
-    });
     describe('BlinkCamera', () => {
         test.concurrent('.data', async () => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
@@ -228,13 +187,15 @@ describe('Blink', () => {
         });
 
         test.concurrent.each([
-            [false, false, false, false, 0, 0],
-            [false, false, true, false, 0, 0],
-            [false, false, false, true, 0, 0],
-            [false, false, true, true, Date.now(), 0],
-            [false, true, true, true, 0, 1],
-            [true, true, true, true, 0, 1],
-        ])('BlinkCamera.refreshThumbnail()', async (mini, force, armed, enabled, thumbnailDate, expected) => {
+            [false, false, false, false, 'ok', 'online', 1, 0],
+            [false, false, true, false, 'ok', 'online', 1, 0],
+            [false, false, false, true, 'ok', 'online', 1, 0],
+            [false, false, true, true, 'ok', 'online', Date.now(), 0],
+            [false, true, true, true, 'ok', 'online', 1, 1],
+            [true, true, true, true, null, 'online', 1, 1],
+            [false, true, true, true, 'ok', 'offline', 1, 0],
+            [false, true, true, true, 'low', 'online', 1, 0],
+        ])('BlinkCamera.refreshThumbnail()', async (mini, force, armed, enabled, battery, status, thumbnailDate, calls) => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             blink.blinkAPI.updateCameraThumbnail.mockResolvedValue(SAMPLE.UPDATE_THUMBNAIL);
@@ -246,14 +207,16 @@ describe('Blink', () => {
             const cameraDevice = blink.cameras.get(cameraData.id);
             cameraDevice.network.data.armed = armed;
             cameraDevice.data.enabled = enabled;
+            if (battery) cameraDevice.data.battery = battery;
+            if (status) cameraDevice.data.status = status;
             if (thumbnailDate) cameraDevice.thumbnailCreatedAt = thumbnailDate;
 
             await cameraDevice.refreshThumbnail(force);
 
-            expect(blink.blinkAPI.updateCameraThumbnail).toBeCalledTimes(!mini ? expected : 0);
-            expect(blink.blinkAPI.updateOwlThumbnail).toBeCalledTimes(mini ? expected : 0);
-            expect(blink.blinkAPI.getCommand).toBeCalledTimes(expected);
-            expect(blink.blinkAPI.getAccountHomescreen).toBeCalledTimes(expected + 1);
+            expect(blink.blinkAPI.updateCameraThumbnail).toBeCalledTimes(!mini ? calls : 0);
+            expect(blink.blinkAPI.updateOwlThumbnail).toBeCalledTimes(mini ? calls : 0);
+            expect(blink.blinkAPI.getCommand).toBeCalledTimes(calls);
+            expect(blink.blinkAPI.getAccountHomescreen).toBeCalledTimes(calls + 1);
         });
 
         test.concurrent.each([
@@ -322,6 +285,11 @@ describe('Blink', () => {
             expect(blink.blinkAPI.getAccountHomescreen).toBeCalledTimes(expected + 1);
         });
 
+        test.concurrent.each([
+            [],
+        ])('.thumbnailCreatedAt', async (url, date) => {
+
+        });
         test.concurrent.each([
             [false, false, true, false, 0, BlinkCamera.PRIVACY_BYTES],
             [false, true, true, false, 0, BlinkCamera.PRIVACY_BYTES],
@@ -435,7 +403,7 @@ describe('Blink', () => {
         });
     });
     describe('Blink', () => {
-        test.concurrent('Blink.diagnosticDebug()', async () => {
+        test.concurrent('.diagnosticDebug()', async () => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.login.mockResolvedValue({});
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
@@ -466,6 +434,47 @@ describe('Blink', () => {
             await blink.refreshData();
             await blink.diagnosticDebug();
         });
+        test.concurrent('refreshData()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+            expect(blink.blinkAPI.getAccountHomescreen).toHaveBeenCalled();
+            expect(blink.networks.size).toBe(3);
+            expect(blink.cameras.size).toBe(3);
+        });
+        test.concurrent('_commandWait()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(JSON.parse(JSON.stringify(SAMPLE.HOMESCREEN)));
+            await blink.refreshData();
+
+            blink.blinkAPI.getCommand.mockResolvedValue(SAMPLE.COMMAND_RUNNING);
+            blink.blinkAPI.deleteCommand.mockResolvedValue({});
+            const {id: commandID, network_id: networkID} = SAMPLE.COMMAND_RUNNING.commands[0];
+            await blink._commandWait(networkID, commandID, 0.0001);
+
+            expect(blink.blinkAPI.getCommand).toBeCalledTimes(2);
+            expect(blink.blinkAPI.deleteCommand).toBeCalledTimes(1);
+
+            expect(await blink._commandWait(networkID)).toBeUndefined();
+            expect(await blink._commandWait(null, commandID)).toBeUndefined();
+        });
+        test.concurrent('_lock()', async () => {
+            const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
+
+            let calls = 0;
+            const cmd = async () => {
+                await sleep(1);
+                calls++;
+            };
+            blink._lock('test', cmd);
+            await blink._lock('test', cmd);
+            await sleep(11);
+
+            expect(calls).toBe(1);
+
+            await blink._lock('test', cmd);
+            expect(calls).toBe(2);
+        });
         test.concurrent.each([
             [true, true, 1],
             [true, false, 2],
@@ -495,12 +504,15 @@ describe('Blink', () => {
             expect(blink.blinkAPI.armNetwork).toBeCalledTimes(expectedAPI);
             expect(blink.blinkAPI.getCommand).toBeCalledTimes(timeout ? 0 : 1);
         });
+        test.concurrent('.refreshCameraThumbnail()', async () => {
+
+        });
         test.concurrent.each([
             [0, Date.now(), 0, true, 0],
             [Date.now(), 0, -1, true, 1],
             [Date.now(), 0, 0, true, 1],
             [Date.now()-1, 0, Date.now(), false, 1],
-        ])('Blink.getCameraLastThumbnail()', async (cameraAt, thumbnailAt, mediaAt, expectThumbnail, expectAPI) => {
+        ])('.getCameraLastThumbnail()', async (cameraAt, thumbnailAt, mediaAt, expectThumbnail, expectAPI) => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             await blink.refreshData();
@@ -528,7 +540,7 @@ describe('Blink', () => {
         test.concurrent.each([
             true,
             false,
-        ])('Blink.getCameraLastVideo()', async hasClip => {
+        ])('.getCameraLastVideo()', async hasClip => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             await blink.refreshData();
@@ -555,7 +567,7 @@ describe('Blink', () => {
             [false, null, 0, false],
             [true, 7000001, 1, true],
             [false, 7000001, 1, true],
-        ])('Blink.deleteCameraMotion()', async (hasClip, motionId, expectDelete, success) => {
+        ])('.deleteCameraMotion()', async (hasClip, motionId, expectDelete, success) => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             await blink.refreshData();
@@ -579,7 +591,7 @@ describe('Blink', () => {
             [true, false, true, 2],
             [true, true, false, 2],
             [true, false, false, 4],
-        ])('Blink.getSavedMedia()', async (hasClip, useNetworkId, useCameraId, expectedCount) => {
+        ])('.getSavedMedia()', async (hasClip, useNetworkId, useCameraId, expectedCount) => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             await blink.refreshData();
@@ -597,7 +609,7 @@ describe('Blink', () => {
             expect(res).toHaveLength(expectedCount);
             expect(blink.blinkAPI.getMediaChange).toBeCalledTimes(1);
         });
-        test.concurrent('Blink.stopCameraLiveView()', async () => {
+        test.concurrent('.stopCameraLiveView()', async () => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             await blink.refreshData();

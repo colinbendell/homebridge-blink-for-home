@@ -150,6 +150,17 @@ class BlinkDeviceHAP extends BlinkDevice {
         super(data, blink);
     }
 
+    static formatBoolean(val) {
+        if (val === true || val === 1) return '✅';
+        if (val === false || val === 0) return '❌';
+        return val;
+    }
+
+    static formatDegrees(val) {
+        if (Number.isFinite(val)) return `${val}°C`;
+        return val;
+    }
+
     bindCharacteristic(service, characteristic, desc, getFunc, setFunc, format) {
         const getCallback = async callback => {
             try {
@@ -166,7 +177,7 @@ class BlinkDeviceHAP extends BlinkDevice {
             if (format && disp !== null) {
                 disp = format.call(this, disp);
             }
-            log(`${desc} for ${this.name} is: ${disp}`);
+            log(`${this.name} - ${desc}: ${disp}`);
         };
 
         const setCallback = async (val, callback) => {
@@ -286,9 +297,11 @@ class BlinkNetworkHAP extends BlinkNetwork {
         if (!this.blink?.config?.noAlarm) {
             const securitySystem = this.accessory.addService(Service.SecuritySystem);
             this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemCurrentState,
-                `${this.name} Armed (Current)`, this.getSecuritySystemCurrentState);
+                `${this.name} Armed (Current)`, async () => await this.getSecuritySystemCurrentState(),
+                null, BlinkDeviceHAP.formatBoolean);
             this.bindCharacteristic(securitySystem, Characteristic.SecuritySystemTargetState,
-                `${this.name} Armed (Target)`, this.getSecuritySystemState, this.setSecuritySystemState);
+                `${this.name} Armed (Target)`, async () => await this.getSecuritySystemState(),
+                async val => await this.setSecuritySystemState(val), BlinkDeviceHAP.formatBoolean);
             const validValues = [
                 Characteristic.SecuritySystemTargetState.STAY_ARM,
                 Characteristic.SecuritySystemTargetState.AWAY_ARM,
@@ -301,7 +314,7 @@ class BlinkNetworkHAP extends BlinkNetwork {
             const service = this.accessory.addService(Service.Switch,
                 `${this.name} Arm`, `armed.${this.serial}`);
             this.bindCharacteristic(service, Characteristic.On,
-                `${this.name} Arm`, () => this.armed, this.setManualArmed);
+                `${this.name} Arm`, () => this.armed, this.setManualArmed, BlinkDeviceHAP.formatBoolean);
             this.bindCharacteristic(service, Characteristic.Name,
                 `${this.name} Arm`, () => `Manual Arm`);
         }
@@ -343,7 +356,7 @@ class BlinkCameraHAP extends BlinkCamera {
         // this.bindCharacteristic(cameraMode, Characteristic.PeriodicSnapshotsActive,
         //     'PeriodicSnapshotsActive', () => this.privacyMode);
         this.bindCharacteristic(cameraMode, Characteristic.ManuallyDisabled,
-            'ManuallyDisabled', () => !this.network.armed);
+            'ManuallyDisabled', () => !this.network.armed, null, BlinkDeviceHAP.formatBoolean);
 
         // const cameraStream = this.accessory.getService(Service.CameraRTPStreamManagement);
         // this.bindCharacteristic(cameraStream, Characteristic.Active,
@@ -358,7 +371,7 @@ class BlinkCameraHAP extends BlinkCamera {
 
         const motionService = this.accessory.getService(Service.MotionSensor);
         this.bindCharacteristic(motionService, Characteristic.MotionDetected,
-            'Motion', async () => await this.getMotionDetected());
+            'Motion', async () => await this.getMotionDetected(), null, BlinkDeviceHAP.formatBoolean);
 
         // disabling sensor active as it isn't clear if this actually is needed, but causes a lot of load on homebridge
 
@@ -377,7 +390,7 @@ class BlinkCameraHAP extends BlinkCamera {
             // this.bindCharacteristic(batteryService, Characteristic.ChargingState,
             //     'Battery State', () => Characteristic.ChargingState.NOT_CHARGEABLE);
             this.bindCharacteristic(batteryService, Characteristic.StatusLowBattery,
-                'Battery LowBattery', () => this.getLowBattery());
+                'Battery LowBattery', () => this.getLowBattery(), null, BlinkDeviceHAP.formatBoolean);
 
             // no temperature sensor on the minis
             if (!this.blink?.config?.noTemperatureSensor) {
@@ -386,7 +399,7 @@ class BlinkCameraHAP extends BlinkCamera {
                 // allow negative values
                 tempService.getCharacteristic(Characteristic.CurrentTemperature).setProps({minValue: -100});
                 this.bindCharacteristic(tempService, Characteristic.CurrentTemperature,
-                    'Temperature', () => this.temperature);
+                    'Temperature', () => this.temperature, null, BlinkDeviceHAP.formatDegrees);
                 // this.bindCharacteristic(tempService, Characteristic.StatusActive,
                 //     'Temperature Sensor Active', () => true);
             }
@@ -397,14 +410,14 @@ class BlinkCameraHAP extends BlinkCamera {
             const enabledSwitch = this.accessory.addService(Service.Switch,
                 `${this.name} Motion Enabled`, `enabled.${this.serial}`);
             this.bindCharacteristic(enabledSwitch, Characteristic.On,
-                'Enabled', () => this.getEnabled(), async val => await this.setEnabled(val));
+                'Enabled', () => this.getEnabled(), async val => await this.setEnabled(val), BlinkDeviceHAP.formatBoolean);
         }
 
         if (!this.blink?.config?.noPrivacySwitch) {
             const privacyModeService = this.accessory.addService(Service.Switch,
                 `${this.name} Privacy Mode`, `privacy.${this.serial}`);
             this.bindCharacteristic(privacyModeService, Characteristic.On,
-                'Privacy Mode', () => this.privacyMode, val => this.privacyMode = val);
+                'Privacy Mode', () => this.privacyMode, val => this.privacyMode = val, BlinkDeviceHAP.formatBoolean);
         }
 
         // TODO: use snapshot_period_minutes for poll

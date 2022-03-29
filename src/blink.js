@@ -5,7 +5,7 @@ const fs = require('fs');
 const {stringify} = require('./stringify');
 // const stringify = JSON.stringify;
 
-const THUMBNAIL_TTL = 1 * 60; // 1min
+const THUMBNAIL_TTL = 60 * 60; // 1min
 const BATTERY_TTL = 60 * 60; // 60min
 const MOTION_POLL = 15;
 const STATUS_POLL = 30;
@@ -96,7 +96,11 @@ class BlinkNetwork extends BlinkDevice {
     }
 
     get status() {
-        return this.syncModule?.status;
+        return this.data.status ?? this.syncModule?.status;
+    }
+
+    get online() {
+        return ['online'].includes(this.status);
     }
 
     get armed() {
@@ -153,6 +157,10 @@ class BlinkCamera extends BlinkDevice {
         return this.data.status && this.data.status !== 'done' ? this.data.status : this.network.status;
     }
 
+    get online() {
+        return ['online', 'done'].includes(this.data.status) && (this.isCameraMini || this.network.online);
+    }
+
     get armed() {
         return this.network.armed;
     }
@@ -178,11 +186,17 @@ class BlinkCamera extends BlinkDevice {
     }
 
     get thumbnailCreatedAt() {
+        // we store it on the .data object to it will be auto scrubbed on the next data poll
         if (this.data.thumbnail_created_at) return this.data.thumbnail_created_at;
 
-        const dateRegex = /(\d{4})_(\d\d)_(\d\d)__(\d\d)_(\d\d)(am|pm)?$/i;
-        const [, year, month, day, hour, minute] = dateRegex.exec(this.thumbnail) || [];
-        this.thumbnailCreatedAt = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || Date.now();
+        const dateRegex = /(\d{4})_(\d\d)_(\d\d)__(\d\d)_(\d\d)(?:am|pm)?$|[?&]ts=(\d+)(?:&|$)/i;
+        const [, year, month, day, hour, minute, epoch] = dateRegex.exec(this.thumbnail) || [];
+        if (epoch) {
+            this.thumbnailCreatedAt = Date.parse(new Date(Number(epoch.padEnd(13, '0'))).toISOString());
+        }
+        else {
+            this.thumbnailCreatedAt = Date.parse(`${year}-${month}-${day} ${hour}:${minute} +000`) || Date.now();
+        }
         return this.data.thumbnail_created_at;
     }
 
@@ -288,7 +302,8 @@ class BlinkCamera extends BlinkDevice {
 
         if (this.cacheThumbnail.has(thumbnailUrl)) return this.cacheThumbnail.get(thumbnailUrl);
 
-        const data = await this.blink.getUrl(thumbnailUrl + '.jpg');
+        // legacy thumbnails need a suffix of .jpg appended to the url
+        const data = await this.blink.getUrl(thumbnailUrl.replace(/\.jpg|$/, '.jpg'));
         this.cacheThumbnail.clear(); // avoid memory from getting large
         this.cacheThumbnail.set(thumbnailUrl, data);
         return data;
@@ -371,14 +386,14 @@ class Blink {
         const start = Date.now();
 
         // if there is an error, we are going to retry for 15s and fail
-        let cmd = await Promise.resolve(fn()).catch(e => log.error(e)) || {message: 'busy'};
+        let cmd = await Promise.resolve(fn()).catch(() => undefined) || {message: 'busy'};
         while (cmd.message && /busy/i.test(cmd.message)) {
             // TODO: should this be an error?
 
             log.info(`Sleeping ${busyWait}s: ${cmd.message}`);
             await sleep(busyWait * 1000);
             if (Date.now() - start > timeout * 1000) return;
-            cmd = await Promise.resolve(fn()).catch(e => log.error(e)) || {message: 'busy'};
+            cmd = await Promise.resolve(fn()).catch(() => undefined) || {message: 'busy'};
         }
         return await this._commandWaitAll(networkID, cmd, timeout);
     }
@@ -660,9 +675,16 @@ class Blink {
             const eligible = force || (camera.armed && camera.enabled);
 
             if (eligible && Date.now() >= lastSnapshot) {
+                if (camera.lowBattery || !camera.online) {
+                    log(`${camera.name} - ${!camera.online ? 'Offline' : 'Low Battery'}; Skipping snapshot`);
+                    return false;
+                }
+
+                // set the thumbnail to the future to avoid pile-ons
+                camera.thumbnailCreatedAt = Date.now();
                 const networkID = camera.networkID;
                 const cameraID = camera.cameraID;
-                log(`Refreshing snapshot for ${camera.name}`);
+                log(`${camera.name} - Refreshing snapshot`);
                 let updateCamera = this.blinkAPI.updateCameraThumbnail;
                 if (camera.isCameraMini) updateCamera = this.blinkAPI.updateOwlThumbnail;
 
@@ -696,7 +718,7 @@ class Blink {
             const lastMedia = await this.getCameraLastMotion(camera.networkID, camera.cameraID);
             const lastSnapshot = Date.parse(lastMedia.created_at) + (this.snapshotRate * 1000);
             if (force || (camera.armed && camera.enabled && Date.now() >= lastSnapshot)) {
-                log(`Refreshing clip for ${camera.name}`);
+                log(`${camera.name} - Refreshing clip`);
                 const cmd = async () => await this.blinkAPI.updateCameraClip(camera.networkID, camera.cameraID);
                 await this._command(camera.networkID, cmd);
 

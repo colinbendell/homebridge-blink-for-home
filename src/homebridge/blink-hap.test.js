@@ -141,6 +141,18 @@ describe('BlinkHAP', () => {
             blinkDevice2.createAccessory(homebridge, [blinkDevice.accessory]);
             expect(blinkDevice2.context.cacheKey).toBe('CACHED_VALUE');
         });
+        test.concurrent('.formatDegrees()', () => {
+            expect(BlinkDeviceHAP.formatDegrees(37.1)).toBe('37.1°C');
+            expect(BlinkDeviceHAP.formatDegrees(-40.0)).toBe('-40°C');
+            expect(BlinkDeviceHAP.formatDegrees('test')).toBe('test');
+        });
+        test.concurrent('.formatBoolean()', () => {
+            expect(BlinkDeviceHAP.formatBoolean(true)).toBe('✅');
+            expect(BlinkDeviceHAP.formatBoolean(1)).toBe('✅');
+            expect(BlinkDeviceHAP.formatBoolean(false)).toBe('❌');
+            expect(BlinkDeviceHAP.formatBoolean(0)).toBe('❌');
+            expect(BlinkDeviceHAP.formatBoolean('test')).toBe('test');
+        });
     });
     describe('BlinkNetworkHAP', () => {
         test.concurrent.each([

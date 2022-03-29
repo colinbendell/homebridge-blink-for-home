@@ -14,7 +14,7 @@ class HomebridgeBlink {
         this.config = config || {};
         this.log = logger;
         this.api = api;
-        setLogger(logger, this.config['enable-verbose-logging'], this.config['enable-debug-logging']);
+        setLogger(logger, ['verbose', 'debug'].includes(this.config['logging']), this.config['logging'] === 'debug');
 
         this.accessoryLookup = [];
         this.cachedAccessories = [];

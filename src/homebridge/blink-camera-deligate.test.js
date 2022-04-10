@@ -56,4 +56,53 @@ describe('BlinkCameraDelegate', () => {
         await sleep(0);
         expect(refreshThumbnailCalled).toBe(1);
     });
+    test.concurrent('stopStream()', async () => {
+        const delegate = new BlinkCameraDelegate();
+        await delegate.stopStream(1);
+
+        delegate.proxySessions.set(1, {});
+        await delegate.stopStream(1);
+        expect(delegate.proxySessions.keys()).not.toContain(1);
+
+        const proxy = {proxyServer: {}};
+        delegate.proxySessions.set(1, proxy);
+        await delegate.stopStream(1);
+        expect(delegate.proxySessions.keys()).not.toContain(1);
+
+        proxy.proxyServer.stop = jest.fn().mockResolvedValue(true);
+        delegate.proxySessions.set(1, proxy);
+        await delegate.stopStream(1);
+        expect(proxy.proxyServer.stop).toHaveBeenCalledTimes(1);
+        expect(delegate.proxySessions.keys()).not.toContain(1);
+
+        proxy.proxyServer.stop = jest.fn().mockRejectedValue('ERROR');
+        delegate.proxySessions.set(1, proxy);
+        await delegate.stopStream(1);
+        expect(proxy.proxyServer.stop).toHaveBeenCalledTimes(1);
+        expect(delegate.proxySessions.keys()).not.toContain(1);
+
+        // ongoing Ssssions
+        delegate.ongoingSessions.set(1, null);
+        await delegate.stopStream(1);
+        expect(delegate.ongoingSessions.keys()).not.toContain(1);
+
+        const session = {};
+        delegate.ongoingSessions.set(1, session);
+        await delegate.stopStream(1);
+        expect(delegate.ongoingSessions.keys()).not.toContain(1);
+
+        session.kill = jest.fn().mockReturnValue(true);
+        delegate.ongoingSessions.set(1, session);
+        await delegate.stopStream(1);
+        expect(session.kill).toHaveBeenCalledTimes(1);
+        expect(delegate.ongoingSessions.keys()).not.toContain(1);
+
+        session.kill = jest.fn().mockImplementation(() => {
+            throw new Error('ERROR');
+        });
+        delegate.ongoingSessions.set(1, session);
+        await delegate.stopStream(1);
+        expect(session.kill).toHaveBeenCalledTimes(1);
+        expect(delegate.ongoingSessions.keys()).not.toContain(1);
+    });
 });

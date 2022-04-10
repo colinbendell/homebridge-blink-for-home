@@ -106,16 +106,15 @@ class BlinkCameraDelegate {
         this.pendingSessions.set(request.sessionID, sessionInfo);
         this.proxySessions.set(request.sessionID, {path: DEFAULT_IMAGE_URL});
 
-        // TODO: this is messy as hell - massive cleanup necessary
         const liveViewURL = await this.blinkCamera.getLiveViewURL();
-
         log.info(`${this.blinkCamera?.name} - LiveView: ${liveViewURL}`);
+
+        // TODO: this is messy as hell - massive cleanup necessary
         const rtspRegex = /([a-z]+):\/\/([^:/]+)(?::[0-9]+)?(\/.*)/;
         if (liveViewURL?.startsWith('rtsp') && rtspRegex.test(liveViewURL)) {
             const [, protocol, host, path] = rtspRegex.exec(liveViewURL);
             const [listenPort] = await reservePorts({count: 1});
-            const proxyServer = new Http2TLSTunnel(listenPort, host, '0.0.0.0', 443, protocol);
-            await proxyServer.start();
+            const proxyServer = await this.createTLSTunnel(listenPort, host, protocol);
             const rtspProxy = {protocol, host, path, listenPort, proxyServer};
             this.proxySessions.set(request.sessionID, rtspProxy);
         }
@@ -131,25 +130,26 @@ class BlinkCameraDelegate {
 
     // called when iOS device asks stream to start/stop/reconfigure
     async handleStreamRequest(request, callback) {
-        log.debug(`${this.blinkCamera.name} - handleStreamRequest()`, request);
+        log.debug(`${this.blinkCamera?.name} - handleStreamRequest()`, request);
 
         if (request.type === StreamRequestTypes.START) {
-            await this.startStream(request);
+            await this.startStream(request.sessionID, request.video, request.audio);
         }
         else if (request.type === StreamRequestTypes.STOP) {
             await this.stopStream(request.sessionID);
         }
         else if (request.type === StreamRequestTypes.RECONFIGURE) {
             // not supported
-            log.debug(`${this.blinkCamera.name} - LiveView RECONFIGURE (unsupported): ${JSON.stringify(request.video)}`);
+            log.debug(`${this.blinkCamera?.name} - LiveView RECONFIGURE (unsupported): ${JSON.stringify(request.video)}`);
         }
         callback();
     }
 
-    async startStream(request) {
-        const sessionInfo = this.pendingSessions.get(request.sessionID);
-        const rtspProxy = this.proxySessions.get(request.sessionID);
-        const video = request.video;
+    async startStream(sessionID, video, audio) {
+        const sessionInfo = this.pendingSessions.get(sessionID);
+        if (!sessionInfo) return;
+
+        const rtspProxy = this.proxySessions.get(sessionID);
 
         // const profile = FFMPEGH264ProfileNames[video.profile];
         // const level = FFMPEGH264LevelNames[video.level];
@@ -219,8 +219,8 @@ class BlinkCameraDelegate {
         log.debug(`${this.blinkCamera.name} - ffmpeg ${ffmpegCommandClean.join(' ')}`);
 
         const ffmpegVideo = spawn(pathToFfmpeg || 'ffmpeg', ffmpegCommandClean, {env: process.env});
-        this.ongoingSessions.set(request.sessionID, ffmpegVideo);
-        this.pendingSessions.delete(request.sessionID);
+        this.ongoingSessions.set(sessionID, ffmpegVideo);
+        this.pendingSessions.delete(sessionID);
 
         ffmpegVideo.stdout.on('data', data => log.debug(`${this.blinkCamera.name} - STDOUT: ${String(data)}`));
         // ffmpegVideo.stderr.on('data', data => log.debug(`${this.blinkCamera.name} - STDERR: ${String(data)}`));
@@ -231,13 +231,13 @@ class BlinkCameraDelegate {
             log.debug(`${this.blinkCamera.name} - ffmpeg ${signal}`);
             if (code !== null && code !== 255) {
                 log.error(`${this.blinkCamera.name} - LiveView ERROR: ${signal} with code: ${code}`);
-                this.blinkCamera.controller?.forceStopStreamingSession(request.sessionID);
+                this.blinkCamera.controller?.forceStopStreamingSession(sessionID);
             }
         });
     }
 
     async stopStream(sessionID) {
-        log.info(`${this.blinkCamera.name} - LiveView STOP`);
+        log.info(`${this.blinkCamera?.name} - LiveView STOP`);
 
         if (this.proxySessions.has(sessionID)) {
             try {
@@ -245,9 +245,9 @@ class BlinkCameraDelegate {
                 await rtspProxy?.proxyServer?.stop();
             }
             catch (e) {
-                log.error(`${this.blinkCamera.name} - ERROR:`, e);
+                log.error(`${this.blinkCamera?.name} - ERROR:`, e);
             }
-            this.pendingSessions.delete(sessionID);
+            this.proxySessions.delete(sessionID);
         }
         if (this.ongoingSessions.has(sessionID)) {
             try {
@@ -255,10 +255,16 @@ class BlinkCameraDelegate {
                 ffmpegProcess?.kill('SIGKILL');
             }
             catch (e) {
-                log.error(`${this.blinkCamera.name} - Error occurred terminating the video process!`, e);
+                log.error(`${this.blinkCamera?.name} - Error occurred terminating the video process!`, e);
             }
             this.ongoingSessions.delete(sessionID);
         }
+    }
+
+    async createTLSTunnel(listenPort, targetHost, protocol) {
+        const proxyServer = new Http2TLSTunnel(listenPort, targetHost, '0.0.0.0', 443, protocol);
+        await proxyServer.start();
+        return proxyServer;
     }
 }
 

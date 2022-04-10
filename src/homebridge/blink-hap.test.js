@@ -175,6 +175,7 @@ describe('BlinkHAP', () => {
             if (expectSecurity || expectSwitch) {
                 if (expectSecurity) {
                     expect(accessory).toBeDefined();
+                    expect(networkDevice.createAccessory(homebridge).accessory).toBe(accessory);
                     const securitySystem = accessory.getService(Service.SecuritySystem);
                     expect(securitySystem).toBeDefined();
                     expect(securitySystem.getCharacteristic(SecuritySystemCurrentState)).toBeDefined();
@@ -184,6 +185,8 @@ describe('BlinkHAP', () => {
                     expect(accessory.getService(Service.SecuritySystem)).toBeUndefined();
                 }
                 if (expectSwitch) {
+                    expect(accessory).toBeDefined();
+                    expect(networkDevice.createAccessory(homebridge).accessory).toBe(accessory);
                     const service = accessory.getService(Service.Switch);
                     expect(service).toBeDefined();
                     expect(service.getCharacteristic(Characteristic.On)).toBeDefined();
@@ -378,33 +381,36 @@ describe('BlinkHAP', () => {
             expect(cameraDevice.getLowBattery()).toBe(expectedState);
         });
         test.concurrent.each([
-            ['low', false, false, false, false, 'offline.png', 0],
-            ['low', true, false, false, false, 'offline.png', 0],
-            ['low', true, true, false, false, 'offline.png', 0],
-            ['low', true, true, true, false, 'offline.png', 0],
-            ['low', true, true, true, true, 'offline.png', 0],
-            [null, false, false, false, false, 'disabled.png', 0],
-            [null, false, true, false, false, 'disabled.png', 0],
-            [null, false, true, true, false, 'disabled.png', 0],
-            [null, false, true, true, true, 'disabled.png', 0],
-            [null, true, false, false, false, 'rtp://localhost', 1],
-            [null, true, true, false, false, 'rtp://localhost', 1],
-            [null, true, true, true, false, 'rtp://localhost', 1],
-            [null, true, false, true, false, 'rtp://localhost', 1],
-            [null, true, true, true, true, 'rtp://localhost', 1],
-            [null, true, true, false, true, 'privacy.png', 0],
-            [null, true, false, true, true, 'privacy.png', 0],
-            [null, true, false, false, true, 'privacy.png', 0],
-        ])('.getLiveViewURL()', async (battery, lvEnabled, armed, enabled, privacy, expectURL, expectAPI) => {
+            [true, 'low', false, false, false, false, 'rtp://localhost', 'offline.png', 0],
+            [true, 'low', true, false, false, false, 'rtp://localhost', 'offline.png', 0],
+            [true, 'low', true, true, false, false, 'rtp://localhost', 'offline.png', 0],
+            [true, 'low', true, true, true, false, 'rtp://localhost', 'offline.png', 0],
+            [true, 'low', true, true, true, true, 'rtp://localhost', 'offline.png', 0],
+            [true, null, false, false, false, false, 'rtp://localhost', 'disabled.png', 0],
+            [true, null, false, true, false, false, 'rtp://localhost', 'disabled.png', 0],
+            [true, null, false, true, true, false, 'rtp://localhost', 'disabled.png', 0],
+            [true, null, false, true, true, true, 'rtp://localhost', 'disabled.png', 0],
+            [true, null, true, false, false, false, 'rtp://localhost', 'rtp://localhost', 1],
+            [true, null, true, true, false, false, 'rtp://localhost', 'rtp://localhost', 1],
+            [true, null, true, true, true, false, 'rtp://localhost', 'rtp://localhost', 1],
+            [true, null, true, false, true, false, 'rtp://localhost', 'rtp://localhost', 1],
+            [true, null, true, true, true, true, 'rtp://localhost', 'rtp://localhost', 1],
+            [true, null, true, true, false, true, 'rtp://localhost', 'privacy.png', 0],
+            [true, null, true, false, true, true, 'rtp://localhost', 'privacy.png', 0],
+            [true, null, true, false, false, true, 'rtp://localhost', 'privacy.png', 0],
+            [false, null, true, true, true, true, 'rtp://localhost', 'offline.png', 0],
+            [true, null, true, true, true, true, null, 'offline.png', 1],
+            [true, null, true, true, true, true, '', 'offline.png', 1],
+        ])('.getLiveViewURL()', async (og, battery, lvEnabled, armed, enabled, privacy, liveURL, expectURL, expectAPI) => {
             const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             await blink.refreshData();
 
             const complete = JSON.parse(JSON.stringify(SAMPLE.COMMAND_COMPLETE));
-            complete.server = 'rtp://localhost';
+            complete.server = liveURL;
             blink.getCameraLiveView = jest.fn().mockResolvedValue([complete]);
 
-            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+            const cameraData = og ? SAMPLE.HOMESCREEN.CAMERA_OG : SAMPLE.HOMESCREEN.CAMERA_G2;
             const cameraDevice = blink.cameras.get(cameraData.id);
             cameraDevice.data.battery = battery;
             blink.config.liveView = lvEnabled;

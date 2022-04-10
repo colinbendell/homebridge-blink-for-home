@@ -219,7 +219,7 @@ class BlinkDeviceHAP extends BlinkDevice {
 
         // TODO: add online state
         this.accessory.context.canonicalID = this.canonicalID;
-        const [context] = cachedAccessories?.map(a => a.context)?.filter(a => a.canonicalID === this.canonicalID) || [];
+        const [context] = cachedAccessories.map(a => a.context).filter(a => a.canonicalID === this.canonicalID);
         if (context) {
             this.accessory.context = Object.assign(this.accessory.context, context);
         }
@@ -459,8 +459,8 @@ class BlinkHAP extends Blink {
         super(clientUUID, auth, config.statusPollingSeconds, config.motionPollingSeconds, config.snapshotSeconds);
         this.config = config;
     }
-    static normalizeConfig(config) {
-        const newConfig = Object.assign({}, DEFAULT_OPTIONS, config || {});
+    static normalizeConfig(config = {}) {
+        const newConfig = Object.assign({}, DEFAULT_OPTIONS, config);
         const checkValue = function(key, propName, cast = Boolean) {
             if ((key in newConfig) && newConfig[key] !== '' && newConfig[key] !== null) {
                 const newValue = cast(newConfig[key]);

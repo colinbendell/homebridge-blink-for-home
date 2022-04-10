@@ -322,16 +322,13 @@ describe('Blink', () => {
             expect(data1).toStrictEqual(bytes);
         });
         test.concurrent.each([
-            [false, true, false, true, true],
-            [false, false, true, true, true],
-            [false, false, false, false, false],
-            [false, false, false, false, false],
-        ])('BlinkCamera.getLiveViewURL()', async (mini, armed, enabled, privacy, expectPrivacy) => {
+            [false],
+            [true],
+        ])('BlinkCamera.getLiveViewURL()', async mini => {
             const blink = new Blink(DEFAULT_BLINK_CLIENT_UUID);
             blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
             await blink.refreshData();
 
-            blink.blinkAPI.getCommand.mockResolvedValue(SAMPLE.COMMAND_COMPLETE);
             blink.blinkAPI.getCameraLiveViewV5.mockResolvedValue(SAMPLE.CAMERA_LIVE_VIEW);
             blink.blinkAPI.getOwlLiveView.mockResolvedValue(SAMPLE.CAMERA_LIVE_VIEW);
             const complete = JSON.parse(JSON.stringify(SAMPLE.COMMAND_COMPLETE));
@@ -340,15 +337,11 @@ describe('Blink', () => {
 
             const cameraData = mini ? SAMPLE.HOMESCREEN.MINI : SAMPLE.HOMESCREEN.CAMERA_OG;
             const cameraDevice = blink.cameras.get(cameraData.id);
-            cameraDevice.network.data.armed = armed;
-            cameraDevice.data.enabled = enabled;
-            cameraDevice.privacyMode = privacy;
 
             const url = await cameraDevice.getLiveViewURL();
-
-            expect(url).toContain(expectPrivacy ? 'privacy.png' : 'rtp://localhost');
-            expect(blink.blinkAPI.getCameraLiveViewV5).toBeCalledTimes(!expectPrivacy && !mini ? 1: 0);
-            expect(blink.blinkAPI.getOwlLiveView).toBeCalledTimes(!expectPrivacy && mini ? 1: 0);
+            expect(url).toContain('rtp://localhost');
+            expect(blink.blinkAPI.getCameraLiveViewV5).toBeCalledTimes( !mini ? 1: 0);
+            expect(blink.blinkAPI.getOwlLiveView).toBeCalledTimes(mini ? 1: 0);
         });
     });
 

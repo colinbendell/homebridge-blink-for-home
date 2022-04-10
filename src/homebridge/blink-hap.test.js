@@ -20,6 +20,7 @@ setLogger(logger, false, false);
 
 
 const {BlinkDeviceHAP, BlinkHAP, BlinkNetworkHAP, BlinkCameraHAP} = require('./blink-hap');
+const {Blink} = require("../blink");
 
 const DEFAULT_BLINK_CLIENT_UUID = 'A5BF5C52-56F3-4ADB-A7C2-A70619552084';
 
@@ -375,6 +376,45 @@ describe('BlinkHAP', () => {
             cameraDevice.data.battery = lowBattery ? 'low' : 'ok';
 
             expect(cameraDevice.getLowBattery()).toBe(expectedState);
+        });
+        test.concurrent.each([
+            ['low', false, false, false, false, 'offline.png', 0],
+            ['low', true, false, false, false, 'offline.png', 0],
+            ['low', true, true, false, false, 'offline.png', 0],
+            ['low', true, true, true, false, 'offline.png', 0],
+            ['low', true, true, true, true, 'offline.png', 0],
+            [null, false, false, false, false, 'disabled.png', 0],
+            [null, false, true, false, false, 'disabled.png', 0],
+            [null, false, true, true, false, 'disabled.png', 0],
+            [null, false, true, true, true, 'disabled.png', 0],
+            [null, true, false, false, false, 'rtp://localhost', 1],
+            [null, true, true, false, false, 'rtp://localhost', 1],
+            [null, true, true, true, false, 'rtp://localhost', 1],
+            [null, true, false, true, false, 'rtp://localhost', 1],
+            [null, true, true, true, true, 'rtp://localhost', 1],
+            [null, true, true, false, true, 'privacy.png', 0],
+            [null, true, false, true, true, 'privacy.png', 0],
+            [null, true, false, false, true, 'privacy.png', 0],
+        ])('.getLiveViewURL()', async (battery, lvEnabled, armed, enabled, privacy, expectURL, expectAPI) => {
+            const blink = new BlinkHAP(DEFAULT_BLINK_CLIENT_UUID);
+            blink.blinkAPI.getAccountHomescreen.mockResolvedValue(SAMPLE.HOMESCREEN);
+            await blink.refreshData();
+
+            const complete = JSON.parse(JSON.stringify(SAMPLE.COMMAND_COMPLETE));
+            complete.server = 'rtp://localhost';
+            blink.getCameraLiveView = jest.fn().mockResolvedValue([complete]);
+
+            const cameraData = SAMPLE.HOMESCREEN.CAMERA_OG;
+            const cameraDevice = blink.cameras.get(cameraData.id);
+            cameraDevice.data.battery = battery;
+            blink.config.liveView = lvEnabled;
+            cameraDevice.network.data.armed = armed;
+            cameraDevice.data.enabled = enabled;
+            cameraDevice.privacyMode = privacy;
+
+            const url = await cameraDevice.getLiveViewURL();
+            expect(url).toContain(expectURL);
+            expect(blink.getCameraLiveView).toBeCalledTimes(expectAPI);
         });
     });
 });

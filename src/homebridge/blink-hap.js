@@ -133,14 +133,14 @@ const CAMERA_DELEGATE_OPTIONS = {
                 // [320, 180, 30],
             ],
         },
-        audio: {
-            codecs: [
-                {
-                    type: AudioStreamingCodecType.AAC_ELD,
-                    samplerate: AudioStreamingSamplerate.KHZ_16,
-                },
-            ],
-        },
+        // audio: {
+        //     codecs: [
+        //         {
+        //             type: AudioStreamingCodecType.AAC_ELD,
+        //             samplerate: AudioStreamingSamplerate.KHZ_16,
+        //         },
+        //     ],
+        // },
     },
 };
 
@@ -330,21 +330,43 @@ class BlinkCameraHAP extends BlinkCamera {
         super(data, blink);
     }
 
+    get controller() {
+        if (!this._controller) {
+            const cameraDelegate = new BlinkCameraDelegate(this);
+            const controllerOptions = Object.assign({delegate: cameraDelegate}, CAMERA_DELEGATE_OPTIONS);
+            this._controller = new CameraController(controllerOptions);
+        }
+        return this._controller;
+    }
+
     getLowBattery() {
         return this.lowBattery ?
             Characteristic.StatusLowBattery.BATTERY_LEVEL_LOW :
             Characteristic.StatusLowBattery.BATTERY_LEVEL_NORMAL;
     }
 
+    async getLiveViewURL() {
+        if (this.lowBattery) {
+            return `${__dirname}/../offline.png`;
+        }
+        if (!this.blink?.config?.liveView) {
+            return `${__dirname}/../disabled.png`;
+        }
+        if (!this.armed || !this.enabled) {
+            if (this.privacyMode) return `${__dirname}/../privacy.png`;
+        }
+
+        // TODO: support non OG liveurls
+        if (this.model !== 'white') {
+            return `${__dirname}/../offline.png`;
+        }
+        return await super.getLiveViewURL(4) || `${__dirname}/../offline.png`;
+    }
     createAccessory(hapAPI, cachedAccessories = []) {
         if (this.accessory) return this;
         super.createAccessory(hapAPI, cachedAccessories, Categories.CAMERA);
 
-        const cameraDelegate = new BlinkCameraDelegate(this);
-        const controllerOptions = Object.assign({delegate: cameraDelegate}, CAMERA_DELEGATE_OPTIONS);
-        const cameraController = new CameraController(controllerOptions);
-
-        this.accessory.configureController(cameraController);
+        this.accessory.configureController(this.controller);
         // this.accessory.activeCameraController = cameraDelegate.controller;
         // console.log('activeCameraController?', this.accessory.activeCameraController);
 

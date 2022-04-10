@@ -15,6 +15,7 @@ const MOTION_TRIGGER_DECAY = 90; // 90s
 // const OFFLINE_BYTES = fs.readFileSync(`${__dirname}/offline.png`);
 const PRIVACY_BYTES = fs.readFileSync(`${__dirname}/privacy.png`);
 const DISABLED_BYTES = fs.readFileSync(`${__dirname}/disabled.png`);
+const UNSUPPORTED_BYTES = fs.readFileSync(`${__dirname}/unsupported.png`);
 
 class BlinkDevice {
     constructor(data, blink) {
@@ -309,16 +310,14 @@ class BlinkCamera extends BlinkDevice {
         return data;
     }
 
-    async getLiveViewURL() {
-        if (!this.armed || !this.enabled) {
-            if (this.privacyMode) return `${__dirname}/privacy.png`;
-        }
-        const [data] = await this.blink.getCameraLiveView(this.networkID, this.cameraID);
-        return data.server;
+    async getLiveViewURL(timeout = 30) {
+        const [data] = await this.blink.getCameraLiveView(this.networkID, this.cameraID, timeout);
+        return data?.server;
     }
 }
 BlinkCamera.PRIVACY_BYTES = PRIVACY_BYTES;
 BlinkCamera.DISABLED_BYTES = DISABLED_BYTES;
+BlinkCamera.UNSUPPORTED_BYTES = UNSUPPORTED_BYTES;
 
 class Blink {
     constructor(clientUUID, auth, statusPoll = STATUS_POLL, motionPoll = MOTION_POLL, snapshotRate = THUMBNAIL_TTL) {
@@ -395,7 +394,8 @@ class Blink {
             if (Date.now() - start > timeout * 1000) return;
             cmd = await Promise.resolve(fn()).catch(() => undefined) || {message: 'busy'};
         }
-        return await this._commandWaitAll(networkID, cmd, timeout);
+        const remainingTimeout = timeout - ((Date.now() - start)/1000);
+        return await this._commandWaitAll(networkID, cmd, remainingTimeout);
     }
 
     async _lock(name, promiseCmd) {
@@ -805,7 +805,7 @@ class Blink {
         let cmd = this.blinkAPI.getCameraLiveViewV5;
         if (camera.isCameraMini) cmd = this.blinkAPI.getOwlLiveView;
 
-        return await this._command(networkID, () => cmd.call(this.blinkAPI, networkID, cameraID, timeout));
+        return await this._command(networkID, () => cmd.call(this.blinkAPI, networkID, cameraID), timeout);
     }
 
     async stopCameraLiveView(networkID) {

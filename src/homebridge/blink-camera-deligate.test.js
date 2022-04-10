@@ -13,17 +13,16 @@ logger.log = () => {};
 logger.error = () => {};
 setLogger(logger, false, false);
 
-const {HAPStatus} = homebridge.hap;
 const BlinkCameraDelegate = require('./blink-camera-deligate');
 const {sleep} = require('../utils');
+const {BlinkCamera} = require('../blink');
 
 describe('BlinkCameraDelegate', () => {
     test.concurrent('handleSnapshotRequest(null)', async () => {
         const delegate = new BlinkCameraDelegate();
         const request = {height: 100, width: 100, reason: homebridge.hap.ResourceRequestReason.PERIODIC};
         const cb = (error, val) => {
-            expect(error).toBe(HAPStatus.RESOURCE_DOES_NOT_EXIST);
-            expect(val).toBeUndefined();
+            expect(val).toStrictEqual(Buffer.from(BlinkCamera.UNSUPPORTED_BYTES));
         };
         await delegate.handleSnapshotRequest(request, cb);
     });

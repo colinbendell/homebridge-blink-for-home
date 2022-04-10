@@ -1115,7 +1115,7 @@ class BlinkAPI {
     }
 
     async getNetworkSirens(networkID) {
-        return await this.get(`/api/v1/networks/${networkID}/sirens`);
+        return await this.get(`/api/v1/networks/${networkID}/sirens/`);
     }
 
     async activateSiren(networkID, sirenID, duration = 30) {

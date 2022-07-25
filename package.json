@@ -34,14 +34,14 @@
         "ffmpeg-for-homebridge": "^0.1.0"
     },
     "devDependencies": {
-        "@jest/globals": "^27.5.1",
+        "@jest/globals": "^28",
         "eslint": "^8.13.0",
         "eslint-config-google": "^0.14.0",
         "eslint-plugin-jest": "^26.1.4",
         "hap-nodejs": "^0.10.0",
         "homebridge": "^1.4.0",
         "homebridge-config-ui-x": "^4.42.0",
-        "jest": "^27.5.1"
+        "jest": "^28"
     },
     "scripts": {
         "lint": "eslint src/**.js --max-warnings=0",

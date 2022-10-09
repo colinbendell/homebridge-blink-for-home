@@ -1314,6 +1314,79 @@ class BlinkAPI {
     async getAppStatus(serial) {
         return await this.get(`/api/v1/fw/app/update_check?serial=${serial}`);
     }
+    
+    /**
+     * DOORBELL
+     */
+
+    /**
+ 
+     **/
+    async getDoorbellConfig(networkID, cameraID) {
+        return await this.get(`/network/${networkID}/lotus/${cameraID}/config`); //lotus
+    }
+
+    /**
+     **/
+    // async getCameraUsage() {
+    //     return await this.get(`/api/v1/camera/usage`);
+    // }
+
+    async getDoorbellLiveView(networkID, cameraID) {
+        const data = {
+            'intent': 'liveview',
+            'motion_event_start_time': '',
+        };
+        return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/doorbells/${cameraID}/liveview`, data);
+    }
+
+    /**
+      **/
+    async getDoorbellStatus(networkID, cameraID, maxTTL = 60 * 60) {
+        return await this.get(`/network/${networkID}/lotus/${cameraID}`, maxTTL);
+    }
+
+    /**
+
+     **/
+    async updateDoorbellThumbnail(networkID, cameraID) {
+        return await this.post(`/network/${networkID}/lotus/${cameraID}/thumbnail`);
+    }
+
+    async updateDoorbellClip(networkID, cameraID) {
+        return await this.post(`/network/${networkID}/lotus/${cameraID}/clip`);
+    }
+
+    async enableDoorbellMotion(networkID, cameraID) {
+        return await this.post(`/network/${networkID}/lotus/${cameraID}/enable`);
+    }
+
+    async disableDoorbellMotion(networkID, cameraID) {
+        return await this.post(`/network/${networkID}/lotus/${cameraID}/disable`);
+    }
+
+    async getDoorbellMotionRegions(networkID, cameraID) {
+        return await this.get(`/api/v1/accounts/{accountID}/networks/${networkID}/doorbells/${cameraID}/motion_regions`);//lotus
+    }
+
+    /**
+     **/
+    async updateDoorbellStatus(networkID, cameraID) {
+        return await this.post(`/network/${networkID}/lotus/${cameraID}/status`);
+    }
+
+    async updateDoorbellSettings(networkID, cameraID, updateCameraBody) {
+        return await this.post(`/network/${networkID}/lotus/${cameraID}/update`, updateCameraBody);
+    }
+
+    async updateDoorbellMotionRegions(networkID, cameraID, motionRegions) {
+        return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/doorbells/${cameraID}/motion_regions`,//lotus
+            motionRegions);
+    }
+
+    async getDoorbellSignals(networkID, cameraID) {
+        return await this.get(`/network/${networkID}/lotus/${cameraID}/signals`);
+    }
 }
 
 module.exports = BlinkAPI;

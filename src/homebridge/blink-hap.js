@@ -400,7 +400,7 @@ class BlinkCameraHAP extends BlinkCamera {
         // this.bindCharacteristic(motionService, Characteristic.StatusActive,
         //     'Motion Sensor Active', async () => await this.getMotionDetectActive());
 
-        if (!this.isCameraMini) {
+        if (!(this.isCameraMini || this.isCameraDoorbell)) {
             // Battery Levels are only available in non Minis
             const batteryService = this.accessory.addService(Service.Battery,
                 `Battery`, `battery-sensor.${this.serial}`);

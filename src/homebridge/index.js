@@ -43,7 +43,11 @@ class HomebridgeBlink {
             // await this.conn.subscribe(handleUpdates);
             // await this.conn.observe(handleUpdates);
 
-            const data = [...this.blink.networks.values(), ...this.blink.cameras.values()];
+            const data = [
+              ...this.blink.networks.values(),
+              ...this.blink.cameras.values(),
+              ...this.blink.doorbells.values()
+            ];
             this.accessoryLookup = data.map(entry => entry.createAccessory(this.api, this.cachedAccessories));
 
             this.api.unregisterPlatformAccessories(

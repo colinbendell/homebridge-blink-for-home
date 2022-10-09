@@ -566,6 +566,7 @@ class Blink {
         const ttl = force ? 100 : this.statusPoll;
         const homescreen = await this.blinkAPI.getAccountHomescreen(ttl);
         homescreen.cameras.push(...homescreen.owls);
+        homescreen.cameras.push(...homescreen.doorbells);
 
         for (const network of homescreen.networks) {
             network.syncModule = homescreen.sync_modules.filter(sm => sm.network_id === network.id)[0];

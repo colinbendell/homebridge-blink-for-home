@@ -46,7 +46,6 @@ class HomebridgeBlink {
             const data = [
               ...this.blink.networks.values(),
               ...this.blink.cameras.values(),
-              ...this.blink.doorbells.values()
             ];
             this.accessoryLookup = data.map(entry => entry.createAccessory(this.api, this.cachedAccessories));
 

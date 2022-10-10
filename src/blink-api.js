@@ -1350,11 +1350,11 @@ class BlinkAPI {
 
      **/
     async updateDoorbellThumbnail(networkID, cameraID) {
-        return await this.post(`/network/${networkID}/lotus/${cameraID}/thumbnail`);
+        return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/doorbells/${cameraID}/thumbnail`);
     }
-
+    
     async updateDoorbellClip(networkID, cameraID) {
-        return await this.post(`/network/${networkID}/lotus/${cameraID}/clip`);
+        return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/doorbells/${cameraID}/clip`);
     }
 
     async enableDoorbellMotion(networkID, cameraID) {
@@ -1372,7 +1372,7 @@ class BlinkAPI {
     /**
      **/
     async updateDoorbellStatus(networkID, cameraID) {
-        return await this.post(`/network/${networkID}/lotus/${cameraID}/status`);
+        return await this.post(`/api/v1/accounts/{accountID}/networks/${networkID}/doorbells/${cameraID}/status`);
     }
 
     async updateDoorbellSettings(networkID, cameraID, updateCameraBody) {
@@ -1385,7 +1385,7 @@ class BlinkAPI {
     }
 
     async getDoorbellSignals(networkID, cameraID) {
-        return await this.get(`/network/${networkID}/lotus/${cameraID}/signals`);
+        return await this.get(`/api/v1/accounts/{accountID}/networks/${networkID}/doorbells/${cameraID}/signals`);
     }
 }
 

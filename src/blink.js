@@ -117,7 +117,7 @@ class BlinkNetwork extends BlinkDevice {
     }
 
     get cameras() {
-        return [...this.blink.cameras.values(), ...this.blink.doorbells.values()].filter(c => c.networkID === this.networkID);
+        return [...this.blink.cameras.values()].filter(c => c.networkID === this.networkID);
     }
 
     set commandID(val) {

@@ -1,6 +1,6 @@
 /* eslint-disable require-jsdoc */
 const crypto = require('crypto');
-const {fetch, reset} = require('@adobe/helix-fetch');
+const {fetch, reset} = require('@adobe/fetch');
 
 const {sleep} = require('./utils');
 const IniFile = require('./inifile');
@@ -18,7 +18,7 @@ const DEFAULT_CLIENT_OPTIONS = {
     type: 'ios',
     name: 'iPhone',
     appVersion: '6.18.0 (2210101952) #bd574f02a-mod',
-    os: '16.1'
+    os: '16.1',
 };
 
 /* eslint-disable */

@@ -14,10 +14,11 @@ const CACHE = new Map();
 
 const DEFAULT_CLIENT_OPTIONS = {
     notificationKey: null,
-    device: 'iPhone12,3',
+    device: 'iPhone15,2',
     type: 'ios',
-    name: 'unknown',
-    appVersion: '6.9.0 (2202111015) #58dd34a61-mod',
+    name: 'iPhone',
+    appVersion: '6.18.0 (2210101952) #bd574f02a-mod',
+    os: '16.1'
 };
 
 /* eslint-disable */
@@ -251,8 +252,8 @@ class BlinkAPI {
         }
 
         const headers = {
-            'User-Agent': 'Blink/2202111015 CFNetwork/1331.0.7 Darwin/21.4.0',
-            'app-build': 'IOS_2202111015',
+            'User-Agent': 'Blink/2210101952 CFNetwork/1399 Darwin/22.1.0',
+            'app-build': 'IOS_2210101952',
             'Locale': 'en_US',
             'x-blink-time-zone': 'America/New York',
             'accept-language': 'en_US',

@@ -159,7 +159,7 @@ class BlinkCamera extends BlinkDevice {
     }
 
     get online() {
-        return ['online', 'done'].includes(this.data.status) && (this.isCameraMini || this.network.online);
+        return ['online', 'done'].includes(this.data.status) && ((this.isCameraMini || this.isCameraDoorbell) || this.network.online);
     }
 
     get armed() {
@@ -215,6 +215,10 @@ class BlinkCamera extends BlinkDevice {
 
     get isCameraMini() {
         return this.model === 'owl';
+    }
+    
+    get isCameraDoorbell() {
+      return this.model === 'lotus';
     }
 
     get temperature() {
@@ -562,6 +566,7 @@ class Blink {
         const ttl = force ? 100 : this.statusPoll;
         const homescreen = await this.blinkAPI.getAccountHomescreen(ttl);
         homescreen.cameras.push(...homescreen.owls);
+        homescreen.cameras.push(...homescreen.doorbells);
 
         for (const network of homescreen.networks) {
             network.syncModule = homescreen.sync_modules.filter(sm => sm.network_id === network.id)[0];
@@ -654,6 +659,7 @@ class Blink {
         const camera = this.cameras.get(cameraID);
         let cmd = enabled ? this.blinkAPI.enableCameraMotion : await this.blinkAPI.disableCameraMotion;
         if (camera.isCameraMini) cmd = this.blinkAPI.updateOwlSettings;
+        if (camera.isCameraDoorbell) cmd = this.blinkAPI.updateDoorbellSettings;
 
         const updateCameraPromise = async () => cmd.call(this.blinkAPI, networkID, cameraID, {enabled: enabled});
         const commandPromise = async () => await this._command(networkID, updateCameraPromise);
@@ -687,7 +693,8 @@ class Blink {
                 log(`${camera.name} - Refreshing snapshot`);
                 let updateCamera = this.blinkAPI.updateCameraThumbnail;
                 if (camera.isCameraMini) updateCamera = this.blinkAPI.updateOwlThumbnail;
-
+                if (camera.isCameraDoorbell) updateCamera = this.blinkAPI.updateDoorbellThumbnail;
+                
                 // this is an overly complicated nesting, but we have the tree of:
                 // lock --> update camera --> poll command
                 // TODO: organize this better. Perhaps auto check on the _command call? or implement in the blink api?
@@ -719,7 +726,9 @@ class Blink {
             const lastSnapshot = Date.parse(lastMedia.created_at) + (this.snapshotRate * 1000);
             if (force || (camera.armed && camera.enabled && Date.now() >= lastSnapshot)) {
                 log(`${camera.name} - Refreshing clip`);
-                const cmd = async () => await this.blinkAPI.updateCameraClip(camera.networkID, camera.cameraID);
+                const updateClip = camera.isCameraDoorbell ? this.blinkAPI.updateDoorbellClip : this.blinkAPI.updateCameraClip
+                const cmd = async () => await updateClip(camera.networkID, camera.cameraID);
+
                 await this._command(camera.networkID, cmd);
 
                 return true; // we updated a camera
@@ -758,6 +767,8 @@ class Blink {
         const camera = this.cameras.get(cameraID);
         if (camera.isCameraMini) {
             return await this.blinkAPI.getOwlConfig(networkID, cameraID, maxTTL);
+        } else if (camera.isCameraDoorBell) {
+            return await this.blinkAPI.getDoorbellConfig(networkID, cameraID, maxTTL);
         }
         return await this.blinkAPI.getCameraStatus(networkID, cameraID, maxTTL);
     }
@@ -804,6 +815,7 @@ class Blink {
 
         let cmd = this.blinkAPI.getCameraLiveViewV5;
         if (camera.isCameraMini) cmd = this.blinkAPI.getOwlLiveView;
+        if (camera.isCameraDoorbell) cmd = this.blinkAPI.getDoorbellLiveView;
 
         return await this._command(networkID, () => cmd.call(this.blinkAPI, networkID, cameraID), timeout);
     }

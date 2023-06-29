@@ -12,7 +12,7 @@ const STATUS_POLL = 30;
 const ARMED_DELAY = 60; // 60s
 const MOTION_TRIGGER_DECAY = 90; // 90s
 
-// const OFFLINE_BYTES = fs.readFileSync(`${__dirname}/offline.png`);
+const OFFLINE_BYTES = fs.readFileSync(`${__dirname}/offline.png`);
 const PRIVACY_BYTES = fs.readFileSync(`${__dirname}/privacy.png`);
 const DISABLED_BYTES = fs.readFileSync(`${__dirname}/disabled.png`);
 const UNSUPPORTED_BYTES = fs.readFileSync(`${__dirname}/unsupported.png`);
@@ -303,11 +303,16 @@ class BlinkCamera extends BlinkDevice {
 
         if (this.cacheThumbnail.has(thumbnailUrl)) return this.cacheThumbnail.get(thumbnailUrl);
 
-        // legacy thumbnails need a suffix of .jpg appended to the url
-        const data = await this.blink.getUrl(thumbnailUrl.replace(/\.jpg|$/, '.jpg'));
-        this.cacheThumbnail.clear(); // avoid memory from getting large
-        this.cacheThumbnail.set(thumbnailUrl, data);
-        return data;
+        if (thumbnailUrl) {
+            // legacy thumbnails need a suffix of .jpg appended to the url
+            const data = await this.blink.getUrl(thumbnailUrl.replace(/\.jpg|$/, '.jpg'));
+            this.cacheThumbnail.clear(); // avoid memory from getting large
+            this.cacheThumbnail.set(thumbnailUrl, data);
+            return data;
+        } else {
+            // If the thumbnailUrl is null, return a Camera offline image
+            return BlinkCamera.OFFLINE_BYTES
+        }
     }
 
     async getLiveViewURL(timeout = 30) {
@@ -315,6 +320,7 @@ class BlinkCamera extends BlinkDevice {
         return data?.server;
     }
 }
+BlinkCamera.OFFLINE_BYTES = OFFLINE_BYTES;
 BlinkCamera.PRIVACY_BYTES = PRIVACY_BYTES;
 BlinkCamera.DISABLED_BYTES = DISABLED_BYTES;
 BlinkCamera.UNSUPPORTED_BYTES = UNSUPPORTED_BYTES;
